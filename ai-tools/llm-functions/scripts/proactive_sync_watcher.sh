@@ -6,7 +6,7 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
 WATCH_DIR="$HOME/Notes/projects"
 # Call the source script directly to avoid JSON wrapper issues in background
-SYNC_SCRIPT="$HOME/ai-tools/llm-functions/tools/sync_projects_bidirectional.sh"
+SYNC_SCRIPT="$HOME/local-ai-assistant/ai-tools/llm-functions/tools/sync_projects_bidirectional.sh"
 LOG_FILE="$HOME/Library/Logs/ai_assistant_sync.log"
 
 mkdir -p "$(dirname "$LOG_FILE")"
@@ -19,7 +19,7 @@ echo "[$(date)] Sync watcher (re)started for $WATCH_DIR" >> "$LOG_FILE"
     echo "[$(date)] File change detected. Triggering sync..." >> "$LOG_FILE"
     
     # Run the script directly with required env
-    LLM_ROOT_DIR="$HOME/ai-tools/llm-functions" bash "$SYNC_SCRIPT" >> "$LOG_FILE" 2>&1
+    LLM_ROOT_DIR="$HOME/local-ai-assistant/ai-tools/llm-functions" bash "$SYNC_SCRIPT" >> "$LOG_FILE" 2>&1
     
     echo "[$(date)] Sync completed." >> "$LOG_FILE"
     

@@ -701,14 +701,14 @@ for path in [
     Path.home() / '.zsh_ai_helpers',
     Path.home() / 'Library/Application Support/aichat/config.yaml',
     Path.home() / 'Library/Application Support/aichat/.env',
-    Path.home() / 'ai-tools/llm-functions/agents.txt',
+    Path.home() / 'local-ai-assistant/ai-tools/llm-functions/agents.txt',
 ]:
     add(f"path:{path.name}", path.exists(), str(path))
 
 for symlink_path in [
     Path.home() / '.zsh_ai_helpers',
-    Path.home() / 'ai-tools/llm-functions/agents.txt',
-    Path.home() / 'ai-tools/llm-functions/utils/parse_natural_datetime.py',
+    Path.home() / 'local-ai-assistant/ai-tools/llm-functions/agents.txt',
+    Path.home() / 'local-ai-assistant/ai-tools/llm-functions/utils/parse_natural_datetime.py',
 ]:
     add(f"symlink:{symlink_path.name}", symlink_path.is_symlink(), str(symlink_path))
 
@@ -978,7 +978,7 @@ notesfind() {
   local query json
   query="$*"
   json=$(python3 -c 'import json,sys; print(json.dumps({"query": " ".join(sys.argv[1:])}))' "$@")
-  "$HOME/ai-tools/llm-functions/bin/notes-assistant" note_search "$json"
+  "$HOME/local-ai-assistant/ai-tools/llm-functions/bin/notes-assistant" note_search "$json"
 }
 
 notessave() {
@@ -987,11 +987,11 @@ notessave() {
   local text="$*"
   local json
   json=$(python3 -c 'import json,sys; print(json.dumps({"file": sys.argv[1], "text": " ".join(sys.argv[2:])}))' "$file" "$@")
-  "$HOME/ai-tools/llm-functions/bin/notes-assistant" note_append "$json"
+  "$HOME/local-ai-assistant/ai-tools/llm-functions/bin/notes-assistant" note_append "$json"
 }
 
 _pa_parse_dt() {
-  python3 "$HOME/ai-tools/llm-functions/utils/parse_natural_datetime.py" "$*"
+  python3 "$HOME/local-ai-assistant/ai-tools/llm-functions/utils/parse_natural_datetime.py" "$*"
 }
 
 _pa_open_in_editor() {
@@ -1369,7 +1369,7 @@ browserread() {
     echo "$url"
     return 1
   fi
-  "$HOME/ai-tools/llm-functions/agents/personal-assistant/fetch_url.sh" "$url"
+  "$HOME/local-ai-assistant/ai-tools/llm-functions/agents/personal-assistant/fetch_url.sh" "$url"
 }
 
 browsersummary() {
@@ -1432,7 +1432,7 @@ _pa_search_json() {
   local query="$1"
   local limit="${2:-5}"
   local filter="${3:-}"
-  WEB_SEARCH_FORMAT=json "$HOME/ai-tools/llm-functions/agents/personal-assistant/web_search.sh" "$query" "$limit" "$filter"
+  WEB_SEARCH_FORMAT=json "$HOME/local-ai-assistant/ai-tools/llm-functions/agents/personal-assistant/web_search.sh" "$query" "$limit" "$filter"
 }
 
 _pa_choose_search_result() {
@@ -1485,7 +1485,7 @@ print(datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).strftime
 PY
 ) || return 1
   json=$(python3 -c 'import json,sys; print(json.dumps({"start": sys.argv[1], "days": 2}))' "$start")
-  "$HOME/ai-tools/llm-functions/bin/personal-assistant" calendar_list_events "$json"
+  "$HOME/local-ai-assistant/ai-tools/llm-functions/bin/personal-assistant" calendar_list_events "$json"
 }
 
 scheduleadd() {
@@ -1515,7 +1515,7 @@ scheduleadd() {
   fi
   local json
   json=$(python3 -c 'import json,sys; print(json.dumps({"title": sys.argv[1], "start": sys.argv[2], "end": sys.argv[3], "notes": sys.argv[4]}))' "$title" "$start" "$end" "$notes")
-  "$HOME/ai-tools/llm-functions/bin/personal-assistant" calendar_create_event "$json"
+  "$HOME/local-ai-assistant/ai-tools/llm-functions/bin/personal-assistant" calendar_create_event "$json"
 }
 
 eventfind() {
@@ -1527,7 +1527,7 @@ eventfind() {
   local days="${2:-30}"
   local json
   json=$(python3 -c 'import json,sys; print(json.dumps({"query": sys.argv[1], "days": int(sys.argv[2])}))' "$query" "$days")
-  "$HOME/ai-tools/llm-functions/bin/personal-assistant" calendar_search_events "$json"
+  "$HOME/local-ai-assistant/ai-tools/llm-functions/bin/personal-assistant" calendar_search_events "$json"
 }
 
 eventdelete() {
@@ -1545,7 +1545,7 @@ eventdelete() {
   fi
   local json
   json=$(python3 -c 'import json,sys; print(json.dumps({"query": sys.argv[1], "days": int(sys.argv[2])}))' "$query" "$days")
-  "$HOME/ai-tools/llm-functions/bin/personal-assistant" calendar_delete_event "$json"
+  "$HOME/local-ai-assistant/ai-tools/llm-functions/bin/personal-assistant" calendar_delete_event "$json"
 }
 
 eventpick() {
@@ -1616,12 +1616,12 @@ eventedit() {
   fi
   local json
   json=$(python3 -c 'import json,sys; print(json.dumps({"query": sys.argv[1], "start": sys.argv[2], "end": sys.argv[3], "title": sys.argv[4], "notes": sys.argv[5], "days": int(sys.argv[6])}))' "$query" "$start" "$end" "$new_title" "$new_notes" "$days")
-  "$HOME/ai-tools/llm-functions/bin/personal-assistant" calendar_update_event "$json"
+  "$HOME/local-ai-assistant/ai-tools/llm-functions/bin/personal-assistant" calendar_update_event "$json"
 }
 
 remindershow() {
   local json='{}'
-  "$HOME/ai-tools/llm-functions/bin/personal-assistant" reminders_list_items "$json"
+  "$HOME/local-ai-assistant/ai-tools/llm-functions/bin/personal-assistant" reminders_list_items "$json"
 }
 
 reminderadd() {
@@ -1648,7 +1648,7 @@ reminderadd() {
   fi
   local json
   json=$(python3 -c 'import json,sys; print(json.dumps({"title": sys.argv[1], "due_date": sys.argv[2], "notes": sys.argv[3]}))' "$title" "$due" "$notes")
-  "$HOME/ai-tools/llm-functions/bin/personal-assistant" reminders_create_item "$json"
+  "$HOME/local-ai-assistant/ai-tools/llm-functions/bin/personal-assistant" reminders_create_item "$json"
 }
 
 reminderdone() {
@@ -1665,7 +1665,7 @@ reminderdone() {
   fi
   local json
   json=$(python3 -c 'import json,sys; print(json.dumps({"title": sys.argv[1]}))' "$title")
-  "$HOME/ai-tools/llm-functions/bin/personal-assistant" reminders_complete_item "$json"
+  "$HOME/local-ai-assistant/ai-tools/llm-functions/bin/personal-assistant" reminders_complete_item "$json"
 }
 
 reminderdelete() {
@@ -1682,7 +1682,7 @@ reminderdelete() {
   fi
   local json
   json=$(python3 -c 'import json,sys; print(json.dumps({"title": sys.argv[1]}))' "$title")
-  "$HOME/ai-tools/llm-functions/bin/personal-assistant" reminders_delete_item "$json"
+  "$HOME/local-ai-assistant/ai-tools/llm-functions/bin/personal-assistant" reminders_delete_item "$json"
 }
 
 reminderfind() {
@@ -1765,7 +1765,7 @@ PY
 ) || return 1
   json=$(python3 -c 'import json,sys; print(json.dumps({"start": sys.argv[1], "days": 7}))' "$start")
   echo '== Next 7 Days: Calendar =='
-  "$HOME/ai-tools/llm-functions/bin/personal-assistant" calendar_list_events "$json"
+  "$HOME/local-ai-assistant/ai-tools/llm-functions/bin/personal-assistant" calendar_list_events "$json"
   echo
   echo '== Open Reminders =='
   remindershow
@@ -1782,7 +1782,7 @@ searchweb() {
   local filter="${3:-}"
   local json
   json=$(python3 -c 'import json,sys; print(json.dumps({"query": sys.argv[1], "limit": int(sys.argv[2]), "source_filter": sys.argv[3]}))' "$query" "$limit" "$filter")
-  "$HOME/ai-tools/llm-functions/bin/personal-assistant" web_search "$json"
+  "$HOME/local-ai-assistant/ai-tools/llm-functions/bin/personal-assistant" web_search "$json"
 }
 
 searchpick() {
@@ -1804,7 +1804,7 @@ searchread() {
   fi
   local url
   url=$(searchpick "$1" "${2:-5}" "${3:-}") || return 1
-  "$HOME/ai-tools/llm-functions/agents/personal-assistant/fetch_url.sh" "$url"
+  "$HOME/local-ai-assistant/ai-tools/llm-functions/agents/personal-assistant/fetch_url.sh" "$url"
 }
 
 searchcompare() {
@@ -1848,7 +1848,7 @@ import sys
 
 payload = json.loads(sys.argv[1])
 results = payload.get('results', [])[:2]
-script = '/Users/dorianlewandowski/ai-tools/llm-functions/agents/personal-assistant/fetch_url.sh'
+script = '/Users/dorianlewandowski/local-ai-assistant/ai-tools/llm-functions/agents/personal-assistant/fetch_url.sh'
 sections = []
 
 for idx, item in enumerate(results, start=1):
@@ -2045,7 +2045,7 @@ PY
     echo 'Cancelled.'
     return 1
   fi
-  python3 - <<'PY' "$preview" "$HOME/ai-tools/llm-functions/bin/personal-assistant"
+  python3 - <<'PY' "$preview" "$HOME/local-ai-assistant/ai-tools/llm-functions/bin/personal-assistant"
 import json, subprocess, sys
 items = json.loads(sys.argv[1])
 bin_path = sys.argv[2]
@@ -2145,7 +2145,7 @@ PY
     echo 'Cancelled.'
     return 1
   fi
-  python3 - <<'PY' "$preview" "$HOME/ai-tools/llm-functions/bin/personal-assistant"
+  python3 - <<'PY' "$preview" "$HOME/local-ai-assistant/ai-tools/llm-functions/bin/personal-assistant"
 import json, subprocess, sys
 items = json.loads(sys.argv[1])
 bin_path = sys.argv[2]
@@ -2305,8 +2305,8 @@ print(datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).strftime
 PY
 ) || return 1
   cal_json=$(python3 -c 'import json,sys; print(json.dumps({"start": sys.argv[1], "days": int(sys.argv[2])}))' "$start_two" "$period_days")
-  cal=$(_pa_filter_calendar_noise <<< "$($HOME/ai-tools/llm-functions/bin/personal-assistant calendar_list_events "$cal_json")")
-  reminders=$("$HOME/ai-tools/llm-functions/bin/personal-assistant" reminders_list_items '{}')
+  cal=$(_pa_filter_calendar_noise <<< "$($HOME/local-ai-assistant/ai-tools/llm-functions/bin/personal-assistant calendar_list_events "$cal_json")")
+  reminders=$("$HOME/local-ai-assistant/ai-tools/llm-functions/bin/personal-assistant" reminders_list_items '{}')
   inbox=$(python3 - <<'PY'
 from pathlib import Path
 path = Path.home() / 'Notes' / 'inbox.md'
@@ -2358,8 +2358,8 @@ print(datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).strftime
 PY
 ) || return 1
   cal_json=$(python3 -c 'import json,sys; print(json.dumps({"start": sys.argv[1], "days": int(sys.argv[2])}))' "$start" "$period_days")
-  cal=$(_pa_filter_calendar_noise <<< "$($HOME/ai-tools/llm-functions/bin/personal-assistant calendar_list_events "$cal_json")")
-  reminders=$("$HOME/ai-tools/llm-functions/bin/personal-assistant" reminders_list_items '{}')
+  cal=$(_pa_filter_calendar_noise <<< "$($HOME/local-ai-assistant/ai-tools/llm-functions/bin/personal-assistant calendar_list_events "$cal_json")")
+  reminders=$("$HOME/local-ai-assistant/ai-tools/llm-functions/bin/personal-assistant" reminders_list_items '{}')
   inbox=$(python3 - <<'PY'
 from pathlib import Path
 path = Path.home() / 'Notes' / 'inbox.md'
@@ -2493,8 +2493,8 @@ print(datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).strftime
 PY
 ) || return 1
   cal_json=$(python3 -c 'import json,sys; print(json.dumps({"start": sys.argv[1], "days": 2}))' "$start")
-  cal=$(_pa_filter_calendar_noise <<< "$($HOME/ai-tools/llm-functions/bin/personal-assistant calendar_list_events "$cal_json")")
-  reminders=$("$HOME/ai-tools/llm-functions/bin/personal-assistant" reminders_list_items '{}')
+  cal=$(_pa_filter_calendar_noise <<< "$($HOME/local-ai-assistant/ai-tools/llm-functions/bin/personal-assistant calendar_list_events "$cal_json")")
+  reminders=$("$HOME/local-ai-assistant/ai-tools/llm-functions/bin/personal-assistant" reminders_list_items '{}')
   inbox=$(python3 - <<'PY'
 from pathlib import Path
 path = Path.home() / 'Notes' / 'inbox.md'
@@ -3368,7 +3368,7 @@ print(datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).strftime
 PY
 ) || return 1
   json=$(python3 -c 'import json,sys; print(json.dumps({"start": sys.argv[1], "days": int(sys.argv[2])}))' "$start" "$days")
-  content=$("$HOME/ai-tools/llm-functions/bin/personal-assistant" calendar_list_events "$json")
+  content=$("$HOME/local-ai-assistant/ai-tools/llm-functions/bin/personal-assistant" calendar_list_events "$json")
   python3 - <<'PY' "$file" "$days" "$content"
 from pathlib import Path
 import sys
