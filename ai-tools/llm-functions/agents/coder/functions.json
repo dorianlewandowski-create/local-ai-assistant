@@ -1,0 +1,265 @@
+[
+  {
+    "name": "workspace_map",
+    "description": "Analyze a project directory to identify its structure, tech stack, and entry points.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "dir_path": {
+          "type": "string",
+          "description": "The root path."
+        }
+      },
+      "required": [
+        "dir_path"
+      ]
+    },
+    "agent": true
+  },
+  {
+    "name": "autonomous_fix",
+    "description": "Autonomous debugging loop: Run a command, capture error, fix code, and repeat.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "test_command": {
+          "type": "string",
+          "description": "The command to execute."
+        },
+        "max_iterations": {
+          "type": "string",
+          "description": "Maximum attempts."
+        }
+      },
+      "required": [
+        "test_command"
+      ]
+    },
+    "agent": true
+  },
+  {
+    "name": "fs_ls",
+    "description": "List all files and directories at the specified path.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "The path."
+        }
+      },
+      "required": [
+        "path"
+      ]
+    },
+    "agent": true
+  },
+  {
+    "name": "fs_cat",
+    "description": "Cat the contents of a file at the specified path.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "The path."
+        }
+      },
+      "required": [
+        "path"
+      ]
+    },
+    "agent": true
+  },
+  {
+    "name": "fs_patch",
+    "description": "Apply a patch to a file.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "The path."
+        },
+        "contents": {
+          "type": "string",
+          "description": "The patch."
+        }
+      },
+      "required": [
+        "path",
+        "contents"
+      ]
+    },
+    "agent": true
+  },
+  {
+    "name": "fs_mkdir",
+    "description": "Create a new directory.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "The path."
+        }
+      },
+      "required": [
+        "path"
+      ]
+    },
+    "agent": true
+  },
+  {
+    "name": "fs_write",
+    "description": "Write file contents.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "The path."
+        },
+        "contents": {
+          "type": "string",
+          "description": "The contents."
+        }
+      },
+      "required": [
+        "path",
+        "contents"
+      ]
+    },
+    "agent": true
+  },
+  {
+    "name": "fs_rm",
+    "description": "Remove file/dir.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "The path."
+        }
+      },
+      "required": [
+        "path"
+      ]
+    },
+    "agent": true
+  },
+  {
+    "name": "fs_mv",
+    "description": "Move/Rename file/dir.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "The source."
+        },
+        "destination": {
+          "type": "string",
+          "description": "The destination."
+        }
+      },
+      "required": [
+        "source",
+        "destination"
+      ]
+    },
+    "agent": true
+  },
+  {
+    "name": "fs_cp",
+    "description": "Copy file/dir.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "The source."
+        },
+        "destination": {
+          "type": "string",
+          "description": "The destination."
+        }
+      },
+      "required": [
+        "source",
+        "destination"
+      ]
+    },
+    "agent": true
+  },
+  {
+    "name": "fs_mkdir",
+    "description": "Create a new directory at the specified path.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "The path of the directory to create"
+        }
+      },
+      "required": [
+        "path"
+      ]
+    }
+  },
+  {
+    "name": "fs_ls",
+    "description": "List all files and directories at the specified path.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "The path of the directory to list"
+        }
+      },
+      "required": [
+        "path"
+      ]
+    }
+  },
+  {
+    "name": "fs_patch",
+    "description": "Apply a patch to a file at the specified path.\nThis can be used to edit the file, without having to rewrite the whole file.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "The path of the file to apply to"
+        },
+        "contents": {
+          "type": "string",
+          "description": "The patch to apply to the file\n\nHere is an example of a patch block that can be applied to modify the file to request the user's name:\n--- a/hello.py\n+++ b/hello.py\n@@ ... @@\n def hello():\n-    print(\"Hello World\")\n+    name = input(\"What is your name? \")\n+    print(f\"Hello {name}\")"
+        }
+      },
+      "required": [
+        "path",
+        "contents"
+      ]
+    }
+  },
+  {
+    "name": "fs_cat",
+    "description": "Read the contents of a file at the specified path.\nUse this when you need to examine the contents of an existing file.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "The path of the file to read"
+        }
+      },
+      "required": [
+        "path"
+      ]
+    }
+  }
+]

@@ -1,0 +1,3629 @@
+# AI assistant helper commands
+
+aichat() {
+  local has_explicit_agent=0
+  for arg in "$@"; do
+    case "$arg" in
+      -a|--agent|--role|--rag|-r)
+        has_explicit_agent=1
+        break
+        ;;
+    esac
+  done
+  if [ "$has_explicit_agent" -eq 1 ]; then
+    command aichat "$@"
+  else
+    command aichat --role personal-assistant "$@"
+  fi
+}
+
+# Personal assistant shortcuts
+alias pa='aichat --role personal-assistant'
+alias wa='aichat --role workflow-agent'
+alias fm='aichat --role file-manager'
+alias pnotes='aichat --role notes-assistant'
+alias wreview='aichat --role weekly-review'
+alias vassist='aichat --role vision-assistant'
+alias screenshotreview='vassist'
+alias dbrief='dailybrief'
+alias mbrief='morningbrief'
+alias panews='aichat --role personal-assistant "Search the web for the latest AI and Ollama news and give me short bullets."'
+alias wanews='aichat --role workflow-agent "Find the latest AI and Ollama news, compare with my notes, and suggest updates."'
+
+shortcutlist() {
+  shortcuts list
+}
+
+shortcutrun() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: shortcutrun "Shortcut Name" [input]'
+    return 1
+  fi
+  local name="$1"
+  shift
+  if [ "$#" -gt 0 ]; then
+    shortcuts run "$name" --input "$*"
+  else
+    shortcuts run "$name"
+  fi
+}
+
+_pa_notify() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: _pa_notify "title" "message"'
+    return 1
+  fi
+  local title="$1"
+  local message="$2"
+  osascript <<OSA
+display notification "${message}" with title "${title}"
+OSA
+}
+
+briefnotify() {
+  local message
+  message=$(morningbrief) || return 1
+  _pa_notify "Morning Brief" "$message"
+}
+
+nightlynotify() {
+  local message
+  message=$(nightlyreview) || return 1
+  _pa_notify "Nightly Review" "$message"
+}
+
+ghrepo() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: ghrepo <owner/repo>'
+    return 1
+  fi
+  gh repo view "$1" --web
+}
+
+ghissues() {
+  local repo_arg="${1:-}"
+  if [ -n "$repo_arg" ]; then
+    gh issue list --repo "$repo_arg"
+  else
+    gh issue list
+  fi
+}
+
+ghprs() {
+  local repo_arg="${1:-}"
+  if [ -n "$repo_arg" ]; then
+    gh pr list --repo "$repo_arg"
+  else
+    gh pr list
+  fi
+}
+
+ghprsummary() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: ghprsummary <pr-number> [owner/repo]'
+    return 1
+  fi
+  local pr_number="$1"
+  local repo_arg="${2:-}"
+  local cmd
+  if [ -n "$repo_arg" ]; then
+    cmd="gh pr view $pr_number --repo $repo_arg --json title,body,author,files,commits,reviewDecision"
+  else
+    cmd="gh pr view $pr_number --json title,body,author,files,commits,reviewDecision"
+  fi
+  python3 - <<'PY' "$cmd"
+import json
+import subprocess
+import sys
+
+cmd = sys.argv[1]
+proc = subprocess.run(cmd, shell=True, capture_output=True, text=True, check=True)
+data = json.loads(proc.stdout)
+print(f"Title: {data.get('title', '')}")
+author = data.get('author') or {}
+print(f"Author: {author.get('login', '')}")
+print(f"Review decision: {data.get('reviewDecision') or 'none'}")
+print()
+print('Commits:')
+for item in (data.get('commits') or [])[:8]:
+    print(f"- {item.get('messageHeadline', '')}")
+print()
+print('Files:')
+for item in (data.get('files') or [])[:12]:
+    print(f"- {item.get('path', '')}")
+print()
+body = (data.get('body') or '').strip()
+if body:
+    print('Body:')
+    print(body[:2000])
+PY
+}
+
+ghwork() {
+  local repo_arg="${1:-}"
+  if [ -n "$repo_arg" ]; then
+    gh run list --repo "$repo_arg"
+  else
+    gh run list
+  fi
+}
+
+applenotesfolders() {
+  osascript -e 'tell application "Notes" to get name of every folder'
+}
+
+applenotessearch() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: applenotessearch "query" [limit]'
+    return 1
+  fi
+  local query="$1"
+  local limit="${2:-10}"
+  osascript <<OSA
+tell application "Notes"
+  set q to "${query}"
+  set outputLines to {}
+  repeat with f in every folder
+    set matches to every note of f whose name contains q or body contains q
+    set countLimit to (count of matches)
+    if countLimit > ${limit} then set countLimit to ${limit}
+    repeat with i from 1 to countLimit
+      set n to item i of matches
+      set previewText to body of n
+      if (length of previewText) > 140 then set previewText to text 1 thru 140 of previewText
+      set end of outputLines to ((name of f) & " | " & (name of n) & " | " & previewText)
+    end repeat
+  end repeat
+  if (count of outputLines) is 0 then
+    return "No matching Apple Notes found."
+  end if
+  set AppleScript's text item delimiters to linefeed
+  set outputText to outputLines as text
+  set AppleScript's text item delimiters to ""
+  return outputText
+end tell
+OSA
+}
+
+applenotecreate() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: applenotecreate "title" "body" [folder]'
+    return 1
+  fi
+  local title="$1"
+  local body="$2"
+  local folder="${3:-Notes}"
+  osascript <<OSA
+tell application "Notes"
+  make new note at folder "${folder}" with properties {name:"${title}", body:"${body}"}
+end tell
+OSA
+}
+
+applenoteread() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: applenoteread "title"'
+    return 1
+  fi
+  local query="$1"
+  osascript <<OSA
+tell application "Notes"
+  set q to "${query}"
+  repeat with f in every folder
+    repeat with n in every note of f
+      if (name of n contains q) then
+        return ((name of f) & " | " & (name of n) & linefeed & (body of n))
+      end if
+    end repeat
+  end repeat
+  return "No matching Apple Note found."
+end tell
+OSA
+}
+
+applenoteopen() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: applenoteopen "title"'
+    return 1
+  fi
+  local query="$1"
+  osascript <<OSA
+tell application "Notes"
+  set q to "${query}"
+  repeat with f in every folder
+    repeat with n in every note of f
+      if (name of n contains q) then
+        show n
+        activate
+        return (name of n)
+      end if
+    end repeat
+  end repeat
+  return "No matching Apple Note found."
+end tell
+OSA
+}
+
+applenoteappend() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: applenoteappend "title" "text"'
+    return 1
+  fi
+  local query="$1"
+  local text="$2"
+  osascript <<OSA
+tell application "Notes"
+  set q to "${query}"
+  repeat with f in every folder
+    repeat with n in every note of f
+      if (name of n contains q) then
+        set body of n to ((body of n) & "<div><br></div><div>${text}</div>")
+        return (name of n)
+      end if
+    end repeat
+  end repeat
+  return "No matching Apple Note found."
+end tell
+OSA
+}
+
+obsidianvaults() {
+  python3 - <<'PY'
+from pathlib import Path
+import json
+
+path = Path.home() / 'Library/Application Support/obsidian/obsidian.json'
+if not path.exists():
+    print('No Obsidian vault config found.')
+    raise SystemExit(0)
+data = json.loads(path.read_text(encoding='utf-8', errors='ignore'))
+vaults = data.get('vaults', {})
+if not vaults:
+    print('No Obsidian vaults configured.')
+    raise SystemExit(0)
+for key, info in vaults.items():
+    print(f"{key} | {info.get('path','')} | open={info.get('open', False)}")
+PY
+}
+
+obsidiansearch() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: obsidiansearch "query" [vault-path]'
+    return 1
+  fi
+  local query="$1"
+  local vault_path="${2:-$HOME/Notes}"
+  if [ ! -d "$vault_path" ]; then
+    echo "Vault not found: $vault_path"
+    return 1
+  fi
+  rg -n -i "$query" "$vault_path"
+}
+
+obsidianopen() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: obsidianopen "note or path" [vault-path]'
+    return 1
+  fi
+  local query="$1"
+  local vault_path="${2:-$HOME/Notes}"
+  local target
+  if [ -f "$query" ]; then
+    target="$query"
+  else
+    target=$(_pa_resolve_note_file "$vault_path" "$query")
+  fi
+  if [ -z "$target" ] || [ ! -f "$target" ]; then
+    echo "No Obsidian note found for: $query"
+    return 1
+  fi
+  open -a Obsidian "$target"
+}
+
+obsidiancapture() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: obsidiancapture "note" "text" [vault-path]'
+    return 1
+  fi
+  local query="$1"
+  local text="$2"
+  local vault_path="${3:-$HOME/Notes}"
+  local target
+  target=$(_pa_resolve_note_file "$vault_path" "$query")
+  if [ -z "$target" ]; then
+    echo "No Obsidian note found for: $query"
+    return 1
+  fi
+  _pa_append_to_note_section "$target" '## Captures' "$text"
+}
+
+obsidianappend() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: obsidianappend "note" "text" [vault-path]'
+    return 1
+  fi
+  local query="$1"
+  local text="$2"
+  local vault_path="${3:-$HOME/Notes}"
+  local target
+  target=$(_pa_resolve_note_file "$vault_path" "$query")
+  if [ -z "$target" ]; then
+    echo "No Obsidian note found for: $query"
+    return 1
+  fi
+  python3 - <<'PY' "$target" "$text"
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+text = sys.argv[2]
+content = path.read_text(encoding='utf-8', errors='ignore').rstrip()
+path.write_text(content + '\n\n' + text + '\n', encoding='utf-8')
+print(path)
+PY
+}
+
+mailboxes() {
+  osascript -e 'tell application "Mail" to get name of every mailbox of inbox'
+}
+
+mailrecent() {
+  local limit="${1:-10}"
+  osascript <<OSA
+tell application "Mail"
+  set outputLines to {}
+  repeat with mb in (every mailbox of inbox)
+    set msgs to (messages of mb)
+    set countLimit to (count of msgs)
+    if countLimit > ${limit} then set countLimit to ${limit}
+    repeat with i from 1 to countLimit
+      set m to item i of msgs
+      set end of outputLines to ((subject of m) & " | " & (sender of m) & " | " & ((date received of m) as string))
+    end repeat
+  end repeat
+  if (count of outputLines) is 0 then
+    return "No recent mail found."
+  end if
+  set AppleScript's text item delimiters to linefeed
+  set outputText to outputLines as text
+  set AppleScript's text item delimiters to ""
+  return outputText
+end tell
+OSA
+}
+
+mailsearch() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: mailsearch "query" [limit]'
+    return 1
+  fi
+  local query="$1"
+  local limit="${2:-10}"
+  osascript <<OSA
+tell application "Mail"
+  set q to "${query}"
+  set outputLines to {}
+  repeat with mb in (every mailbox of inbox)
+    set matches to (every message of mb whose subject contains q or sender contains q)
+    set countLimit to (count of matches)
+    if countLimit > ${limit} then set countLimit to ${limit}
+    repeat with i from 1 to countLimit
+      set m to item i of matches
+      set end of outputLines to ((subject of m) & " | " & (sender of m) & " | " & ((date received of m) as string))
+    end repeat
+  end repeat
+  if (count of outputLines) is 0 then
+    return "No matching mail found."
+  end if
+  set AppleScript's text item delimiters to linefeed
+  set outputText to outputLines as text
+  set AppleScript's text item delimiters to ""
+  return outputText
+end tell
+OSA
+}
+
+mailtriage() {
+  local limit="${1:-10}"
+  local recent
+  recent=$(mailrecent "$limit") || return 1
+  command aichat -m ollama:llama3.1:8b "Summarize these recent emails into: urgent items, follow-ups, and possible reminders.\n\n$recent"
+}
+
+_pa_extract_mail_subject() {
+  python3 - <<'PY' "$1"
+import sys
+parts = [p.strip() for p in sys.argv[1].split('|')]
+print(parts[0] if parts else '')
+PY
+}
+
+_pa_extract_mail_sender() {
+  python3 - <<'PY' "$1"
+import sys
+parts = [p.strip() for p in sys.argv[1].split('|')]
+print(parts[1] if len(parts) > 1 else '')
+PY
+}
+
+mailpick() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: mailpick "query" [limit]'
+    return 1
+  fi
+  local results chosen
+  results=$(mailsearch "$1" "${2:-10}") || return 1
+  chosen=$(_pa_choose_match "$results")
+  [ -z "$chosen" ] && { echo 'Cancelled.'; return 1; }
+  echo "$chosen"
+}
+
+mailread() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: mailread "query" [limit]'
+    return 1
+  fi
+  local query="$1"
+  local limit="${2:-10}"
+  local chosen subject sender
+  chosen=$(mailpick "$query" "$limit") || return 1
+  subject=$(_pa_extract_mail_subject "$chosen")
+  sender=$(_pa_extract_mail_sender "$chosen")
+  osascript <<OSA
+tell application "Mail"
+  set subj to "${subject}"
+  set sndr to "${sender}"
+  repeat with mb in (every mailbox of inbox)
+    repeat with m in (every message of mb)
+      if (subject of m is subj) and (sender of m is sndr) then
+        return ((subject of m) & " | " & (sender of m) & linefeed & (content of m))
+      end if
+    end repeat
+  end repeat
+  return "No matching mail body found."
+end tell
+OSA
+}
+
+mailreplydraft() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: mailreplydraft "query" [limit]'
+    return 1
+  fi
+  local query="$1"
+  local limit="${2:-10}"
+  local content
+  content=$(mailread "$query" "$limit") || return 1
+  command aichat -m ollama:llama3.1:8b "Draft a concise and polite email reply based on this message.\n\n$content"
+}
+
+mailextract() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: mailextract "query" [limit]'
+    return 1
+  fi
+  local query="$1"
+  local limit="${2:-10}"
+  local content
+  if ! content=$(mailread "$query" "$limit"); then
+    local recent
+    recent=$(mailsearch "$query" "$limit") || return 1
+    content="$recent"
+  fi
+  command aichat -m ollama:llama3.1:8b "Extract tasks, deadlines, dates, and follow-ups from this email. Return short bullets grouped into Tasks, Dates, and Follow-ups.\n\n$content"
+}
+
+mailreminder() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: mailreminder "query" [due-date] [limit]'
+    return 1
+  fi
+  local query="$1"
+  local due="${2:-}"
+  local limit="${3:-10}"
+  local chosen subject sender title notes
+  chosen=$(mailpick "$query" "$limit") || return 1
+  subject=$(_pa_extract_mail_subject "$chosen")
+  sender=$(_pa_extract_mail_sender "$chosen")
+  title="Follow up: $subject"
+  notes="From: $sender | Source mail: $chosen"
+  reminderadd "$title" "$due" "$notes"
+}
+
+mailcalendar() {
+  if [ "$#" -lt 3 ]; then
+    echo 'Usage: mailcalendar "query" "start" "end" [limit]'
+    return 1
+  fi
+  local query="$1"
+  local start="$2"
+  local end="$3"
+  local limit="${4:-10}"
+  local chosen subject sender title notes
+  chosen=$(mailpick "$query" "$limit") || return 1
+  subject=$(_pa_extract_mail_subject "$chosen")
+  sender=$(_pa_extract_mail_sender "$chosen")
+  title="Mail follow-up: $subject"
+  notes="From: $sender | Source mail: $chosen"
+  scheduleadd "$title" "$start" "$end" "$notes"
+}
+
+mailproject() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: mailproject "query" "project" [limit]'
+    return 1
+  fi
+  local query="$1"
+  local project="$2"
+  local limit="${3:-10}"
+  local chosen subject sender body
+  chosen=$(mailpick "$query" "$limit") || return 1
+  subject=$(_pa_extract_mail_subject "$chosen")
+  sender=$(_pa_extract_mail_sender "$chosen")
+  body="Mail: $subject | From: $sender | Source: $chosen"
+  projectcapture "$project" "$body"
+}
+
+mailresearch() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: mailresearch "query" "topic" [limit]'
+    return 1
+  fi
+  local query="$1"
+  local topic="$2"
+  local limit="${3:-10}"
+  local chosen subject sender body
+  chosen=$(mailpick "$query" "$limit") || return 1
+  subject=$(_pa_extract_mail_subject "$chosen")
+  sender=$(_pa_extract_mail_sender "$chosen")
+  body="Mail: $subject | From: $sender | Source: $chosen"
+  researchcapture "$topic" "$body"
+}
+
+latestdownload() {
+  python3 - <<'PY'
+from pathlib import Path
+downloads = Path.home() / 'Downloads'
+files = [p for p in downloads.iterdir() if p.is_file()]
+if not files:
+    print('No files in Downloads.')
+    raise SystemExit(0)
+latest = max(files, key=lambda p: p.stat().st_mtime)
+print(latest)
+PY
+}
+
+downloadstriage() {
+  local limit="${1:-12}"
+  python3 - <<'PY' "$limit"
+from pathlib import Path
+import sys
+
+limit = int(sys.argv[1])
+downloads = Path.home() / 'Downloads'
+files = [p for p in downloads.iterdir() if p.is_file()]
+files = sorted(files, key=lambda p: p.stat().st_mtime, reverse=True)[:limit]
+
+def classify(path):
+    suffix = path.suffix.lower()
+    name = path.name.lower()
+    if suffix in {'.png', '.jpg', '.jpeg', '.gif', '.webp'}:
+        if 'screenshot' in name or 'chatgpt image' in name:
+            return 'image -> review or project/research asset'
+        return 'image -> archive or project asset'
+    if suffix == '.pdf':
+        return 'pdf -> research/project document'
+    if suffix in {'.dmg', '.pkg'}:
+        return 'installer -> app/software asset'
+    if suffix in {'.fig', '.sketch'}:
+        return 'design file -> project asset'
+    if suffix in {'.md', '.txt', '.docx', '.pptx'}:
+        return 'document -> review and move into notes/project'
+    return 'review manually'
+
+if not files:
+    print('No files in Downloads.')
+else:
+    for p in files:
+        print(f'{p.name} | {classify(p)}')
+PY
+}
+
+downloadsopen() {
+  open "$HOME/Downloads"
+}
+
+screenshottoproject() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: screenshottoproject "project" <image-path>'
+    return 1
+  fi
+  local project="$1"
+  local image_path="$2"
+  local project_file project_dir target
+  project_file=$(_pa_resolve_note_file "$HOME/Notes/projects" "$project")
+  if [ -z "$project_file" ]; then
+    echo "No project note found for: $project"
+    return 1
+  fi
+  if [ ! -f "$image_path" ]; then
+    echo "Image not found: $image_path"
+    return 1
+  fi
+  project_dir="$HOME/Notes/projects/assets/$(basename "$project_file" .md)"
+  mkdir -p "$project_dir"
+  target="$project_dir/$(basename "$image_path")"
+  cp "$image_path" "$target"
+  echo "$target"
+}
+
+pdftoresearch() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: pdftoresearch "topic" <pdf-path>'
+    return 1
+  fi
+  local topic="$1"
+  local pdf_path="$2"
+  local target_file research_dir target
+  target_file=$(_pa_resolve_note_file "$HOME/Notes/research" "$topic")
+  if [ -z "$target_file" ]; then
+    echo "No research note found for: $topic"
+    return 1
+  fi
+  if [ ! -f "$pdf_path" ]; then
+    echo "PDF not found: $pdf_path"
+    return 1
+  fi
+  research_dir="$HOME/Notes/research/assets/$(basename "$target_file" .md)"
+  mkdir -p "$research_dir"
+  target="$research_dir/$(basename "$pdf_path")"
+  cp "$pdf_path" "$target"
+  echo "$target"
+}
+
+assistant-healthcheck() {
+  python3 - <<'PY'
+from pathlib import Path
+import subprocess
+
+checks = []
+
+def run(cmd):
+    return subprocess.run(cmd, shell=True, capture_output=True, text=True)
+
+def add(name, ok, detail):
+    checks.append((name, ok, detail.strip()))
+
+for binary in ["ollama", "aichat", "llm", "argc"]:
+    proc = run(f"which {binary}")
+    add(f"binary:{binary}", proc.returncode == 0, proc.stdout or proc.stderr)
+
+for path in [
+    Path.home() / '.zsh_ai_helpers',
+    Path.home() / 'Library/Application Support/aichat/config.yaml',
+    Path.home() / 'Library/Application Support/aichat/.env',
+    Path.home() / 'ai-tools/llm-functions/agents.txt',
+]:
+    add(f"path:{path.name}", path.exists(), str(path))
+
+for symlink_path in [
+    Path.home() / '.zsh_ai_helpers',
+    Path.home() / 'ai-tools/llm-functions/agents.txt',
+    Path.home() / 'ai-tools/llm-functions/utils/parse_natural_datetime.py',
+]:
+    add(f"symlink:{symlink_path.name}", symlink_path.is_symlink(), str(symlink_path))
+
+proc = run("ollama list")
+models_out = proc.stdout if proc.returncode == 0 else ''
+for model in ["llama3.1:8b", "qwen3-vl:4b", "nomic-embed-text"]:
+    add(f"model:{model}", model in models_out, model)
+
+proc = run("zsh -ic 'aichat --info'")
+add("agent:default", proc.returncode == 0 and "personal-assistant" in proc.stdout, proc.stdout[:200])
+
+notes_root = Path.home() / 'Notes'
+for note_path in [
+    notes_root / 'inbox.md',
+    notes_root / 'ai-research.md',
+    notes_root / 'projects',
+    notes_root / 'research',
+]:
+    add(f"notes:{note_path.name}", note_path.exists(), str(note_path))
+
+failed = [item for item in checks if not item[1]]
+for name, ok, detail in checks:
+    icon = 'OK' if ok else 'FAIL'
+    print(f"[{icon}] {name} :: {detail}")
+
+print()
+if failed:
+    print(f"Healthcheck: {len(failed)} issue(s) found")
+else:
+    print("Healthcheck: all core checks passed")
+PY
+}
+
+_pa_db_path() {
+  printf '%s\n' "$HOME/Notes/assistant.db"
+}
+
+_pa_sql_escape() {
+  python3 - <<'PY' "$1"
+import sys
+print(sys.argv[1].replace("'", "''"))
+PY
+}
+
+_pa_db_project_id() {
+  local slug="$1"
+  sqlite3 "$(_pa_db_path)" "SELECT id FROM projects WHERE slug = '$(_pa_sql_escape "$slug")' LIMIT 1;"
+}
+
+_pa_db_project_upsert_health() {
+  local slug="$1"
+  python3 - <<'PY' "$(_pa_db_path)" "$slug"
+import sqlite3
+import sys
+
+db_path, slug = sys.argv[1:3]
+conn = sqlite3.connect(db_path)
+row = conn.execute("SELECT id FROM projects WHERE slug = ?", (slug,)).fetchone()
+if not row:
+    raise SystemExit(0)
+project_id = row[0]
+next_steps = conn.execute("SELECT count(*) FROM tasks WHERE project_id = ? AND source_type = 'project_next_step'", (project_id,)).fetchone()[0]
+decisions = conn.execute("SELECT count(*) FROM decisions WHERE project_id = ?", (project_id,)).fetchone()[0]
+updates = conn.execute("SELECT count(*) FROM project_updates WHERE project_id = ?", (project_id,)).fetchone()[0]
+score = 50 + min(next_steps, 5) * 6 + min(decisions, 3) * 4 + min(updates, 5) * 2
+score = max(0, min(100, score))
+if score >= 75:
+    label = 'healthy'
+elif score >= 50:
+    label = 'active'
+elif score >= 30:
+    label = 'at risk'
+else:
+    label = 'stalled'
+conn.execute("UPDATE projects SET health_score = ?, health_label = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (score, label, project_id))
+conn.commit()
+conn.close()
+PY
+}
+
+dbprojects() {
+  sqlite3 "$HOME/Notes/assistant.db" "SELECT slug, title, status, owner, health_score, health_label FROM projects ORDER BY title;"
+}
+
+dbtasks() {
+  local slug="${1:-}"
+  if [ -n "$slug" ]; then
+    sqlite3 "$HOME/Notes/assistant.db" "SELECT t.title, t.status, t.priority FROM tasks t JOIN projects p ON t.project_id = p.id WHERE p.slug = '$slug' ORDER BY t.id;"
+  else
+    sqlite3 "$HOME/Notes/assistant.db" "SELECT title, status, priority FROM tasks ORDER BY id;"
+  fi
+}
+
+dbinbox() {
+  sqlite3 "$HOME/Notes/assistant.db" "SELECT id, content, tags, created_at FROM inbox_items ORDER BY id;"
+}
+
+dbdecisions() {
+  local slug="${1:-}"
+  if [ -n "$slug" ]; then
+    sqlite3 "$HOME/Notes/assistant.db" "SELECT d.decision, d.reason, d.created_at FROM decisions d JOIN projects p ON d.project_id = p.id WHERE p.slug = '$slug' ORDER BY d.created_at;"
+  else
+    sqlite3 "$HOME/Notes/assistant.db" "SELECT decision, reason, created_at FROM decisions ORDER BY created_at;"
+  fi
+}
+
+dbresearch() {
+  local slug="${1:-}"
+  if [ -n "$slug" ]; then
+    sqlite3 "$HOME/Notes/assistant.db" "SELECT rt.slug, ri.query, ri.source_domain, ri.source_url, ri.summary, ri.followups FROM research_items ri JOIN research_topics rt ON ri.topic_id = rt.id WHERE rt.slug = '$slug' ORDER BY ri.id;"
+  else
+    sqlite3 "$HOME/Notes/assistant.db" "SELECT rt.slug, ri.query FROM research_items ri JOIN research_topics rt ON ri.topic_id = rt.id ORDER BY rt.slug;"
+  fi
+}
+
+dbhealth() {
+  sqlite3 "$(_pa_db_path)" "SELECT slug, health_score, health_label, updated_at FROM projects ORDER BY health_score DESC, title;"
+}
+
+dbstale() {
+  sqlite3 "$(_pa_db_path)" "SELECT slug, status, updated_at FROM projects WHERE status != 'archived' AND COALESCE(updated_at, created_at) <= datetime('now', '-14 day') ORDER BY updated_at;"
+}
+
+researchdashboard() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: researchdashboard "topic"'
+    return 1
+  fi
+  local slug
+  slug=$(python3 - <<'PY' "$1"
+import re, sys
+print(re.sub(r'[^a-z0-9]+', '-', sys.argv[1].lower()).strip('-'))
+PY
+)
+  sqlite3 "$(_pa_db_path)" <<SQL
+.mode list
+SELECT 'Topic: ' || rt.slug
+FROM research_topics rt
+WHERE rt.slug = '$(_pa_sql_escape "$slug")';
+SELECT 'Note: ' || COALESCE(rt.note_path, '')
+FROM research_topics rt
+WHERE rt.slug = '$(_pa_sql_escape "$slug")';
+SELECT '';
+SELECT 'Queries:';
+SELECT COALESCE(group_concat('- ' || COALESCE(query, '(no query)'), char(10)), '- None')
+FROM research_items ri
+JOIN research_topics rt ON ri.topic_id = rt.id
+WHERE rt.slug = '$(_pa_sql_escape "$slug")';
+SELECT '';
+SELECT 'Recent summaries:';
+SELECT COALESCE(group_concat('- ' || substr(replace(COALESCE(summary,''), char(10), ' '), 1, 220), char(10) || char(10)), '- None')
+FROM (
+  SELECT summary
+  FROM research_items ri
+  JOIN research_topics rt ON ri.topic_id = rt.id
+  WHERE rt.slug = '$(_pa_sql_escape "$slug")' AND COALESCE(summary, '') != ''
+  ORDER BY ri.id DESC
+  LIMIT 3
+);
+SELECT '';
+SELECT 'Top sources:';
+SELECT COALESCE(group_concat('- ' || COALESCE(source_domain, '(no domain)') || CASE WHEN COALESCE(source_url, '') != '' THEN ' | ' || source_url ELSE '' END, char(10)), '- None')
+FROM (
+  SELECT DISTINCT source_domain, source_url
+  FROM research_items ri
+  JOIN research_topics rt ON ri.topic_id = rt.id
+  WHERE rt.slug = '$(_pa_sql_escape "$slug")' AND COALESCE(source_domain, source_url, '') != ''
+  LIMIT 6
+);
+SELECT '';
+SELECT 'Follow-ups:';
+SELECT COALESCE(group_concat(COALESCE(followups, ''), char(10) || char(10)), '- None')
+FROM research_items ri
+JOIN research_topics rt ON ri.topic_id = rt.id
+WHERE rt.slug = '$(_pa_sql_escape "$slug")' AND COALESCE(followups, '') != '';
+SQL
+}
+
+taskdone() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: taskdone "project-slug" "task text fragment"'
+    return 1
+  fi
+  local slug="$1"
+  local query="$2"
+  sqlite3 "$(_pa_db_path)" "UPDATE tasks SET status = 'done', completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id IN (SELECT t.id FROM tasks t JOIN projects p ON t.project_id = p.id WHERE p.slug = '$(_pa_sql_escape "$slug")' AND t.title LIKE '%' || '$(_pa_sql_escape "$query")' || '%' LIMIT 1);"
+  _pa_db_project_upsert_health "$slug"
+}
+
+taskblock() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: taskblock "project-slug" "task text fragment"'
+    return 1
+  fi
+  local slug="$1"
+  local query="$2"
+  sqlite3 "$(_pa_db_path)" "UPDATE tasks SET status = 'blocked', updated_at = CURRENT_TIMESTAMP WHERE id IN (SELECT t.id FROM tasks t JOIN projects p ON t.project_id = p.id WHERE p.slug = '$(_pa_sql_escape "$slug")' AND t.title LIKE '%' || '$(_pa_sql_escape "$query")' || '%' LIMIT 1);"
+  _pa_db_project_upsert_health "$slug"
+}
+
+taskopen() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: taskopen "project-slug" "task text fragment"'
+    return 1
+  fi
+  local slug="$1"
+  local query="$2"
+  sqlite3 "$(_pa_db_path)" "UPDATE tasks SET status = 'open', completed_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id IN (SELECT t.id FROM tasks t JOIN projects p ON t.project_id = p.id WHERE p.slug = '$(_pa_sql_escape "$slug")' AND t.title LIKE '%' || '$(_pa_sql_escape "$query")' || '%' LIMIT 1);"
+  _pa_db_project_upsert_health "$slug"
+}
+
+dbtasksall() {
+  sqlite3 "$(_pa_db_path)" "SELECT p.slug, t.title, t.status, t.priority FROM tasks t JOIN projects p ON t.project_id = p.id ORDER BY p.slug, t.id;"
+}
+
+meetingdashboard() {
+  local limit="${1:-5}"
+  sqlite3 "$(_pa_db_path)" <<SQL
+.mode list
+SELECT 'Meetings:';
+SELECT COALESCE(group_concat('- ' || title || ' | ' || COALESCE(meeting_date,'') || CASE WHEN COALESCE(action_items,'') != '' THEN ' | actions' ELSE '' END, char(10)), '- None')
+FROM (
+  SELECT title, meeting_date, action_items
+  FROM meetings
+  ORDER BY created_at DESC
+  LIMIT $limit
+);
+SQL
+}
+
+decisiondashboard() {
+  local slug="${1:-}"
+  if [ -n "$slug" ]; then
+    dbdecisions "$slug"
+  else
+    sqlite3 "$(_pa_db_path)" "SELECT decision, reason, created_at FROM decisions ORDER BY created_at DESC LIMIT 20;"
+  fi
+}
+
+sqliteoverview() {
+  sqlite3 "$(_pa_db_path)" <<'SQL'
+.mode list
+SELECT 'Projects:';
+SELECT COALESCE(group_concat('- ' || slug || ' | ' || health_label || ' (' || health_score || '/100)', char(10)), '- None')
+FROM projects
+WHERE status != 'archived';
+SELECT '';
+SELECT 'Research topics:';
+SELECT COALESCE(group_concat('- ' || slug, char(10)), '- None')
+FROM research_topics;
+SELECT '';
+SELECT 'Recent decisions:';
+SELECT COALESCE(group_concat('- ' || decision, char(10)), '- None')
+FROM (
+  SELECT decision FROM decisions ORDER BY created_at DESC LIMIT 5
+);
+SELECT '';
+SELECT 'Recent meetings:';
+SELECT COALESCE(group_concat('- ' || title || ' | ' || COALESCE(meeting_date,''), char(10)), '- None')
+FROM (
+  SELECT title, meeting_date FROM meetings ORDER BY created_at DESC LIMIT 5
+);
+SQL
+}
+
+notesfind() {
+  local query json
+  query="$*"
+  json=$(python3 -c 'import json,sys; print(json.dumps({"query": " ".join(sys.argv[1:])}))' "$@")
+  "$HOME/ai-tools/llm-functions/bin/notes-assistant" note_search "$json"
+}
+
+notessave() {
+  local file="$1"
+  shift
+  local text="$*"
+  local json
+  json=$(python3 -c 'import json,sys; print(json.dumps({"file": sys.argv[1], "text": " ".join(sys.argv[2:])}))' "$file" "$@")
+  "$HOME/ai-tools/llm-functions/bin/notes-assistant" note_append "$json"
+}
+
+_pa_parse_dt() {
+  python3 "$HOME/ai-tools/llm-functions/utils/parse_natural_datetime.py" "$*"
+}
+
+_pa_open_in_editor() {
+  local file="$1"
+  if command -v nvim >/dev/null 2>&1; then
+    nvim "$file"
+  elif command -v vim >/dev/null 2>&1; then
+    vim "$file"
+  else
+    open -e "$file"
+  fi
+}
+
+_pa_auto_tags() {
+  python3 - <<'PY' "$*"
+from pathlib import Path
+import re
+import sys
+
+text = sys.argv[1].lower()
+mapping = {
+    '#ai': ['ollama', 'llm', 'model', 'aichat', 'openwebui', 'anythingllm', 'prompt', 'rag'],
+    '#productivity': ['calendar', 'schedule', 'reminder', 'todo', 'task', 'workflow'],
+    '#search': ['search', 'duckduckgo', 'google', 'web'],
+    '#coding': ['code', 'bug', 'debug', 'script', 'python', 'javascript', 'bash', 'repo'],
+    '#meeting': ['meeting', 'call', 'sync', 'standup'],
+    '#health': ['gym', 'workout', 'doctor', 'run', 'walk'],
+}
+
+tags = []
+for tag, words in mapping.items():
+    if any(word in text for word in words):
+        tags.append(tag)
+
+existing = set(re.findall(r'#[a-z0-9_-]+', text))
+
+project_dir = Path.home() / 'Notes' / 'projects'
+if project_dir.exists():
+    for path in project_dir.glob('*.md'):
+        slug = path.stem.lower()
+        words = [w for w in slug.split('-') if len(w) > 2]
+        if any(word in text for word in words):
+            existing_tag = '#' + slug.replace('-', '_')
+            if existing_tag not in tags and existing_tag not in existing:
+                tags.append(existing_tag)
+
+tag_dir = Path.home() / 'Notes' / 'tags'
+if tag_dir.exists():
+    for path in tag_dir.glob('*.md'):
+        tag_name = '#' + path.stem.lower().replace('-', '_')
+        if path.stem.lower() in text and tag_name not in tags and tag_name not in existing:
+            tags.append(tag_name)
+
+tags = [tag for tag in tags if tag not in existing]
+print(' '.join(tags))
+PY
+}
+
+_pa_choose_match() {
+  python3 - <<'PY' "$1" "${PA_CHOICE:-}"
+import sys
+
+text = sys.argv[1].strip()
+preset_choice = sys.argv[2].strip()
+lines = [line for line in text.splitlines() if line and not line.lower().startswith('no ') and '|' in line]
+if not lines:
+    print('')
+    raise SystemExit(0)
+
+choice = preset_choice
+if not choice:
+    for idx, line in enumerate(lines, start=1):
+        print(f"{idx}. {line}")
+if not choice:
+    try:
+        choice = input('Choose number (ENTER to cancel): ').strip()
+    except EOFError:
+        choice = ''
+if not choice:
+    print('')
+    raise SystemExit(0)
+
+try:
+    value = int(choice)
+except ValueError:
+    print('')
+    raise SystemExit(0)
+
+if 1 <= value <= len(lines):
+    print(lines[value - 1])
+else:
+    print('')
+PY
+}
+
+_pa_extract_event_title() {
+  python3 - <<'PY' "$1"
+import sys
+line = sys.argv[1]
+parts = [p.strip() for p in line.split('|')]
+print(parts[1] if len(parts) > 1 else '')
+PY
+}
+
+_pa_extract_reminder_title() {
+  python3 - <<'PY' "$1"
+import sys
+line = sys.argv[1]
+parts = [p.strip() for p in line.split('|')]
+print(parts[2] if len(parts) > 2 else '')
+PY
+}
+
+_pa_slugify() {
+  python3 - <<'PY' "$*"
+import re
+import sys
+print(re.sub(r'[^a-z0-9]+', '-', ' '.join(sys.argv[1:]).lower()).strip('-'))
+PY
+}
+
+_pa_resolve_note_file() {
+  python3 - <<'PY' "$1" "$2"
+from pathlib import Path
+import sys
+
+base = Path(sys.argv[1]).expanduser()
+query = sys.argv[2].lower().strip()
+slug = query.replace('_', '-').replace(' ', '-')
+
+if not base.exists():
+    print('')
+    raise SystemExit(0)
+
+exact = base / f"{slug}.md"
+if exact.exists():
+    print(exact)
+    raise SystemExit(0)
+
+candidates = sorted(base.glob('*.md'))
+for path in candidates:
+    stem = path.stem.lower()
+    if slug == stem or slug in stem or any(part and part in stem for part in slug.split('-')):
+        print(path)
+        raise SystemExit(0)
+
+print('')
+PY
+}
+
+_pa_append_to_note_section() {
+  python3 - <<'PY' "$1" "$2" "$3"
+from pathlib import Path
+from datetime import datetime
+import sys
+
+path = Path(sys.argv[1]).expanduser()
+section = sys.argv[2]
+text = sys.argv[3]
+
+if not path.exists():
+    raise SystemExit(f'Note not found: {path}')
+
+content = path.read_text(encoding='utf-8', errors='ignore')
+stamp = datetime.now().strftime('%Y-%m-%d %H:%M')
+entry = f'- [{stamp}] {text}'
+
+if section not in content:
+    content = content.rstrip() + f'\n\n{section}\n\n' + entry + '\n'
+else:
+    before, after = content.split(section, 1)
+    after = after.rstrip()
+    content = before + section + after + '\n' + entry + '\n'
+
+path.write_text(content.rstrip() + '\n', encoding='utf-8')
+print(path)
+PY
+}
+
+visioncapture() {
+  if [ "$#" -lt 3 ]; then
+    echo 'Usage: visioncapture project|research "target" <image-path> [prompt]'
+    echo 'Example: visioncapture research "search workflow study" ~/Desktop/screenshot.png "Explain the important UI issues"'
+    return 1
+  fi
+  local kind="$1"
+  local target_name="$2"
+  local image_path="$3"
+  shift 3
+  local prompt_text="${*:-Describe the important details, likely issues, and suggested next steps.}"
+  local target_file section analysis
+
+  case "$kind" in
+    project)
+      target_file=$(_pa_resolve_note_file "$HOME/Notes/projects" "$target_name")
+      section='## Vision captures'
+      ;;
+    research)
+      target_file=$(_pa_resolve_note_file "$HOME/Notes/research" "$target_name")
+      section='## Vision captures'
+      ;;
+    *)
+      echo 'Use target type: project or research.'
+      return 1
+      ;;
+  esac
+
+  if [ -z "$target_file" ]; then
+    echo "No target note found for: $target_name"
+    return 1
+  fi
+
+  if [ ! -f "$image_path" ]; then
+    echo "Image not found: $image_path"
+    return 1
+  fi
+
+  analysis=$(command aichat --role vision-assistant -f "$image_path" "$prompt_text") || return 1
+  _pa_append_to_note_section "$target_file" "$section" "Image: $image_path\nPrompt: $prompt_text\n$analysis"
+}
+
+visioncaptureopen() {
+  if [ "$#" -lt 3 ]; then
+    echo 'Usage: visioncaptureopen project|research "target" <image-path> [prompt]'
+    return 1
+  fi
+  local kind="$1"
+  local target_name="$2"
+  local image_path="$3"
+  shift 3
+  local prompt_text="$*"
+  local target_file
+  case "$kind" in
+    project) target_file=$(_pa_resolve_note_file "$HOME/Notes/projects" "$target_name") ;;
+    research) target_file=$(_pa_resolve_note_file "$HOME/Notes/research" "$target_name") ;;
+    *) echo 'Use target type: project or research.'; return 1 ;;
+  esac
+  visioncapture "$kind" "$target_name" "$image_path" "$prompt_text" || return 1
+  [ -n "$target_file" ] && _pa_open_in_editor "$target_file"
+}
+
+visioncompare() {
+  if [ "$#" -lt 3 ]; then
+    echo 'Usage: visioncompare <image-a> <image-b> project|research [target] [prompt]'
+    return 1
+  fi
+  local image_a="$1"
+  local image_b="$2"
+  local mode="$3"
+  shift 3
+  local target_name="${1:-}"
+  local prompt_text
+  if [ -n "$target_name" ]; then
+    shift
+  fi
+  prompt_text="${*:-What are the important differences between these two images? Distinguish visible changes from inferred meaning.}"
+  if [ ! -f "$image_a" ] || [ ! -f "$image_b" ]; then
+    echo 'Both image files must exist.'
+    return 1
+  fi
+  local analysis
+  analysis=$(command aichat --role vision-assistant -f "$image_a" -f "$image_b" "$prompt_text") || return 1
+  if [ "$mode" = "project" ] || [ "$mode" = "research" ]; then
+    if [ -z "$target_name" ]; then
+      echo 'When saving, provide a target note name.'
+      return 1
+    fi
+    local target_file
+    if [ "$mode" = "project" ]; then
+      target_file=$(_pa_resolve_note_file "$HOME/Notes/projects" "$target_name")
+    else
+      target_file=$(_pa_resolve_note_file "$HOME/Notes/research" "$target_name")
+    fi
+    [ -z "$target_file" ] && { echo "No target note found for: $target_name"; return 1; }
+    _pa_append_to_note_section "$target_file" '## Vision captures' "Images: $image_a and $image_b\nPrompt: $prompt_text\n$analysis"
+  else
+    printf '%s\n' "$analysis"
+  fi
+}
+
+pdfvision() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: pdfvision <pdf-or-image> [prompt]'
+    return 1
+  fi
+  local file_path="$1"
+  shift
+  local prompt_text="${*:-Summarize the important visual and textual information in this document.}"
+  if [ ! -f "$file_path" ]; then
+    echo "File not found: $file_path"
+    return 1
+  fi
+  command aichat --role vision-assistant -f "$file_path" "$prompt_text"
+}
+
+browsercurrent() {
+  local front_app="${1:-}"
+  if [ -z "$front_app" ]; then
+    front_app=$(osascript -e 'tell application "System Events" to get name of first application process whose frontmost is true')
+  fi
+  case "$front_app" in
+    "Safari")
+      osascript -e 'tell application "Safari" to try' -e 'return "Safari | " & (name of current tab of front window) & " | " & (URL of current tab of front window)' -e 'on error' -e 'return "No open Safari window found."' -e 'end try'
+      ;;
+    "Google Chrome Dev")
+      osascript -e 'tell application "Google Chrome Dev" to try' -e 'return "Google Chrome Dev | " & (title of active tab of front window) & " | " & (URL of active tab of front window)' -e 'on error' -e 'return "No open Google Chrome Dev window found."' -e 'end try'
+      ;;
+    "Google Chrome")
+      osascript -e 'tell application "Google Chrome" to try' -e 'return "Google Chrome | " & (title of active tab of front window) & " | " & (URL of active tab of front window)' -e 'on error' -e 'return "No open Google Chrome window found."' -e 'end try'
+      ;;
+    "Arc")
+      osascript -e 'tell application "Arc" to try' -e 'return "Arc | " & (title of active tab of front window) & " | " & (URL of active tab of front window)' -e 'on error' -e 'return "No open Arc window found."' -e 'end try'
+      ;;
+    "Firefox Developer Edition"|"Firefox")
+      python3 - <<'PY' "$front_app"
+import subprocess
+import sys
+
+app = sys.argv[1]
+title = subprocess.run([
+    'osascript', '-e', f'tell application "{app}" to get name of front window'
+], capture_output=True, text=True).stdout.strip() or app
+
+clipboard_before = subprocess.run(['pbpaste'], capture_output=True, text=True).stdout
+script = f'''
+tell application "{app}" to activate
+delay 0.1
+tell application "System Events"
+  keystroke "l" using command down
+  delay 0.1
+  keystroke "c" using command down
+end tell
+delay 0.1
+'''
+try:
+    subprocess.run(['osascript', '-e', script], check=True, capture_output=True, text=True)
+    url = subprocess.run(['pbpaste'], capture_output=True, text=True).stdout.strip()
+    subprocess.run(['pbcopy'], input=clipboard_before, text=True)
+    if url:
+        print(f"{app} | {title} | {url}")
+    else:
+        print(f"No open {app} window found.")
+except subprocess.CalledProcessError:
+    subprocess.run(['pbcopy'], input=clipboard_before, text=True)
+    print(f"Firefox URL capture requires Accessibility permission for System Events.")
+PY
+      ;;
+    *)
+      echo 'No supported frontmost browser found.'
+      return 1
+      ;;
+  esac
+}
+
+browserurl() {
+  python3 - <<'PY' "$(browsercurrent "${1:-}")"
+import sys
+parts = [p.strip() for p in sys.argv[1].split('|')]
+print(parts[2] if len(parts) > 2 else sys.argv[1])
+PY
+}
+
+browsertitle() {
+  python3 - <<'PY' "$(browsercurrent "${1:-}")"
+import sys
+parts = [p.strip() for p in sys.argv[1].split('|')]
+print(parts[1] if len(parts) > 1 else sys.argv[1])
+PY
+}
+
+browserread() {
+  local url
+  url=$(browserurl "${1:-}")
+  if [[ "$url" == No\ supported* ]]; then
+    echo "$url"
+    return 1
+  fi
+  "$HOME/ai-tools/llm-functions/agents/personal-assistant/fetch_url.sh" "$url"
+}
+
+browsersummary() {
+  local content title url
+  title=$(browsertitle "${1:-}")
+  url=$(browserurl "${1:-}")
+  if [[ "$url" == No\ supported* ]] || [[ "$url" == No\ open* ]]; then
+    echo "$url"
+    return 1
+  fi
+  content=$(browserread "${1:-}") || return 1
+  command aichat -m ollama:llama3.1:8b "Summarize this current browser page.\n\nTitle: $title\nURL: $url\n\n$content"
+}
+
+browserresearch() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: browserresearch "topic"'
+    return 1
+  fi
+  local topic="$1"
+  local title url summary target
+  title=$(browsertitle "${2:-}")
+  url=$(browserurl "${2:-}")
+  if [[ "$url" == No\ supported* ]] || [[ "$url" == No\ open* ]]; then
+    echo "$url"
+    return 1
+  fi
+  target=$(_pa_resolve_note_file "$HOME/Notes/research" "$topic")
+  if [ -z "$target" ]; then
+    echo "No research note found for: $topic"
+    return 1
+  fi
+  summary=$(browsersummary "${2:-}") || return 1
+  _pa_append_to_note_section "$target" '## Web research captures' "Page: $title | $url\n$summary"
+}
+
+browserproject() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: browserproject "project"'
+    return 1
+  fi
+  local project="$1"
+  local title url summary target
+  title=$(browsertitle "${2:-}")
+  url=$(browserurl "${2:-}")
+  if [[ "$url" == No\ supported* ]] || [[ "$url" == No\ open* ]]; then
+    echo "$url"
+    return 1
+  fi
+  target=$(_pa_resolve_note_file "$HOME/Notes/projects" "$project")
+  if [ -z "$target" ]; then
+    echo "No project note found for: $project"
+    return 1
+  fi
+  summary=$(browsersummary "${2:-}") || return 1
+  _pa_append_to_note_section "$target" '## Web research captures' "Page: $title | $url\n$summary"
+}
+
+_pa_search_json() {
+  local query="$1"
+  local limit="${2:-5}"
+  local filter="${3:-}"
+  WEB_SEARCH_FORMAT=json "$HOME/ai-tools/llm-functions/agents/personal-assistant/web_search.sh" "$query" "$limit" "$filter"
+}
+
+_pa_choose_search_result() {
+  python3 - <<'PY' "$1" "${PA_CHOICE:-}"
+import json
+import sys
+
+payload = json.loads(sys.argv[1])
+preset_choice = sys.argv[2].strip()
+results = payload.get('results', [])
+if not results:
+    print('')
+    raise SystemExit(0)
+
+choice = preset_choice
+if not choice:
+    for idx, item in enumerate(results, start=1):
+        print(f"{idx}. {item['title']}")
+        print(f"   Source: {item['source']}")
+        print(f"   URL: {item['url']}")
+        if item.get('snippet'):
+            print(f"   Snippet: {item['snippet']}")
+if not choice:
+    try:
+        choice = input('Choose number (ENTER to cancel): ').strip()
+    except EOFError:
+        choice = ''
+if not choice:
+    print('')
+    raise SystemExit(0)
+
+try:
+    value = int(choice)
+except ValueError:
+    print('')
+    raise SystemExit(0)
+
+if 1 <= value <= len(results):
+    print(results[value - 1]['url'])
+else:
+    print('')
+PY
+}
+
+paschedule() {
+  local start json
+  start=$(python3 - <<'PY'
+from datetime import datetime
+print(datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).strftime('%Y-%m-%d %H:%M'))
+PY
+) || return 1
+  json=$(python3 -c 'import json,sys; print(json.dumps({"start": sys.argv[1], "days": 2}))' "$start")
+  "$HOME/ai-tools/llm-functions/bin/personal-assistant" calendar_list_events "$json"
+}
+
+scheduleadd() {
+  if [ "$#" -lt 3 ]; then
+    echo 'Usage: scheduleadd "Title" "Start" "End" [notes]'
+    echo 'Examples: scheduleadd "Gym" "tomorrow 6pm" "tomorrow 7pm"'
+    return 1
+  fi
+  local title="$1"
+  local raw_start="$2"
+  local raw_end="$3"
+  local notes="${4:-}"
+  local start end
+  start=$(_pa_parse_dt "$raw_start") || return 1
+  end=$(_pa_parse_dt "$raw_end") || return 1
+  echo "About to create calendar event:"
+  echo "- Title: $title"
+  echo "- Start: $start  (from: $raw_start)"
+  echo "- End:   $end  (from: $raw_end)"
+  if [ -n "$notes" ]; then
+    echo "- Notes: $notes"
+  fi
+  read -r '?Create this event? [y/N] ' confirm
+  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    echo 'Cancelled.'
+    return 1
+  fi
+  local json
+  json=$(python3 -c 'import json,sys; print(json.dumps({"title": sys.argv[1], "start": sys.argv[2], "end": sys.argv[3], "notes": sys.argv[4]}))' "$title" "$start" "$end" "$notes")
+  "$HOME/ai-tools/llm-functions/bin/personal-assistant" calendar_create_event "$json"
+}
+
+eventfind() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: eventfind "query" [days]'
+    return 1
+  fi
+  local query="$1"
+  local days="${2:-30}"
+  local json
+  json=$(python3 -c 'import json,sys; print(json.dumps({"query": sys.argv[1], "days": int(sys.argv[2])}))' "$query" "$days")
+  "$HOME/ai-tools/llm-functions/bin/personal-assistant" calendar_search_events "$json"
+}
+
+eventdelete() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: eventdelete "query" [days]'
+    return 1
+  fi
+  local query="$1"
+  local days="${2:-30}"
+  echo "About to delete first matching event for: $query"
+  read -r '?Delete this event? [y/N] ' confirm
+  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    echo 'Cancelled.'
+    return 1
+  fi
+  local json
+  json=$(python3 -c 'import json,sys; print(json.dumps({"query": sys.argv[1], "days": int(sys.argv[2])}))' "$query" "$days")
+  "$HOME/ai-tools/llm-functions/bin/personal-assistant" calendar_delete_event "$json"
+}
+
+eventpick() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: eventpick "query" [days]'
+    return 1
+  fi
+  local results chosen title
+  results=$(eventfind "$1" "${2:-30}") || return 1
+  chosen=$(_pa_choose_match "$results")
+  [ -z "$chosen" ] && { echo 'Cancelled.'; return 1; }
+  echo "$chosen"
+}
+
+eventeditpick() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: eventeditpick "query" [new-start|-] [new-end|-] [new-title|-] [new-notes|-] [days]'
+    return 1
+  fi
+  local chosen title days
+  days="${6:-30}"
+  chosen=$(eventpick "$1" "$days") || return 1
+  title=$(_pa_extract_event_title "$chosen")
+  eventedit "$title" "${2:--}" "${3:--}" "${4:--}" "${5:--}" "$days"
+}
+
+eventdeletepick() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: eventdeletepick "query" [days]'
+    return 1
+  fi
+  local chosen title
+  chosen=$(eventpick "$1" "${2:-30}") || return 1
+  title=$(_pa_extract_event_title "$chosen")
+  eventdelete "$title" "${2:-30}"
+}
+
+eventedit() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: eventedit "query" [new-start|-] [new-end|-] [new-title|-] [new-notes|-] [days]'
+    echo 'Example: eventedit "gym" "tomorrow 7pm" "tomorrow 8pm" "Gym Session" "Leg day" 30'
+    return 1
+  fi
+  local query="$1"
+  local raw_start="${2:--}"
+  local raw_end="${3:--}"
+  local new_title="${4:--}"
+  local new_notes="${5:--}"
+  local days="${6:-30}"
+  local start="" end=""
+  if [ "$raw_start" != "-" ]; then
+    start=$(_pa_parse_dt "$raw_start") || return 1
+  fi
+  if [ "$raw_end" != "-" ]; then
+    end=$(_pa_parse_dt "$raw_end") || return 1
+  fi
+  [ "$new_title" = "-" ] && new_title=""
+  [ "$new_notes" = "-" ] && new_notes=""
+  echo "About to update first matching event for: $query"
+  [ -n "$start" ] && echo "- New start: $start"
+  [ -n "$end" ] && echo "- New end:   $end"
+  [ -n "$new_title" ] && echo "- New title: $new_title"
+  [ -n "$new_notes" ] && echo "- New notes: $new_notes"
+  read -r '?Update this event? [y/N] ' confirm
+  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    echo 'Cancelled.'
+    return 1
+  fi
+  local json
+  json=$(python3 -c 'import json,sys; print(json.dumps({"query": sys.argv[1], "start": sys.argv[2], "end": sys.argv[3], "title": sys.argv[4], "notes": sys.argv[5], "days": int(sys.argv[6])}))' "$query" "$start" "$end" "$new_title" "$new_notes" "$days")
+  "$HOME/ai-tools/llm-functions/bin/personal-assistant" calendar_update_event "$json"
+}
+
+remindershow() {
+  local json='{}'
+  "$HOME/ai-tools/llm-functions/bin/personal-assistant" reminders_list_items "$json"
+}
+
+reminderadd() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: reminderadd "Title" [due-date] [notes]'
+    echo 'Examples: reminderadd "Review Ollama" "tomorrow 10am" "Check blog and releases"'
+    return 1
+  fi
+  local title="$1"
+  local raw_due="${2:-}"
+  local notes="${3:-}"
+  local due=""
+  if [ -n "$raw_due" ]; then
+    due=$(_pa_parse_dt "$raw_due") || return 1
+  fi
+  echo "About to create reminder:"
+  echo "- Title: $title"
+  [ -n "$due" ] && echo "- Due:   $due  (from: $raw_due)"
+  [ -n "$notes" ] && echo "- Notes: $notes"
+  read -r '?Create this reminder? [y/N] ' confirm
+  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    echo 'Cancelled.'
+    return 1
+  fi
+  local json
+  json=$(python3 -c 'import json,sys; print(json.dumps({"title": sys.argv[1], "due_date": sys.argv[2], "notes": sys.argv[3]}))' "$title" "$due" "$notes")
+  "$HOME/ai-tools/llm-functions/bin/personal-assistant" reminders_create_item "$json"
+}
+
+reminderdone() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: reminderdone "Title"'
+    return 1
+  fi
+  local title="$1"
+  echo "About to complete reminder: $title"
+  read -r '?Complete this reminder? [y/N] ' confirm
+  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    echo 'Cancelled.'
+    return 1
+  fi
+  local json
+  json=$(python3 -c 'import json,sys; print(json.dumps({"title": sys.argv[1]}))' "$title")
+  "$HOME/ai-tools/llm-functions/bin/personal-assistant" reminders_complete_item "$json"
+}
+
+reminderdelete() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: reminderdelete "Title"'
+    return 1
+  fi
+  local title="$1"
+  echo "About to delete reminder: $title"
+  read -r '?Delete this reminder? [y/N] ' confirm
+  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    echo 'Cancelled.'
+    return 1
+  fi
+  local json
+  json=$(python3 -c 'import json,sys; print(json.dumps({"title": sys.argv[1]}))' "$title")
+  "$HOME/ai-tools/llm-functions/bin/personal-assistant" reminders_delete_item "$json"
+}
+
+reminderfind() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: reminderfind "query"'
+    return 1
+  fi
+  local content
+  content=$(remindershow)
+  python3 - <<'PY' "$1" "$content"
+import sys
+query = sys.argv[1].lower()
+text = sys.argv[2]
+lines = [line for line in text.splitlines() if query in line.lower()]
+print('\n'.join(lines) if lines else 'No matching reminders found.')
+PY
+}
+
+reminderpick() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: reminderpick "query"'
+    return 1
+  fi
+  local results chosen
+  results=$(reminderfind "$1") || return 1
+  chosen=$(_pa_choose_match "$results")
+  [ -z "$chosen" ] && { echo 'Cancelled.'; return 1; }
+  echo "$chosen"
+}
+
+reminderdonepick() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: reminderdonepick "query"'
+    return 1
+  fi
+  local chosen title
+  chosen=$(reminderpick "$1") || return 1
+  title=$(_pa_extract_reminder_title "$chosen")
+  reminderdone "$title"
+}
+
+reminderdeletepick() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: reminderdeletepick "query"'
+    return 1
+  fi
+  local chosen title
+  chosen=$(reminderpick "$1") || return 1
+  title=$(_pa_extract_reminder_title "$chosen")
+  reminderdelete "$title"
+}
+
+todaybrief() {
+  echo '== Calendar =='
+  paschedule
+  echo
+  echo '== Reminders =='
+  remindershow
+  echo
+  echo '== Recent Notes =='
+  python3 - <<'PY'
+from pathlib import Path
+path = Path.home() / 'Notes' / 'inbox.md'
+if not path.exists():
+    print('No inbox note found.')
+else:
+    lines = path.read_text(encoding='utf-8', errors='ignore').splitlines()
+    tail = lines[-8:] if len(lines) > 8 else lines
+    for line in tail:
+        print(line)
+PY
+}
+
+weekbrief() {
+  local start json
+  start=$(python3 - <<'PY'
+from datetime import datetime
+print(datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).strftime('%Y-%m-%d %H:%M'))
+PY
+) || return 1
+  json=$(python3 -c 'import json,sys; print(json.dumps({"start": sys.argv[1], "days": 7}))' "$start")
+  echo '== Next 7 Days: Calendar =='
+  "$HOME/ai-tools/llm-functions/bin/personal-assistant" calendar_list_events "$json"
+  echo
+  echo '== Open Reminders =='
+  remindershow
+}
+
+searchweb() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: searchweb "query" [limit] [filter]'
+    echo 'Filters: docs, github, news, blogs, or a domain fragment'
+    return 1
+  fi
+  local query="$1"
+  local limit="${2:-5}"
+  local filter="${3:-}"
+  local json
+  json=$(python3 -c 'import json,sys; print(json.dumps({"query": sys.argv[1], "limit": int(sys.argv[2]), "source_filter": sys.argv[3]}))' "$query" "$limit" "$filter")
+  "$HOME/ai-tools/llm-functions/bin/personal-assistant" web_search "$json"
+}
+
+searchpick() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: searchpick "query" [limit] [filter]'
+    return 1
+  fi
+  local payload chosen
+  payload=$(_pa_search_json "$1" "${2:-5}" "${3:-}") || return 1
+  chosen=$(_pa_choose_search_result "$payload")
+  [ -z "$chosen" ] && { echo 'Cancelled.'; return 1; }
+  echo "$chosen"
+}
+
+searchread() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: searchread "query" [limit] [filter]'
+    return 1
+  fi
+  local url
+  url=$(searchpick "$1" "${2:-5}" "${3:-}") || return 1
+  "$HOME/ai-tools/llm-functions/agents/personal-assistant/fetch_url.sh" "$url"
+}
+
+searchcompare() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: searchcompare "query" filter1 [filter2 ...]'
+    return 1
+  fi
+  local query="$1"
+  shift
+  for filter in "$@"; do
+    echo "== $filter =="
+    searchweb "$query" 3 "$filter"
+    echo
+  done
+}
+
+searchsave() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: searchsave "query" "research topic" [limit] [filter]'
+    return 1
+  fi
+  local query="$1"
+  local topic="$2"
+  local limit="${3:-3}"
+  local filter="${4:-}"
+  local payload summary target prompt note_text evidence sources followups
+  payload=$(_pa_search_json "$query" "$limit" "$filter") || return 1
+  if ! python3 -c 'import json,sys; raise SystemExit(0 if json.loads(sys.argv[1]).get("results") else 1)' "$payload"; then
+    echo 'No DuckDuckGo results found for that query/filter.'
+    return 1
+  fi
+  target=$(_pa_resolve_note_file "$HOME/Notes/research" "$topic")
+  if [ -z "$target" ]; then
+    echo "No research note found for: $topic"
+    return 1
+  fi
+  evidence=$(python3 - <<'PY' "$payload"
+import json
+import subprocess
+import sys
+
+payload = json.loads(sys.argv[1])
+results = payload.get('results', [])[:2]
+script = '/Users/dorianlewandowski/ai-tools/llm-functions/agents/personal-assistant/fetch_url.sh'
+sections = []
+
+for idx, item in enumerate(results, start=1):
+    try:
+        proc = subprocess.run([script, item['url']], check=True, capture_output=True, text=True)
+        body = proc.stdout.strip()
+    except subprocess.CalledProcessError:
+        body = ''
+    excerpt = '\n'.join(body.splitlines()[:18]).strip()
+    section = [
+        f"Result {idx}",
+        f"Title: {item['title']}",
+        f"Source: {item['source']}",
+        f"URL: {item['url']}",
+    ]
+    if item.get('snippet'):
+        section.append(f"Snippet: {item['snippet']}")
+    if excerpt:
+        section.append('Fetched excerpt:')
+        section.append(excerpt)
+    sections.append('\n'.join(section))
+
+print('\n\n'.join(sections))
+PY
+)
+  sources=$(python3 - <<'PY' "$payload"
+import json
+import sys
+payload = json.loads(sys.argv[1])
+for idx, item in enumerate(payload.get('results', []), start=1):
+    print(f"- [{idx}] {item['title']} | {item['source']} | {item['url']}")
+PY
+)
+  prompt=$(python3 - <<'PY' "$query" "$payload"
+import json
+import sys
+payload = json.loads(sys.argv[2])
+lines = []
+for idx, item in enumerate(payload.get('results', []), start=1):
+    lines.append(f"{idx}. {item['title']} | {item['source']} | {item['url']}")
+    if item.get('snippet'):
+        lines.append(f"   {item['snippet']}")
+print("SEARCH_RESULTS")
+print("\n".join(lines))
+PY
+)
+  prompt=$(python3 - <<'PY' "$query" "$prompt" "$evidence"
+import sys
+print(f'''Summarize this DuckDuckGo research for the query: {sys.argv[1]}
+
+Search results:
+{sys.argv[2]}
+
+Fetched page excerpts:
+{sys.argv[3]}
+
+Return:
+- 3-5 concise bullets
+- strongest sources first
+- mention disagreements or uncertainty if present
+- keep it factual and practical
+''')
+PY
+)
+  summary=$(command aichat -m ollama:llama3.1:8b "$prompt") || return 1
+  followups=$(python3 - <<'PY' "$query" "$summary" "$sources"
+import sys
+print(f'''Based on this research query and summary, suggest 3 concise follow-up questions.
+
+Query:
+{sys.argv[1]}
+
+Summary:
+{sys.argv[2]}
+
+Sources:
+{sys.argv[3]}
+
+Return exactly 3 short bullets.
+''')
+PY
+)
+  followups=$(command aichat -m ollama:llama3.1:8b "$followups") || return 1
+  note_text=$(printf 'Query: %s
+Sources:
+%s
+Summary:
+%s
+Follow-up questions:
+%s' "$query" "$sources" "$summary" "$followups")
+  _pa_append_to_note_section "$target" '## Web search captures' "$note_text"
+  local slug topic_id
+  slug=$(basename "$target" .md)
+  sqlite3 "$(_pa_db_path)" "INSERT INTO research_topics (slug, title, note_path, updated_at) VALUES ('$(_pa_sql_escape "$slug")', '$(_pa_sql_escape "$slug")', '$(_pa_sql_escape "$target")', CURRENT_TIMESTAMP) ON CONFLICT(slug) DO UPDATE SET note_path=excluded.note_path, updated_at=CURRENT_TIMESTAMP;"
+  topic_id=$(sqlite3 "$(_pa_db_path)" "SELECT id FROM research_topics WHERE slug = '$(_pa_sql_escape "$slug")' LIMIT 1;")
+  if [ -n "$topic_id" ]; then
+    sqlite3 "$(_pa_db_path)" "INSERT INTO research_items (topic_id, query, source_title, source_type, summary, followups, created_at) VALUES ($topic_id, '$(_pa_sql_escape "$query")', '$(_pa_sql_escape "$sources")', 'helper_searchsave', '$(_pa_sql_escape "$summary")', '$(_pa_sql_escape "$followups")', CURRENT_TIMESTAMP);"
+  fi
+}
+
+researchweb() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: researchweb "research topic" "query" [limit] [filter]'
+    return 1
+  fi
+  local topic="$1"
+  local query="$2"
+  local limit="${3:-5}"
+  local filter="${4:-docs}"
+  searchsave "$query" "$topic" "$limit" "$filter"
+  local target
+  target=$(_pa_resolve_note_file "$HOME/Notes/research" "$topic")
+  [ -n "$target" ] && echo "Saved search summary to: $target"
+}
+
+repeatreminder() {
+  if [ "$#" -lt 4 ]; then
+    echo 'Usage: repeatreminder "Title" "first due" frequency count [notes]'
+    echo 'Frequencies: daily, weekly, monthly, weekdays, every:2d, every:2w, every:2m'
+    return 1
+  fi
+  local title="$1"
+  local first_due_raw="$2"
+  local frequency="$3"
+  local count="$4"
+  local notes="${5:-}"
+  local first_due
+  first_due=$(_pa_parse_dt "$first_due_raw") || return 1
+  python3 - "$title" "$first_due" "$frequency" "$count" "$notes" <<'PY'
+import json, sys
+from datetime import datetime, timedelta
+
+title, first_due, frequency, count, notes = sys.argv[1:6]
+count = int(count)
+dt = datetime.strptime(first_due, "%Y-%m-%d %H:%M")
+
+def add_month(d):
+    month = d.month + 1
+    year = d.year
+    if month > 12:
+        month = 1
+        year += 1
+    day = min(d.day, [31,29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28,31,30,31,30,31,31,30,31,30,31][month-1])
+    return d.replace(year=year, month=month, day=day)
+
+items = []
+current = dt
+for i in range(count):
+    items.append({"title": title if count == 1 else f"{title} ({i+1}/{count})", "due_date": current.strftime("%Y-%m-%d %H:%M"), "notes": notes})
+    if frequency == "daily":
+        current += timedelta(days=1)
+    elif frequency == "weekly":
+        current += timedelta(days=7)
+    elif frequency == "monthly":
+        current = add_month(current)
+    elif frequency == "weekdays":
+        current += timedelta(days=1)
+        while current.weekday() >= 5:
+            current += timedelta(days=1)
+    elif frequency.startswith("every:"):
+        interval = frequency.split(":", 1)[1]
+        value = int(interval[:-1])
+        unit = interval[-1]
+        if unit == "d":
+            current += timedelta(days=value)
+        elif unit == "w":
+            current += timedelta(days=7 * value)
+        elif unit == "m":
+            for _ in range(value):
+                current = add_month(current)
+        else:
+            raise SystemExit("every: interval must end with d, w, or m")
+    else:
+        raise SystemExit("Frequency must be daily, weekly, monthly, weekdays, or every:Nd/Nw/Nm")
+print(json.dumps(items))
+PY
+}
+
+repeatremindercreate() {
+  if [ "$#" -lt 4 ]; then
+    echo 'Usage: repeatremindercreate "Title" "first due" daily|weekly|monthly count [notes]'
+    return 1
+  fi
+  local preview
+  preview=$(repeatreminder "$@") || return 1
+  echo 'About to create reminders:'
+  python3 - <<'PY' "$preview"
+import json, sys
+for item in json.loads(sys.argv[1]):
+    print(f"- {item['title']} @ {item['due_date']}")
+PY
+  read -r '?Create these reminders? [y/N] ' confirm
+  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    echo 'Cancelled.'
+    return 1
+  fi
+  python3 - <<'PY' "$preview" "$HOME/ai-tools/llm-functions/bin/personal-assistant"
+import json, subprocess, sys
+items = json.loads(sys.argv[1])
+bin_path = sys.argv[2]
+for item in items:
+    payload = json.dumps(item)
+    subprocess.run([bin_path, 'reminders_create_item', payload], check=True)
+PY
+}
+
+repeatevent() {
+  if [ "$#" -lt 5 ]; then
+    echo 'Usage: repeatevent "Title" "first start" "first end" frequency count [notes]'
+    echo 'Frequencies: daily, weekly, monthly, weekdays, every:2d, every:2w, every:2m'
+    return 1
+  fi
+  local title="$1"
+  local first_start_raw="$2"
+  local first_end_raw="$3"
+  local frequency="$4"
+  local count="$5"
+  local notes="${6:-}"
+  local first_start first_end
+  first_start=$(_pa_parse_dt "$first_start_raw") || return 1
+  first_end=$(_pa_parse_dt "$first_end_raw") || return 1
+  python3 - "$title" "$first_start" "$first_end" "$frequency" "$count" "$notes" <<'PY'
+import json, sys
+from datetime import datetime, timedelta
+
+title, first_start, first_end, frequency, count, notes = sys.argv[1:7]
+count = int(count)
+start_dt = datetime.strptime(first_start, "%Y-%m-%d %H:%M")
+end_dt = datetime.strptime(first_end, "%Y-%m-%d %H:%M")
+duration = end_dt - start_dt
+
+def add_month(d):
+    month = d.month + 1
+    year = d.year
+    if month > 12:
+        month = 1
+        year += 1
+    day = min(d.day, [31,29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28,31,30,31,30,31,31,30,31,30,31][month-1])
+    return d.replace(year=year, month=month, day=day)
+
+items = []
+current = start_dt
+for i in range(count):
+    items.append({
+        "title": title if count == 1 else f"{title} ({i+1}/{count})",
+        "start": current.strftime("%Y-%m-%d %H:%M"),
+        "end": (current + duration).strftime("%Y-%m-%d %H:%M"),
+        "notes": notes,
+    })
+    if frequency == "daily":
+        current += timedelta(days=1)
+    elif frequency == "weekly":
+        current += timedelta(days=7)
+    elif frequency == "monthly":
+        current = add_month(current)
+    elif frequency == "weekdays":
+        current += timedelta(days=1)
+        while current.weekday() >= 5:
+            current += timedelta(days=1)
+    elif frequency.startswith("every:"):
+        interval = frequency.split(":", 1)[1]
+        value = int(interval[:-1])
+        unit = interval[-1]
+        if unit == "d":
+            current += timedelta(days=value)
+        elif unit == "w":
+            current += timedelta(days=7 * value)
+        elif unit == "m":
+            for _ in range(value):
+                current = add_month(current)
+        else:
+            raise SystemExit("every: interval must end with d, w, or m")
+    else:
+        raise SystemExit("Frequency must be daily, weekly, monthly, weekdays, or every:Nd/Nw/Nm")
+print(json.dumps(items))
+PY
+}
+
+repeateventcreate() {
+  if [ "$#" -lt 5 ]; then
+    echo 'Usage: repeateventcreate "Title" "first start" "first end" daily|weekly|monthly count [notes]'
+    return 1
+  fi
+  local preview
+  preview=$(repeatevent "$@") || return 1
+  echo 'About to create calendar events:'
+  python3 - <<'PY' "$preview"
+import json, sys
+for item in json.loads(sys.argv[1]):
+    print(f"- {item['title']} | {item['start']} -> {item['end']}")
+PY
+  read -r '?Create these events? [y/N] ' confirm
+  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    echo 'Cancelled.'
+    return 1
+  fi
+  python3 - <<'PY' "$preview" "$HOME/ai-tools/llm-functions/bin/personal-assistant"
+import json, subprocess, sys
+items = json.loads(sys.argv[1])
+bin_path = sys.argv[2]
+for item in items:
+    payload = json.dumps(item)
+    subprocess.run([bin_path, 'calendar_create_event', payload], check=True)
+PY
+}
+
+projectnote() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: projectnote "name" [tag1 tag2 ...]'
+    return 1
+  fi
+  local name="$1"
+  shift
+  local slug
+  slug=$(python3 -c 'import re,sys; print(re.sub(r"[^a-z0-9]+", "-", sys.argv[1].lower()).strip("-"))' "$name")
+  local file="$HOME/Notes/projects/$slug.md"
+  if [ -e "$file" ]; then
+    echo "Already exists: $file"
+    return 0
+  fi
+  python3 - <<'PY' "$file" "$name" "$@"
+from datetime import datetime
+from pathlib import Path
+import sys
+file = Path(sys.argv[1])
+name = sys.argv[2]
+tags = " ".join(f"#{t}" if not t.startswith("#") else t for t in sys.argv[3:])
+file.parent.mkdir(parents=True, exist_ok=True)
+content = f"# {name}\n\nProject: `{file.stem}`\nStatus: active\nOwner: Dorian\n\nTags: {tags}\n\n## Goal\n\n- \n\n## Current status\n\n- Created: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n## Next steps\n\n- \n\n## Inbox captures\n\n## Captures\n\n## Decisions\n\n## Open questions\n\n- \n"
+file.write_text(content, encoding='utf-8')
+print(file)
+PY
+  _pa_open_in_editor "$file"
+}
+
+meetingnote() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: meetingnote "title" [when] [tag1 tag2 ...]'
+    return 1
+  fi
+  local title="$1"
+  local when="${2:-$(date '+%Y-%m-%d %H:%M')}"
+  shift 2 || true
+  local slug
+  slug=$(python3 -c 'import re,sys; print(re.sub(r"[^a-z0-9]+", "-", sys.argv[1].lower()).strip("-"))' "$title")
+  local file="$HOME/Notes/meetings/$(date '+%Y-%m-%d')-$slug.md"
+  python3 - <<'PY' "$file" "$title" "$when" "$@"
+from pathlib import Path
+import sys
+file = Path(sys.argv[1])
+title = sys.argv[2]
+when = sys.argv[3]
+tags = " ".join(f"#{t}" if not t.startswith("#") else t for t in sys.argv[4:])
+file.parent.mkdir(parents=True, exist_ok=True)
+content = f"# {title}\n\nDate: {when}\nTags: #meeting {tags}\n\n## Attendees\n\n- \n\n## Agenda\n\n- \n\n## Notes\n\n- \n\n## Action items\n\n- \n"
+file.write_text(content, encoding='utf-8')
+print(file)
+PY
+  _pa_open_in_editor "$file"
+}
+
+researchnote() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: researchnote "topic" [tag1 tag2 ...]'
+    return 1
+  fi
+  local topic="$1"
+  shift
+  local slug
+  slug=$(python3 -c 'import re,sys; print(re.sub(r"[^a-z0-9]+", "-", sys.argv[1].lower()).strip("-"))' "$topic")
+  local file="$HOME/Notes/research/$slug.md"
+  if [ -e "$file" ]; then
+    echo "Already exists: $file"
+    return 0
+  fi
+  python3 - <<'PY' "$file" "$topic" "$@"
+from pathlib import Path
+import sys
+file = Path(sys.argv[1])
+topic = sys.argv[2]
+tags = " ".join(f"#{t}" if not t.startswith("#") else t for t in sys.argv[3:])
+file.parent.mkdir(parents=True, exist_ok=True)
+content = f"# {topic}\n\nTags: #research {tags}\n\n## Question\n\n- \n\n## Findings\n\n- \n\n## Sources\n\n- \n\n## Next questions\n\n- \n"
+file.write_text(content, encoding='utf-8')
+print(file)
+PY
+  _pa_open_in_editor "$file"
+}
+
+capture() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: capture inbox|reminder|event ...'
+    echo 'Examples:'
+    echo '  capture inbox "note text"'
+    echo '  capture reminder "Review Ollama" "tomorrow 10am" "check releases"'
+    echo '  capture event "Gym" "tomorrow 6pm" "tomorrow 7pm" "Leg day"'
+    return 1
+  fi
+  local kind="$1"
+  shift
+  case "$kind" in
+    inbox)
+      local text="$*"
+      local tags
+      tags=$(_pa_auto_tags "$text")
+      if [ -n "$tags" ]; then
+        text="$text $tags"
+      fi
+      notessave inbox.md "$text"
+      ;;
+    project)
+      if [ "$#" -lt 2 ]; then
+        echo 'Usage: capture project "project name" "text"'
+        return 1
+      fi
+      local project_name="$1"
+      shift
+      projectcapture "$project_name" "$*"
+      ;;
+    research)
+      if [ "$#" -lt 2 ]; then
+        echo 'Usage: capture research "topic" "text"'
+        return 1
+      fi
+      local topic_name="$1"
+      shift
+      researchcapture "$topic_name" "$*"
+      ;;
+    reminder)
+      reminderadd "$@"
+      ;;
+    event)
+      scheduleadd "$@"
+      ;;
+    *)
+      echo 'Unknown capture target. Use: inbox, reminder, or event.'
+      return 1
+      ;;
+  esac
+}
+
+review() {
+  local mode start period_days cal_json cal reminders inbox prompt
+  mode="${1:-today}"
+  case "$mode" in
+    today) period_days=2 ;;
+    weekly|week) period_days=7 ;;
+    monthly|month) period_days=30 ;;
+    *) echo 'Usage: review [today|weekly|monthly]'; return 1 ;;
+  esac
+  start_two=$(python3 - <<'PY'
+from datetime import datetime
+print(datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).strftime('%Y-%m-%d %H:%M'))
+PY
+) || return 1
+  cal_json=$(python3 -c 'import json,sys; print(json.dumps({"start": sys.argv[1], "days": int(sys.argv[2])}))' "$start_two" "$period_days")
+  cal=$(_pa_filter_calendar_noise <<< "$($HOME/ai-tools/llm-functions/bin/personal-assistant calendar_list_events "$cal_json")")
+  reminders=$("$HOME/ai-tools/llm-functions/bin/personal-assistant" reminders_list_items '{}')
+  inbox=$(python3 - <<'PY'
+from pathlib import Path
+path = Path.home() / 'Notes' / 'inbox.md'
+if path.exists():
+    lines = path.read_text(encoding='utf-8', errors='ignore').splitlines()
+    print('\n'.join(lines[-12:]))
+PY
+)
+  local overview
+  overview=$(sqliteoverview)
+  prompt=$(python3 - <<'PY' "$mode" "$cal" "$reminders" "$inbox" "$overview"
+import sys
+print(f'''Give me a concise personal review for {sys.argv[1]}.
+
+Calendar window:
+{sys.argv[2]}
+
+Reminders:
+{sys.argv[3]}
+
+Recent inbox notes:
+{sys.argv[4]}
+
+SQLite overview:
+{sys.argv[5]}
+
+Please return:
+1. Top priorities
+2. Scheduling conflicts or gaps
+3. Suggested next actions
+4. Anything worth capturing into a project or research note
+''')
+PY
+)
+  command aichat -m ollama:llama3.1:8b "$prompt"
+}
+
+dailybrief() {
+  local mode="${1:-today}"
+  local period_days start cal_json cal reminders inbox projects prompt overview
+  case "$mode" in
+    today|morning) period_days=2 ;;
+    week|weekly) period_days=7 ;;
+    *) echo 'Usage: dailybrief [today|weekly]'; return 1 ;;
+  esac
+  start=$(python3 - <<'PY'
+from datetime import datetime
+print(datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).strftime('%Y-%m-%d %H:%M'))
+PY
+) || return 1
+  cal_json=$(python3 -c 'import json,sys; print(json.dumps({"start": sys.argv[1], "days": int(sys.argv[2])}))' "$start" "$period_days")
+  cal=$(_pa_filter_calendar_noise <<< "$($HOME/ai-tools/llm-functions/bin/personal-assistant calendar_list_events "$cal_json")")
+  reminders=$("$HOME/ai-tools/llm-functions/bin/personal-assistant" reminders_list_items '{}')
+  inbox=$(python3 - <<'PY'
+from pathlib import Path
+path = Path.home() / 'Notes' / 'inbox.md'
+if path.exists():
+    lines = path.read_text(encoding='utf-8', errors='ignore').splitlines()
+    print('\n'.join(lines[-12:]))
+PY
+)
+  projects=$(_pa_project_snapshots)
+  overview=$(sqliteoverview)
+  prompt=$(python3 - <<'PY' "$mode" "$cal" "$reminders" "$inbox" "$projects" "$overview"
+import sys
+print(f'''Create a concise {sys.argv[1]} daily brief.
+
+Calendar:
+{sys.argv[2]}
+
+Reminders:
+{sys.argv[3]}
+
+Recent inbox items:
+{sys.argv[4]}
+
+Project snapshots:
+{sys.argv[5]}
+
+SQLite overview:
+{sys.argv[6]}
+
+Return exactly these sections:
+1. Focus today
+2. Time-sensitive items
+3. Project momentum
+4. Suggested next 3 actions
+5. What to capture or clean up
+
+Constraints:
+- Keep each section to 1-3 bullets
+- Lead with urgent or high-leverage items
+- Do not mention tool usage or reasoning process
+- Be practical and concise
+''')
+PY
+)
+  command aichat -m ollama:llama3.1:8b "$prompt"
+}
+
+morningbrief() {
+  dailybrief today
+}
+
+_pa_project_snapshots() {
+  python3 - <<'PY' "$HOME/Notes/assistant.db"
+import sqlite3
+import sys
+
+conn = sqlite3.connect(sys.argv[1])
+rows = conn.execute(
+    """
+    SELECT p.slug, p.status, COALESCE(p.owner, 'unknown'), COALESCE(p.health_label, 'active'),
+           COALESCE(p.health_score, 50),
+           COALESCE((SELECT count(*) FROM tasks t WHERE t.project_id = p.id AND t.source_type = 'project_next_step' AND t.status != 'done'), 0),
+           COALESCE((SELECT count(*) FROM decisions d WHERE d.project_id = p.id), 0),
+           COALESCE((SELECT count(*) FROM project_updates u WHERE u.project_id = p.id), 0)
+    FROM projects p
+    WHERE p.status != 'archived'
+    ORDER BY p.health_score DESC, p.updated_at DESC
+    LIMIT 5
+    """
+).fetchall()
+conn.close()
+
+blocks = []
+for slug, status, owner, health_label, health_score, next_count, decision_count, update_count in rows:
+    blocks.append(
+        f"PROJECT: {slug}\nStatus: {status}\nOwner: {owner}\nHealth: {health_label} ({health_score}/100)\nNext steps: {next_count}\nDecisions: {decision_count}\nUpdates: {update_count}"
+    )
+print('\n\n'.join(blocks) if blocks else 'No active projects.')
+PY
+}
+
+_pa_filter_calendar_noise() {
+  python3 - <<'PY'
+from datetime import datetime, timedelta
+import sys
+
+text = sys.stdin.read().strip()
+if not text:
+    print('No events found.')
+    raise SystemExit(0)
+
+now = datetime.now()
+max_date = now + timedelta(days=30)
+seen = set()
+kept = []
+
+for line in text.splitlines():
+    if not line.strip() or line.lower().startswith('no events'):
+        continue
+    parts = [p.strip() for p in line.split('|')]
+    if len(parts) < 4:
+        kept.append(line)
+        continue
+    key = (parts[1].lower(), parts[2], parts[3])
+    if key in seen:
+        continue
+    seen.add(key)
+    date_text = parts[2]
+    dt = None
+    for fmt in ('%A, %d %B %Y at %H:%M:%S', '%Y-%m-%d %H:%M'):
+        try:
+            dt = datetime.strptime(date_text, fmt)
+            break
+        except ValueError:
+            pass
+    if dt is None:
+        kept.append(line)
+        continue
+    if now - timedelta(days=1) <= dt <= max_date:
+        kept.append(line)
+
+print('\n'.join(kept) if kept else 'No events found.')
+PY
+}
+
+nightlyreview() {
+  local start cal_json cal reminders inbox projects prompt overview
+  start=$(python3 - <<'PY'
+from datetime import datetime
+print(datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).strftime('%Y-%m-%d %H:%M'))
+PY
+) || return 1
+  cal_json=$(python3 -c 'import json,sys; print(json.dumps({"start": sys.argv[1], "days": 2}))' "$start")
+  cal=$(_pa_filter_calendar_noise <<< "$($HOME/ai-tools/llm-functions/bin/personal-assistant calendar_list_events "$cal_json")")
+  reminders=$("$HOME/ai-tools/llm-functions/bin/personal-assistant" reminders_list_items '{}')
+  inbox=$(python3 - <<'PY'
+from pathlib import Path
+path = Path.home() / 'Notes' / 'inbox.md'
+if path.exists():
+    lines = path.read_text(encoding='utf-8', errors='ignore').splitlines()
+    print('\n'.join(lines[-12:]))
+PY
+)
+  projects=$(_pa_project_snapshots)
+  overview=$(sqliteoverview)
+  prompt=$(python3 - <<'PY' "$cal" "$reminders" "$inbox" "$projects" "$overview"
+import sys
+print(f'''Create a concise nightly review.
+
+Calendar for today and tomorrow:
+{sys.argv[1]}
+
+Reminders:
+{sys.argv[2]}
+
+Recent inbox items:
+{sys.argv[3]}
+
+Project snapshots:
+{sys.argv[4]}
+
+SQLite overview:
+{sys.argv[5]}
+
+Return exactly these sections:
+1. What got attention today
+2. Loose ends before tomorrow
+3. Top priorities for tomorrow
+4. Inbox or note cleanup suggestions
+5. One short reset recommendation
+
+Constraints:
+- Keep each section to 1-3 bullets
+- Focus on unfinished loops and tomorrow readiness
+- Do not mention tool usage or reasoning process
+- Keep it practical and concise
+''')
+PY
+)
+  command aichat -m ollama:llama3.1:8b "$prompt"
+}
+
+inboxtriage() {
+  local mode="${1:-preview}"
+  python3 - <<'PY' "$mode"
+from pathlib import Path
+from datetime import datetime
+import json
+import re
+import sqlite3
+import subprocess
+import sys
+
+mode = sys.argv[1]
+inbox = Path.home() / 'Notes' / 'inbox.md'
+projects_dir = Path.home() / 'Notes' / 'projects'
+research_dir = Path.home() / 'Notes' / 'research'
+meetings_dir = Path.home() / 'Notes' / 'meetings'
+agents_dir = Path.home() / 'ai-tools' / 'llm-functions' / 'agents' / 'personal-assistant'
+parse_script = str(Path.home() / 'ai-tools' / 'llm-functions' / 'utils' / 'parse_natural_datetime.py')
+
+if not inbox.exists():
+    raise SystemExit('Inbox not found.')
+
+lines = inbox.read_text(encoding='utf-8', errors='ignore').splitlines()
+items = [line for line in lines if line.startswith('- [')]
+deduped_items = []
+seen_items = set()
+for item in items:
+    if item in seen_items:
+        continue
+    seen_items.add(item)
+    deduped_items.append(item)
+project_slugs = [p.stem for p in sorted(projects_dir.glob('*.md'))] if projects_dir.exists() else []
+research_slugs = [p.stem for p in sorted(research_dir.glob('*.md'))] if research_dir.exists() else []
+
+def score_target(text, slug):
+    words = [w for w in slug.split('-') if len(w) > 2]
+    score = 0
+    if slug in text or slug.replace('-', '_') in text:
+        score += 3
+    score += sum(1 for w in words if w in text)
+    return score
+
+def append_section(path, section, item):
+    content = path.read_text(encoding='utf-8', errors='ignore') if path.exists() else f'# {path.stem}\n'
+    if section not in content:
+        content = content.rstrip() + f'\n\n{section}\n\n'
+    if item not in content:
+        content = content.rstrip() + f'\n{item}\n'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content.rstrip() + '\n', encoding='utf-8')
+
+def create_reminder(payload):
+    due_date = payload.get('due_date', '')
+    if due_date:
+        due_date = datetime.strptime(due_date, '%Y-%m-%d %H:%M').strftime('%A, %d %B %Y at %H:%M:%S')
+    return subprocess.run([
+        'osascript',
+        str(agents_dir / 'reminders_create_item.applescript'),
+        payload.get('title', ''),
+        '',
+        payload.get('notes', ''),
+        due_date,
+    ], check=True, capture_output=True, text=True)
+
+def create_calendar_event(payload):
+    return subprocess.run([
+        'osascript',
+        str(agents_dir / 'calendar_create_event.applescript'),
+        payload.get('title', ''),
+        payload.get('start', ''),
+        payload.get('end', ''),
+        payload.get('notes', ''),
+        '',
+    ], check=True, capture_output=True, text=True)
+
+def normalize_item_text(item):
+    return re.sub(r'^- \[[^\]]+\]\s*', '', item).strip()
+
+def extract_item_timestamp(item):
+    m = re.search(r'\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2})\]', item)
+    return m.group(1) if m else None
+
+def cleanup_title(text):
+    value = normalize_item_text(text)
+    value = re.sub(r'\b(reminder|todo|follow up|follow-up|calendar|meeting|schedule)\b', '', value, flags=re.I)
+    value = re.sub(r'\b(today|tomorrow|tonight|this morning|this afternoon|this evening|next week|in \d+ days|in \d+ weeks)\b', '', value, flags=re.I)
+    value = re.sub(r'\b(next|this)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b', '', value, flags=re.I)
+    value = re.sub(r'\b(at\s+)?\d{1,2}(:\d{2})?\s*(am|pm)\b', '', value, flags=re.I)
+    value = re.sub(r'\b\d{4}-\d{2}-\d{2}\s+\d{1,2}:\d{2}\b', '', value)
+    value = re.sub(r'\s+', ' ', value).strip(' ,.-')
+    return value
+
+def parse_dt(text):
+    proc = subprocess.run(['python3', parse_script, text], capture_output=True, text=True)
+    if proc.returncode != 0:
+        return None
+    return proc.stdout.strip()
+
+def infer_time_phrase(text):
+    lower = text.lower()
+    patterns = [
+        r'(in\s+\d+\s+(?:day|days|week|weeks)(?:\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?)?)',
+        r'(this\s+(?:morning|afternoon|evening))',
+        r'(tonight)',
+        r'(today(?:\s+at)?\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?)',
+        r'(tomorrow(?:\s+at)?\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?)',
+        r'(next\s+week(?:\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?)?)',
+        r'(next\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:\s+at)?\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?)',
+        r'(this\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:\s+at)?\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?)',
+        r'((?:today|tomorrow|next\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)))',
+        r'(\d{4}-\d{2}-\d{2}\s+\d{1,2}:\d{2})',
+    ]
+    for pattern in patterns:
+        m = re.search(pattern, lower)
+        if m:
+            return m.group(1).replace(' at ', ' ')
+    return None
+
+def infer_reminder_payload(item):
+    text = normalize_item_text(item)
+    phrase = infer_time_phrase(text)
+    due_date = parse_dt(phrase) if phrase else None
+    clean_title = cleanup_title(text)
+    return {"title": (clean_title or text)[:120], "notes": text, "due_date": due_date or ''}
+
+def infer_calendar_payload(item):
+    text = normalize_item_text(item)
+    phrase = infer_time_phrase(text)
+    start = parse_dt(phrase) if phrase else None
+    if start:
+        try:
+            start_dt = datetime.strptime(start, '%Y-%m-%d %H:%M')
+            end_dt = start_dt.replace(minute=0) if start_dt.minute != 0 else start_dt
+            end_dt = end_dt.replace(hour=end_dt.hour + 1 if end_dt.hour < 23 else end_dt.hour)
+            end = end_dt.strftime('%Y-%m-%d %H:%M')
+        except ValueError:
+            end = None
+    else:
+        end = None
+    clean_title = cleanup_title(text)
+    return {
+        "title": (clean_title or text)[:120],
+        "start": start or datetime.now().replace(hour=9, minute=0, second=0, microsecond=0).strftime('%Y-%m-%d %H:%M'),
+        "end": end or datetime.now().replace(hour=10, minute=0, second=0, microsecond=0).strftime('%Y-%m-%d %H:%M'),
+        "notes": text,
+    }
+
+def classify_item(item):
+    lower = item.lower()
+    suggestion = 'keep in inbox'
+    target_path = None
+    section = None
+    confidence = 0.2
+    best_project = None
+    best_project_score = 0
+    for slug in project_slugs:
+        score = score_target(lower, slug)
+        if score > best_project_score:
+            best_project = slug
+            best_project_score = score
+    best_research = None
+    best_research_score = 0
+    for slug in research_slugs:
+        score = score_target(lower, slug)
+        if score > best_research_score:
+            best_research = slug
+            best_research_score = score
+
+    if '#meeting' in lower:
+        suggestion = 'move to meetings note'
+        target_path = meetings_dir / f"{datetime.now().strftime('%Y-%m-%d')}-inbox-triage.md"
+        section = '## Inbox triage'
+        confidence = 0.95
+    elif best_project_score > 0:
+        suggestion = f'move to project:{best_project}'
+        target_path = projects_dir / f'{best_project}.md'
+        section = '## Inbox captures'
+        confidence = min(0.95, 0.45 + (best_project_score * 0.12))
+    elif best_research_score > 0 or '#research' in lower or '#search' in lower:
+        suggestion = f'move to research:{best_research or "search-workflow-study"}'
+        target_path = research_dir / f'{best_research or "search-workflow-study"}.md'
+        section = '## Captures'
+        confidence = min(0.9, 0.5 + (best_research_score * 0.1) + (0.15 if '#search' in lower or '#research' in lower else 0))
+    elif any(k in lower for k in ['reminder', 'todo', 'follow up', 'follow-up']):
+        suggestion = 'convert to reminder'
+        confidence = 0.78
+    elif any(k in lower for k in ['calendar', 'meeting', 'schedule', 'tomorrow', 'next week', 'today at', 'tomorrow at']):
+        suggestion = 'check for calendar event'
+        confidence = 0.72
+    return suggestion, target_path, section, confidence
+
+def log_inbox_decision(item, suggestion, confidence, applied, target_type=None, target_ref=None):
+    created_at = extract_item_timestamp(item)
+    content = normalize_item_text(item)
+    tags = ' '.join(re.findall(r'#[a-zA-Z0-9_\-]+', item)) or None
+    suggested_type = None
+    suggested_ref = None
+    if suggestion.startswith('move to project:'):
+        suggested_type = 'project'
+        suggested_ref = suggestion.split(':', 1)[1]
+    elif suggestion.startswith('move to research:'):
+        suggested_type = 'research'
+        suggested_ref = suggestion.split(':', 1)[1]
+    elif suggestion == 'move to meetings note':
+        suggested_type = 'meeting'
+    elif suggestion == 'convert to reminder':
+        suggested_type = 'reminder'
+    elif suggestion == 'check for calendar event':
+        suggested_type = 'calendar'
+
+    db = Path.home() / 'Notes' / 'assistant.db'
+    conn = sqlite3.connect(db)
+    conn.execute(
+        '''INSERT INTO inbox_items (content, tags, suggested_target_type, suggested_target_ref, confidence, applied, applied_target_type, applied_target_ref, created_at, applied_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END)''',
+        (content, tags, suggested_type, suggested_ref, confidence, 1 if applied else 0, target_type, target_ref, created_at, 1 if applied else 0)
+    )
+    conn.commit()
+    conn.close()
+
+actions = []
+kept = []
+choice_stream = None
+if mode == '--interactive':
+    try:
+        choice_stream = open('/dev/tty', 'r', encoding='utf-8')
+    except OSError:
+        choice_stream = sys.stdin
+
+for item in deduped_items[-12:]:
+    suggestion, target_path, section, confidence = classify_item(item)
+
+    print(f'{item}\n  -> {suggestion} | confidence={confidence:.2f}')
+    if mode == '--apply' and target_path and section:
+        append_section(target_path, section, item)
+        log_inbox_decision(item, suggestion, confidence, True, section.replace('## ', '').lower().replace(' ', '_'), str(target_path))
+        actions.append(item)
+    elif mode == '--apply-reminders' and suggestion == 'convert to reminder':
+        payload = infer_reminder_payload(item)
+        create_reminder(payload)
+        log_inbox_decision(item, suggestion, confidence, True, 'reminder', payload.get('title'))
+        actions.append(item)
+    elif mode == '--apply-calendar' and suggestion == 'check for calendar event':
+        payload = infer_calendar_payload(item)
+        create_calendar_event(payload)
+        log_inbox_decision(item, suggestion, confidence, True, 'calendar', payload.get('title'))
+        actions.append(item)
+    elif mode == '--interactive':
+        print('Apply action? [y]es/[s]kip/[q]uit: ', end='', flush=True)
+        choice = choice_stream.readline().strip().lower()
+        if choice == 'q':
+            break
+        if choice == 'y':
+            if target_path and section:
+                append_section(target_path, section, item)
+                log_inbox_decision(item, suggestion, confidence, True, section.replace('## ', '').lower().replace(' ', '_'), str(target_path))
+                actions.append(item)
+            elif suggestion == 'convert to reminder':
+                payload = infer_reminder_payload(item)
+                create_reminder(payload)
+                log_inbox_decision(item, suggestion, confidence, True, 'reminder', payload.get('title'))
+                actions.append(item)
+            elif suggestion == 'check for calendar event':
+                payload = infer_calendar_payload(item)
+                create_calendar_event(payload)
+                log_inbox_decision(item, suggestion, confidence, True, 'calendar', payload.get('title'))
+                actions.append(item)
+            else:
+                kept.append(item)
+        else:
+            kept.append(item)
+    else:
+        kept.append(item)
+
+if mode in {'--apply', '--apply-reminders', '--apply-calendar', '--interactive'} and actions:
+    remaining = []
+    moved = set(actions)
+    for line in lines:
+        if line in moved:
+            continue
+        remaining.append(line)
+    inbox.write_text('\n'.join(remaining).rstrip() + '\n', encoding='utf-8')
+    print(f'\nApplied triage to {len(actions)} item(s).')
+elif mode in {'--apply', '--apply-reminders', '--apply-calendar', '--interactive'}:
+    print('\nNo triage actions were applicable.')
+PY
+}
+
+projectreview() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: projectreview "project name"'
+    return 1
+  fi
+  local query="$*"
+  local project_file tag_slug project_text inbox reminders events prompt
+  project_file=$(_pa_resolve_note_file "$HOME/Notes/projects" "$query")
+  if [ -z "$project_file" ]; then
+    echo "No project note found for: $query"
+    return 1
+  fi
+  tag_slug="#$(basename "$project_file" .md | tr '-' '_')"
+  project_text=$(python3 - <<'PY' "$project_file"
+from pathlib import Path
+import sys
+print(Path(sys.argv[1]).read_text(encoding='utf-8', errors='ignore'))
+PY
+)
+  inbox=$(python3 - <<'PY' "$tag_slug" "$query"
+from pathlib import Path
+import sys
+path = Path.home() / 'Notes' / 'inbox.md'
+if path.exists():
+    text = path.read_text(encoding='utf-8', errors='ignore').splitlines()
+    matches = [line for line in text if sys.argv[1].lower() in line.lower() or sys.argv[2].lower() in line.lower()]
+    print('\n'.join(matches[-10:]))
+PY
+)
+  reminders=$(reminderfind "$query")
+  events=$(eventfind "$query" 30)
+  prompt=$(python3 - <<'PY' "$query" "$project_text" "$inbox" "$reminders" "$events"
+import sys
+print(f'''Give me a concise project review for: {sys.argv[1]}
+
+Project note:
+{sys.argv[2]}
+
+Matching inbox items:
+{sys.argv[3]}
+
+Matching reminders:
+{sys.argv[4]}
+
+Matching calendar events:
+{sys.argv[5]}
+
+Return:
+1. Current status
+2. Open tasks and risks
+3. Best next actions
+4. Notes that should be moved into the project file
+''')
+PY
+)
+  command aichat -m ollama:llama3.1:8b "$prompt"
+}
+
+projectdashboard() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: projectdashboard "project name"'
+    return 1
+  fi
+  local query="$*"
+  local project_file tag_slug inbox reminders events slug project_id
+  project_file=$(_pa_resolve_note_file "$HOME/Notes/projects" "$query")
+  if [ -z "$project_file" ]; then
+    echo "No project note found for: $query"
+    return 1
+  fi
+  slug=$(basename "$project_file" .md)
+  project_id=$(_pa_db_project_id "$slug")
+  tag_slug="#$(basename "$project_file" .md | tr '-' '_')"
+  inbox=$(python3 - <<'PY' "$tag_slug" "$query"
+from pathlib import Path
+import sys
+path = Path.home() / 'Notes' / 'inbox.md'
+if path.exists():
+    text = path.read_text(encoding='utf-8', errors='ignore').splitlines()
+    matches = [line for line in text if sys.argv[1].lower() in line.lower() or sys.argv[2].lower() in line.lower()]
+    print('\n'.join(matches[-8:]))
+PY
+)
+  reminders=$(reminderfind "$query")
+  events=$(eventfind "$query" 30)
+  python3 - <<'PY' "$(_pa_db_path)" "$project_id" "$project_file" "$inbox" "$reminders" "$events"
+import sqlite3
+import sys
+
+db_path, project_id, project_file, inbox, reminders, events = sys.argv[1:7]
+project_id = int(project_id)
+conn = sqlite3.connect(db_path)
+row = conn.execute("SELECT slug, status, owner, health_score, health_label FROM projects WHERE id = ?", (project_id,)).fetchone()
+tasks = [r[0] for r in conn.execute("SELECT title FROM tasks WHERE project_id = ? AND source_type = 'project_next_step' ORDER BY id LIMIT 6", (project_id,))]
+decision_count = conn.execute("SELECT count(*) FROM decisions WHERE project_id = ?", (project_id,)).fetchone()[0]
+update_count = conn.execute("SELECT count(*) FROM project_updates WHERE project_id = ?", (project_id,)).fetchone()[0]
+conn.close()
+
+def count_real_lines(text):
+    text = text.strip()
+    return 0 if not text or text.lower().startswith('no matching') else len([line for line in text.splitlines() if line.strip()])
+
+print(f"Project: {row[0]}")
+print(f"Path: {project_file}")
+print(f"Status: {row[1]}")
+print(f"Owner: {row[2] or 'unknown'}")
+print(f"Health: {row[4]} ({row[3]}/100)")
+print()
+print('Next steps:')
+if tasks:
+    for line in tasks:
+        print(f"- {line}")
+else:
+    print('- No explicit next steps found.')
+print()
+print('Matching inbox:')
+print(inbox.strip() or 'No matching inbox items.')
+print()
+print('Matching reminders:')
+print(reminders.strip() or 'No matching reminders.')
+print()
+print('Matching calendar events:')
+print(events.strip() or 'No matching calendar events.')
+print()
+print('Signals:')
+print(f"- next steps: {len(tasks)}")
+print(f"- decisions: {decision_count}")
+print(f"- updates: {update_count}")
+print(f"- matching inbox items: {count_real_lines(inbox)}")
+print(f"- matching reminders: {count_real_lines(reminders)}")
+print(f"- matching calendar events: {count_real_lines(events)}")
+PY
+}
+
+projecttasks() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: projecttasks "project name"'
+    return 1
+  fi
+  local slug
+  slug=$(python3 - <<'PY' "$*"
+import re, sys
+print(re.sub(r'[^a-z0-9]+', '-', ' '.join(sys.argv[1:]).lower()).strip('-'))
+PY
+)
+  sqlite3 "$(_pa_db_path)" <<SQL
+.mode list
+SELECT 'Project tasks for: $slug';
+SELECT '';
+SELECT 'Next steps:';
+SELECT COALESCE(group_concat('- ' || t.title, char(10)), '- None')
+FROM tasks t
+JOIN projects p ON t.project_id = p.id
+WHERE p.slug = '$(_pa_sql_escape "$slug")' AND t.source_type = 'project_next_step';
+SELECT '';
+SELECT 'Recent updates:';
+SELECT COALESCE(group_concat('- ' || summary, char(10)), '- None')
+FROM (
+  SELECT summary
+  FROM project_updates u
+  JOIN projects p ON u.project_id = p.id
+  WHERE p.slug = '$(_pa_sql_escape "$slug")'
+  ORDER BY u.created_at DESC
+  LIMIT 8
+);
+SELECT '';
+SELECT 'Decisions:';
+SELECT COALESCE(group_concat('- ' || decision, char(10)), '- None')
+FROM decisions d
+JOIN projects p ON d.project_id = p.id
+WHERE p.slug = '$(_pa_sql_escape "$slug")';
+SQL
+}
+
+projectnext() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: projectnext "project name"'
+    return 1
+  fi
+  local query="$*"
+  local project_file reminders events prompt slug project_id tasks decisions health
+  project_file=$(_pa_resolve_note_file "$HOME/Notes/projects" "$query")
+  if [ -z "$project_file" ]; then
+    echo "No project note found for: $query"
+    return 1
+  fi
+  slug=$(basename "$project_file" .md)
+  project_id=$(_pa_db_project_id "$slug")
+  tasks=$(sqlite3 "$(_pa_db_path)" "SELECT title FROM tasks WHERE project_id = $project_id AND source_type = 'project_next_step' ORDER BY id LIMIT 6;")
+  decisions=$(sqlite3 "$(_pa_db_path)" "SELECT decision FROM decisions WHERE project_id = $project_id ORDER BY created_at DESC LIMIT 5;")
+  health=$(sqlite3 "$(_pa_db_path)" "SELECT health_label || ' (' || health_score || '/100)' FROM projects WHERE id = $project_id LIMIT 1;")
+  reminders=$(reminderfind "$query")
+  events=$(eventfind "$query" 30)
+  prompt=$(python3 - <<'PY' "$query" "$tasks" "$decisions" "$health" "$reminders" "$events"
+import sys
+print(f'''Based on this project state and matching activity, tell me the single best next action.
+
+Project: {sys.argv[1]}
+
+SQLite next steps:
+{sys.argv[2]}
+
+Recent decisions:
+{sys.argv[3]}
+
+Health:
+{sys.argv[4]}
+
+Matching reminders:
+{sys.argv[5]}
+
+Matching calendar events:
+{sys.argv[6]}
+
+Return:
+- Best next action
+- Why it matters
+- Suggested follow-up after that
+
+Keep it concise.
+''')
+PY
+)
+  command aichat -m ollama:llama3.1:8b "$prompt"
+}
+
+projectreviewweekly() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: projectreviewweekly "project name"'
+    return 1
+  fi
+  local query="$*"
+  local project_file reminders events inbox prompt slug project_id tasks health decisions
+  project_file=$(_pa_resolve_note_file "$HOME/Notes/projects" "$query")
+  if [ -z "$project_file" ]; then
+    echo "No project note found for: $query"
+    return 1
+  fi
+  slug=$(basename "$project_file" .md)
+  project_id=$(_pa_db_project_id "$slug")
+  tasks=$(sqlite3 "$(_pa_db_path)" "SELECT title FROM tasks WHERE project_id = $project_id AND source_type = 'project_next_step' ORDER BY id LIMIT 8;")
+  decisions=$(sqlite3 "$(_pa_db_path)" "SELECT decision FROM decisions WHERE project_id = $project_id ORDER BY created_at DESC LIMIT 5;")
+  health=$(sqlite3 "$(_pa_db_path)" "SELECT health_label || ' (' || health_score || '/100)' FROM projects WHERE id = $project_id LIMIT 1;")
+  reminders=$(reminderfind "$query")
+  events=$(eventfind "$query" 7)
+  inbox=$(python3 - <<'PY' "$query"
+from pathlib import Path
+import sys
+path = Path.home() / 'Notes' / 'inbox.md'
+if path.exists():
+    lines = path.read_text(encoding='utf-8', errors='ignore').splitlines()
+    matches = [line for line in lines if sys.argv[1].lower() in line.lower()]
+    print('\n'.join(matches[-8:]))
+PY
+)
+  prompt=$(python3 - <<'PY' "$query" "$tasks" "$decisions" "$health" "$reminders" "$events" "$inbox"
+import sys
+print(f'''Create a concise weekly project review.
+
+Project: {sys.argv[1]}
+
+SQLite tasks:
+{sys.argv[2]}
+
+Recent decisions:
+{sys.argv[3]}
+
+Health:
+{sys.argv[4]}
+
+Matching reminders:
+{sys.argv[5]}
+
+Upcoming events (7 days):
+{sys.argv[6]}
+
+Recent inbox mentions:
+{sys.argv[7]}
+
+Return exactly these sections:
+1. Progress this week
+2. Risks or blockers
+3. Best next actions
+4. What should be cleaned up or rescheduled
+
+Keep it concise.
+''')
+PY
+)
+  command aichat -m ollama:llama3.1:8b "$prompt"
+}
+
+projectindex() {
+  sqlite3 "$(_pa_db_path)" <<'SQL'
+.mode list
+SELECT 'Active projects:';
+SELECT '- ' || slug || ' | status=' || status || ' | owner=' || COALESCE(owner,'unknown') || ' | health=' || COALESCE(health_label,'active') || ' (' || COALESCE(health_score,50) || '/100) | next=' || COALESCE((SELECT count(*) FROM tasks t WHERE t.project_id = p.id AND t.source_type = 'project_next_step'),0) || ' | decisions=' || COALESCE((SELECT count(*) FROM decisions d WHERE d.project_id = p.id),0) || ' | updates=' || COALESCE((SELECT count(*) FROM project_updates u WHERE u.project_id = p.id),0)
+FROM projects p
+WHERE status != 'archived'
+ORDER BY title;
+SELECT '';
+SELECT 'Archived projects:';
+SELECT COALESCE(group_concat('- ' || slug, char(10)), '- None')
+FROM projects
+WHERE status = 'archived';
+SQL
+}
+
+projectstale() {
+  sqlite3 "$(_pa_db_path)" <<'SQL'
+.mode list
+SELECT 'Potentially stale projects:';
+SELECT COALESCE(group_concat(
+  '- ' || slug || ' | updates=' || COALESCE((SELECT count(*) FROM project_updates u WHERE u.project_id = p.id),0) || ' | decisions=' || COALESCE((SELECT count(*) FROM decisions d WHERE d.project_id = p.id),0) || ' | suggestion=' || CASE WHEN COALESCE((SELECT count(*) FROM tasks t WHERE t.project_id = p.id AND t.status = 'open'),0) = 0 THEN 'archive or close' ELSE 'review next actions' END
+, char(10)), '- None')
+FROM projects p
+WHERE status != 'archived'
+  AND COALESCE(updated_at, created_at) <= datetime('now', '-14 day');
+SQL
+}
+
+projectreminder() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: projectreminder "project" "title" [due-date] [notes]'
+    return 1
+  fi
+  local project="$1"
+  local title="$2"
+  local due="${3:-}"
+  local notes="${4:-}"
+  local tagged_title="[$project] $title"
+  reminderadd "$tagged_title" "$due" "$notes"
+  local project_file slug project_id
+  project_file=$(_pa_resolve_note_file "$HOME/Notes/projects" "$project")
+  if [ -n "$project_file" ]; then
+    slug=$(basename "$project_file" .md)
+    project_id=$(_pa_db_project_id "$slug")
+    if [ -n "$project_id" ]; then
+      sqlite3 "$(_pa_db_path)" "INSERT INTO project_updates (project_id, update_type, summary, source_type, source_ref, created_at) VALUES ($project_id, 'reminder', '$(_pa_sql_escape "$tagged_title")', 'helper', '$(_pa_sql_escape "$notes")', CURRENT_TIMESTAMP);"
+      _pa_db_project_upsert_health "$slug"
+    fi
+  fi
+}
+
+projectevent() {
+  if [ "$#" -lt 4 ]; then
+    echo 'Usage: projectevent "project" "title" "start" "end" [notes]'
+    return 1
+  fi
+  local project="$1"
+  local title="$2"
+  local start="$3"
+  local end="$4"
+  local notes="${5:-}"
+  local tagged_title="[$project] $title"
+  scheduleadd "$tagged_title" "$start" "$end" "$notes"
+  local project_file slug project_id
+  project_file=$(_pa_resolve_note_file "$HOME/Notes/projects" "$project")
+  if [ -n "$project_file" ]; then
+    slug=$(basename "$project_file" .md)
+    project_id=$(_pa_db_project_id "$slug")
+    if [ -n "$project_id" ]; then
+      sqlite3 "$(_pa_db_path)" "INSERT INTO project_updates (project_id, update_type, summary, source_type, source_ref, created_at) VALUES ($project_id, 'calendar_event', '$(_pa_sql_escape "$tagged_title")', 'helper', '$(_pa_sql_escape "$start -> $end | $notes")', CURRENT_TIMESTAMP);"
+      _pa_db_project_upsert_health "$slug"
+    fi
+  fi
+}
+
+projectschedule() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: projectschedule "project name"'
+    return 1
+  fi
+  local query="$*"
+  echo '== Reminders =='
+  reminderfind "$query"
+  echo
+  echo '== Calendar =='
+  eventfind "$query" 30
+}
+
+projectdone() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: projectdone "project name"'
+    return 1
+  fi
+  local query="$*"
+  local project_file archive_dir archive_file slug project_id
+  project_file=$(_pa_resolve_note_file "$HOME/Notes/projects" "$query")
+  if [ -z "$project_file" ]; then
+    echo "No project note found for: $query"
+    return 1
+  fi
+  slug=$(basename "$project_file" .md)
+  project_id=$(_pa_db_project_id "$slug")
+  archive_dir="$HOME/Notes/projects/archive"
+  mkdir -p "$archive_dir"
+  archive_file="$archive_dir/$(basename "$project_file")"
+  if grep -q '^Status:' "$project_file"; then
+    python3 - <<'PY' "$project_file"
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+lines = path.read_text(encoding='utf-8', errors='ignore').splitlines()
+updated = []
+for line in lines:
+    if line.startswith('Status:'):
+        updated.append('Status: archived')
+    else:
+        updated.append(line)
+path.write_text('\n'.join(updated).rstrip() + '\n', encoding='utf-8')
+PY
+  else
+    python3 - <<'PY' "$project_file"
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+text = path.read_text(encoding='utf-8', errors='ignore').rstrip()
+path.write_text(text + '\n\nStatus: archived\n', encoding='utf-8')
+PY
+  fi
+  if [ -n "$project_id" ]; then
+    sqlite3 "$(_pa_db_path)" "UPDATE projects SET status = 'archived', updated_at = CURRENT_TIMESTAMP WHERE id = $project_id;"
+  fi
+  mv "$project_file" "$archive_file"
+  echo "$archive_file"
+}
+
+projectreopen() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: projectreopen "project name"'
+    return 1
+  fi
+  local query="$*"
+  local archive_dir="$HOME/Notes/projects/archive"
+  local archived_file restored_path slug project_id
+  archived_file=$(_pa_resolve_note_file "$archive_dir" "$query")
+  if [ -z "$archived_file" ]; then
+    echo "No archived project note found for: $query"
+    return 1
+  fi
+  python3 - <<'PY' "$archived_file"
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+lines = path.read_text(encoding='utf-8', errors='ignore').splitlines()
+updated = []
+found = False
+for line in lines:
+    if line.startswith('Status:'):
+        updated.append('Status: active')
+        found = True
+    else:
+        updated.append(line)
+if not found:
+    updated.append('')
+    updated.append('Status: active')
+path.write_text('\n'.join(updated).rstrip() + '\n', encoding='utf-8')
+PY
+  restored_path="$HOME/Notes/projects/$(basename "$archived_file")"
+  mv "$archived_file" "$restored_path"
+  slug=$(basename "$restored_path" .md)
+  project_id=$(_pa_db_project_id "$slug")
+  if [ -n "$project_id" ]; then
+    sqlite3 "$(_pa_db_path)" "UPDATE projects SET status = 'active', updated_at = CURRENT_TIMESTAMP WHERE id = $project_id;"
+    _pa_db_project_upsert_health "$slug"
+  fi
+  echo "$restored_path"
+}
+
+inboxclean() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: inboxclean project|research "query"'
+    return 1
+  fi
+  local kind="$1"
+  shift
+  local query="$*"
+  local base target
+  case "$kind" in
+    project) base="$HOME/Notes/projects" ;;
+    research) base="$HOME/Notes/research" ;;
+    *) echo 'Use project or research.'; return 1 ;;
+  esac
+  target=$(_pa_resolve_note_file "$base" "$query")
+  if [ -z "$target" ]; then
+    echo "No target note found for: $query"
+    return 1
+  fi
+  python3 - <<'PY' "$HOME/Notes/inbox.md" "$target" "$query"
+from pathlib import Path
+import sys
+
+inbox_path = Path(sys.argv[1])
+target_path = Path(sys.argv[2])
+query = sys.argv[3].lower()
+tag = '#' + target_path.stem.replace('-', '_').lower()
+
+if not inbox_path.exists() or not target_path.exists():
+    raise SystemExit('Inbox or target note missing.')
+
+inbox_lines = inbox_path.read_text(encoding='utf-8', errors='ignore').splitlines()
+matches = []
+kept = []
+for line in inbox_lines:
+    if line.startswith('- [') and (query in line.lower() or tag in line.lower()):
+        matches.append(line)
+    else:
+        kept.append(line)
+
+if not matches:
+    print('No matching inbox items found.')
+    raise SystemExit(0)
+
+target_text = target_path.read_text(encoding='utf-8', errors='ignore')
+section = '## Inbox captures'
+if section not in target_text:
+    target_text = target_text.rstrip() + f'\n\n{section}\n\n'
+for item in matches:
+    if item not in target_text:
+        target_text += item + '\n'
+
+target_path.write_text(target_text.rstrip() + '\n', encoding='utf-8')
+inbox_path.write_text('\n'.join(kept).rstrip() + '\n', encoding='utf-8')
+print(f'Moved {len(matches)} inbox item(s) to {target_path}')
+PY
+}
+
+exportcalendar() {
+  local days="${1:-7}"
+  local file="${2:-$HOME/Notes/exports/calendar-$(date '+%Y-%m-%d').md}"
+  local start json content
+  start=$(python3 - <<'PY'
+from datetime import datetime
+print(datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).strftime('%Y-%m-%d %H:%M'))
+PY
+) || return 1
+  json=$(python3 -c 'import json,sys; print(json.dumps({"start": sys.argv[1], "days": int(sys.argv[2])}))' "$start" "$days")
+  content=$("$HOME/ai-tools/llm-functions/bin/personal-assistant" calendar_list_events "$json")
+  python3 - <<'PY' "$file" "$days" "$content"
+from pathlib import Path
+import sys
+path = Path(sys.argv[1]).expanduser()
+path.parent.mkdir(parents=True, exist_ok=True)
+body = f"# Calendar Export\n\nWindow: next {sys.argv[2]} day(s)\n\n```text\n{sys.argv[3]}\n```\n"
+path.write_text(body, encoding='utf-8')
+print(path)
+PY
+}
+
+exportreminders() {
+  local file="${1:-$HOME/Notes/exports/reminders-$(date '+%Y-%m-%d').md}"
+  local content
+  content=$(remindershow)
+  python3 - <<'PY' "$file" "$content"
+from pathlib import Path
+import sys
+path = Path(sys.argv[1]).expanduser()
+path.parent.mkdir(parents=True, exist_ok=True)
+body = f"# Reminders Export\n\n```text\n{sys.argv[2]}\n```\n"
+path.write_text(body, encoding='utf-8')
+print(path)
+PY
+}
+
+exportbrief() {
+  local mode="${1:-weekly}"
+  local file="${2:-$HOME/Notes/exports/review-${mode}-$(date '+%Y-%m-%d').md}"
+  local content
+  content=$(review "$mode") || return 1
+  python3 - <<'PY' "$file" "$mode" "$content"
+from pathlib import Path
+import sys
+path = Path(sys.argv[1]).expanduser()
+path.parent.mkdir(parents=True, exist_ok=True)
+body = f"# Review Export\n\nMode: {sys.argv[2]}\n\n{sys.argv[3]}\n"
+  path.write_text(body, encoding='utf-8')
+  print(path)
+PY
+}
+
+projectcapture() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: projectcapture "project name" "text"'
+    return 1
+  fi
+  local project="$1"
+  shift
+  local text="$*"
+  local target
+  target=$(_pa_resolve_note_file "$HOME/Notes/projects" "$project")
+  if [ -z "$target" ]; then
+    echo "No project note found for: $project"
+    return 1
+  fi
+  _pa_append_to_note_section "$target" '## Captures' "$text"
+  local slug project_id
+  slug=$(basename "$target" .md)
+  project_id=$(_pa_db_project_id "$slug")
+  if [ -n "$project_id" ]; then
+    sqlite3 "$(_pa_db_path)" "INSERT INTO project_updates (project_id, update_type, summary, source_type, source_ref, created_at) VALUES ($project_id, 'capture', '$(_pa_sql_escape "$text")', 'helper', '$(_pa_sql_escape "$target")', CURRENT_TIMESTAMP);"
+    _pa_db_project_upsert_health "$slug"
+  fi
+}
+
+researchcapture() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: researchcapture "topic" "text"'
+    return 1
+  fi
+  local topic="$1"
+  shift
+  local text="$*"
+  local target
+  target=$(_pa_resolve_note_file "$HOME/Notes/research" "$topic")
+  if [ -z "$target" ]; then
+    echo "No research note found for: $topic"
+    return 1
+  fi
+  _pa_append_to_note_section "$target" '## Captures' "$text"
+  local slug topic_id
+  slug=$(basename "$target" .md)
+  sqlite3 "$(_pa_db_path)" "INSERT INTO research_topics (slug, title, note_path, updated_at) VALUES ('$(_pa_sql_escape "$slug")', '$(_pa_sql_escape "$slug")', '$(_pa_sql_escape "$target")', CURRENT_TIMESTAMP) ON CONFLICT(slug) DO UPDATE SET note_path=excluded.note_path, updated_at=CURRENT_TIMESTAMP;"
+  topic_id=$(sqlite3 "$(_pa_db_path)" "SELECT id FROM research_topics WHERE slug = '$(_pa_sql_escape "$slug")' LIMIT 1;")
+  if [ -n "$topic_id" ]; then
+    sqlite3 "$(_pa_db_path)" "INSERT INTO research_items (topic_id, summary, source_type, created_at) VALUES ($topic_id, '$(_pa_sql_escape "$text")', 'helper_capture', CURRENT_TIMESTAMP);"
+  fi
+}
+
+decisionlog() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: decisionlog project|research "target" "decision text" [reason]'
+    return 1
+  fi
+  local kind="$1"
+  local target_name="$2"
+  local decision_text="$3"
+  local reason_text="${4:-}"
+  local target_file entry
+  case "$kind" in
+    project)
+      target_file=$(_pa_resolve_note_file "$HOME/Notes/projects" "$target_name")
+      ;;
+    research)
+      target_file=$(_pa_resolve_note_file "$HOME/Notes/research" "$target_name")
+      ;;
+    *)
+      echo 'Use target type: project or research.'
+      return 1
+      ;;
+  esac
+  if [ -z "$target_file" ]; then
+    echo "No target note found for: $target_name"
+    return 1
+  fi
+  if [ -n "$reason_text" ]; then
+    entry="Decision: $decision_text | Reason: $reason_text"
+  else
+    entry="Decision: $decision_text"
+  fi
+  _pa_append_to_note_section "$target_file" '## Decisions' "$entry"
+  local slug project_id
+  slug=$(basename "$target_file" .md)
+  project_id=$(_pa_db_project_id "$slug")
+  if [ -n "$project_id" ]; then
+    sqlite3 "$(_pa_db_path)" "INSERT INTO decisions (project_id, decision, reason, source_type, source_ref, created_at) VALUES ($project_id, '$(_pa_sql_escape "$decision_text")', '$(_pa_sql_escape "$reason_text")', 'helper', '$(_pa_sql_escape "$target_file")', CURRENT_TIMESTAMP);"
+    _pa_db_project_upsert_health "$slug"
+  fi
+}
+
+meetingsummary() {
+  if [ "$#" -lt 2 ]; then
+    echo 'Usage: meetingsummary "title" <note-file-or-text> [date]'
+    return 1
+  fi
+  local title="$1"
+  local source_input="$2"
+  local when="${3:-$(date '+%Y-%m-%d %H:%M')}"
+  local raw_text file slug prompt summary target_file
+  if [ -f "$source_input" ]; then
+    raw_text=$(python3 - <<'PY' "$source_input"
+from pathlib import Path
+import sys
+print(Path(sys.argv[1]).read_text(encoding='utf-8', errors='ignore'))
+PY
+)
+  else
+    raw_text="$source_input"
+  fi
+  slug=$(python3 -c 'import re,sys; print(re.sub(r"[^a-z0-9]+", "-", sys.argv[1].lower()).strip("-"))' "$title")
+  target_file="$HOME/Notes/meetings/$(date '+%Y-%m-%d')-$slug.md"
+  prompt=$(python3 - <<'PY' "$title" "$when" "$raw_text"
+import sys
+print(f'''Turn these meeting notes into a concise meeting summary.
+
+Title: {sys.argv[1]}
+Date: {sys.argv[2]}
+
+Raw notes:
+{sys.argv[3]}
+
+Return exactly these sections:
+## Summary
+- 2-4 bullets
+
+## Decisions
+- 1-4 bullets
+
+## Action items
+- 1-6 bullets with clear owners if visible
+
+## Open questions
+- 0-4 bullets
+''')
+PY
+)
+  summary=$(command aichat -m ollama:llama3.1:8b "$prompt") || return 1
+  python3 - <<'PY' "$target_file" "$title" "$when" "$summary"
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+title = sys.argv[2]
+when = sys.argv[3]
+summary = sys.argv[4].rstrip()
+path.parent.mkdir(parents=True, exist_ok=True)
+content = f"# {title}\n\nDate: {when}\nTags: #meeting\n\n{summary}\n"
+path.write_text(content, encoding='utf-8')
+print(path)
+PY
+  sqlite3 "$(_pa_db_path)" "INSERT INTO meetings (title, meeting_date, note_path, summary, created_at) VALUES ('$(_pa_sql_escape "$title")', '$(_pa_sql_escape "$when")', '$(_pa_sql_escape "$target_file")', '$(_pa_sql_escape "$summary")', CURRENT_TIMESTAMP);"
+}
+
+exportproject() {
+  if [ "$#" -lt 1 ]; then
+    echo 'Usage: exportproject "project name" [file]'
+    return 1
+  fi
+  local query="$1"
+  local file="${2:-$HOME/Notes/exports/project-$(_pa_slugify "$query")-$(date '+%Y-%m-%d').md}"
+  local project_file project_text inbox reminders events prompt content
+  project_file=$(_pa_resolve_note_file "$HOME/Notes/projects" "$query")
+  if [ -z "$project_file" ]; then
+    echo "No project note found for: $query"
+    return 1
+  fi
+  project_text=$(python3 - <<'PY' "$project_file"
+from pathlib import Path
+import sys
+print(Path(sys.argv[1]).read_text(encoding='utf-8', errors='ignore'))
+PY
+)
+  inbox=$(python3 - <<'PY' "$query"
+from pathlib import Path
+import sys
+path = Path.home() / 'Notes' / 'inbox.md'
+if path.exists():
+    lines = path.read_text(encoding='utf-8', errors='ignore').splitlines()
+    matches = [line for line in lines if sys.argv[1].lower() in line.lower()]
+    print('\n'.join(matches[-10:]))
+PY
+)
+  reminders=$(reminderfind "$query")
+  events=$(eventfind "$query" 30)
+  prompt=$(python3 - <<'PY' "$query" "$project_text" "$inbox" "$reminders" "$events"
+import sys
+print(f'''Write a concise Markdown project status report for: {sys.argv[1]}
+
+Project note:
+{sys.argv[2]}
+
+Matching inbox items:
+{sys.argv[3]}
+
+Matching reminders:
+{sys.argv[4]}
+
+Matching calendar events:
+{sys.argv[5]}
+
+Use sections:
+- Status
+- Recent Signals
+- Risks
+- Next Actions
+''')
+PY
+)
+  content=$(command aichat -m ollama:llama3.1:8b "$prompt") || return 1
+  python3 - <<'PY' "$file" "$content"
+from pathlib import Path
+import sys
+path = Path(sys.argv[1]).expanduser()
+path.parent.mkdir(parents=True, exist_ok=True)
+path.write_text(sys.argv[2].rstrip() + '\n', encoding='utf-8')
+print(path)
+PY
+}
