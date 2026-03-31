@@ -3,13 +3,16 @@
 # Guard an operation with a confirmation prompt.
 
 main() {
-    if [ -t 1 ]; then
-        confirmation_prompt="${1:-"Are you sure you want to continue?"}"
-        read -r -p "$confirmation_prompt [Y/n] " ans
-        if [[ "$ans" == "N" || "$ans" == "n" ]]; then
-            echo "error: aborted!" 2>&1
-            exit 1
-        fi
+    # If stdin is not a terminal (piped/redirected), assume AI orchestration and skip interactivity
+    if [[ ! -t 0 ]]; then
+        return 0
+    fi
+
+    confirmation_prompt="${1:-"Are you sure you want to continue?"}"
+    read -r -p "$confirmation_prompt [Y/n] " ans
+    if [[ "$ans" != "Y" && "$ans" != "y" && "$ans" != "" ]]; then
+        echo "error: aborted!" 2>&1
+        exit 1
     fi
 }
 

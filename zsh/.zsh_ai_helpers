@@ -20,6 +20,7 @@ aichat() {
 # Personal assistant shortcuts
 alias pa='aichat --role personal-assistant'
 alias wa='aichat --role workflow-agent'
+alias ghm="aichat --role repo-manager"
 alias fm='aichat --role file-manager'
 alias pnotes='aichat --role notes-assistant'
 alias wreview='aichat --role weekly-review'

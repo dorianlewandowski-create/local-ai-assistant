@@ -36,3 +36,7 @@ autonomous_fix.sh
 browser_get_active_tab.sh
 file_find.sh
 file_classify.sh
+gh_issue.sh
+repo_summary.sh
+auto_document.sh
+repo_push.sh
