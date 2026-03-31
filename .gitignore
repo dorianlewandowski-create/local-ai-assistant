@@ -1,0 +1,11 @@
+.DS_Store
+.gemini/
+bin/
+cache/
+functions.json
+*.log
+*.tmp
+node_modules/
+__pycache__/
+.venv/
+.env
