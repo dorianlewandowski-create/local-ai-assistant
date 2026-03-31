@@ -1,12 +1,12 @@
-    # 🧠 Local AI Assistant System
+# 🧠 Local AI Assistant System
 
 A sophisticated, proactive, and multi-agent AI operating system built for macOS. This system integrates local LLMs (via Ollama) with your Notes, Calendar, Reminders, and Filesystem to provide a data-driven, privacy-first personal assistant.
 
 ## 🚀 Key Features
 
 *   **Multi-Agent Orchestration**: Specialized agents for daily tasks (`pa`), complex workflows (`wa`), file management (`fm`), coding (`coder`), todo lists (`todo`), notes organization (`notes_assistant`), personal assistance (`personal_assistant`), vision-based assistance (`vision_assistant`), weekly review summarization (`weekly_review`), and project synchronization (`sync_projects_bidirectional`) are all integrated.
-*   **Proactive Sync**: Background monitoring of project notes using `fswatch` and `launchd` for real-time SQLite and Apple Reminders synchronization, along with syncing tasks and reminders in both directions between project management tools and your local system using `sync_tasks_reminders`, file management via `fs_cp`, `fs_mv`, `fs_mkdir`, fs_rm, `fs_write` and web searching via `web_search_aichat`, `web_search_perplexity` and `web_search_tavily`.
-*   **Deep Context**: Integration with Safari/Chrome active tabs using `browser_get_active_tab`, vision-enhanced file organization (using `vision_analyze_organize`, `fs_organize`, `fs_rm`, `fs_write`), deep research (using `deep_research`), autonomous fixation (`autonomous_fix`), coding tasks (`execute_command`, `file_classify`, `file_find`), calendar-based task and event management via `calendar_check_conflicts`, calendar_find_free_slots, demo_sh demonstrating `demo_sh`, weather and time checks via `get_current_weather` and `get_current_time`, sending emails using `send_mail` and creating issues on GitHub using `gh_issue`. Additionally, fetching URLs using `fetch_url_via_curl`, `fetch_url_via_jina`, executing SQL code (`execute_sql_code`), getting the summary of a repository via `repo_summary`, searching Wikipedia with `search_wikipedia`, Wolfram Alpha using `search_wolframalpha` and ArXiv with `search_arxiv`.
+*   **Proactive Sync**: Background monitoring of project notes using `fswatch` and `launchd` for real-time SQLite and Apple Reminders synchronization, along with syncing tasks and reminders in both directions between project management tools and your local system using `sync_tasks_reminders`, file management via `fs_cp`, `fs_mv`, `fs_mkdir`, fs_rm, `fs_write` and web searching via `web_search_aichat`, `web_search_perplexity`, `web_search_tavily`, Wikipedia with `search_wikipedia`, Wolfram Alpha using `search_wolframalpha`, ArXiv with `search_arxiv`.
+*   **Deep Context**: Integration with Safari/Chrome active tabs using `browser_get_active_tab`, vision-enhanced file organization (using `vision_analyze_organize`, `fs_organize`, `fs_rm`, `fs_write`), deep research (using `deep_research`), autonomous fixation (`autonomous_fix`), coding tasks (`execute_command`, `file_classify`, `file_find`), calendar-based task and event management via `calendar_check_conflicts`, `calendar_find_free_slots`, demo_sh demonstrating `demo_sh`, weather and time checks via `get_current_weather` and `get_current_time`, sending emails using `send_mail` and creating issues on GitHub using `gh_issue`. Additionally, fetching URLs using `fetch_url_via_curl`, `fetch_url_via_jina`, executing SQL code (`execute_sql_code`), getting the summary of a repository via `repo_summary`.
 *   **Dyslexia-Aware**: Optimized instructions focused on intent and semantic meaning over literal spelling and grammar, as well as text classification and search via `file_classify`.
 
 ## 📁 Repository Structure
@@ -41,6 +41,7 @@ local-ai-assistant/
         ├── get_current_time
         ├── get_current_weather
         ├── gh_issue
+        ├── repo_push # Added tool for pushing changes to a repository
         ├── repo_summary
         ├── search_arxiv
         ├── search_wikipedia
@@ -52,7 +53,7 @@ local-ai-assistant/
         ├── notesAssistant
         ├── personalAssitant
         ├── visionAssistant
-        ├── weeklyReview
+        ├── weeklyReview 
         ├── workflowAgent
         ├── fileManager # Added new tool for file management and synchronization
         ├── repoManager   # Added new tool for repository management

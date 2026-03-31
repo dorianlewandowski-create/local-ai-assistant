@@ -321,6 +321,21 @@
     "agent": true
   },
   {
+    "name": "browser_project_match",
+    "description": "Check if the active browser tab relates to any active project.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "browser": {
+          "type": "string",
+          "description": "The browser (safari or chrome). Defaults to safari."
+        }
+      },
+      "required": []
+    },
+    "agent": true
+  },
+  {
     "name": "db_project_status",
     "description": "Read structured project status from the SQLite assistant database.",
     "parameters": {
