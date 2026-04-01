@@ -11,8 +11,8 @@ set -e
 ROOT_DIR="${LLM_ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
 main() {
-    "$ROOT_DIR/utils/guard_path.sh" "$argc_source" "Move/Rename source '$argc_source'?"
-    "$ROOT_DIR/utils/guard_path.sh" "$argc_path" "Move/Rename to destination '$argc_destination'?"
+    "$ROOT_DIR/utils/guard_security.sh" "$argc_source" "mv_source"
+    "$ROOT_DIR/utils/guard_security.sh" "$argc_destination" "mv_dest"
     
     # Check if target directory exists if moving into a directory
     if [[ -d "$argc_destination" ]]; then

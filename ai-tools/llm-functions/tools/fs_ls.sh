@@ -7,7 +7,10 @@ set -e
 
 # @env LLM_OUTPUT=/dev/stdout The output path
 
+ROOT_DIR="${LLM_ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+
 main() {
+    "$ROOT_DIR/utils/guard_security.sh" "$argc_path" "ls"
     ls -1 "$argc_path" >> "$LLM_OUTPUT"
 }
 

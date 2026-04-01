@@ -70,6 +70,27 @@ consult_agent() {
     "$ROOT_DIR/bin/consult_agent" --agent-name "$argc_agent_name" --query "$argc_query" >> "$LLM_OUTPUT"
 }
 
+# @cmd Post information to the shared agent blackboard.
+# @option --key! The data key.
+# @option --value! The data value.
+# @option --task-id Grouping ID.
+blackboard_post() {
+    "$ROOT_DIR/bin/blackboard_post" --key "$argc_key" --value "$argc_value" --task-id "${argc_task_id:-default}" >> "$LLM_OUTPUT"
+}
+
+# @cmd Read information from the shared agent blackboard.
+# @option --task-id Grouping ID.
+# @option --key Filter by key.
+blackboard_read() {
+    "$ROOT_DIR/bin/blackboard_read" --task-id "${argc_task_id:-default}" --key "${argc_key:-}" >> "$LLM_OUTPUT"
+}
+
+# @cmd Clear entries from the shared agent blackboard.
+# @option --task-id Target grouping ID.
+blackboard_clear() {
+    "$ROOT_DIR/bin/blackboard_clear" --task-id "${argc_task_id:-}" >> "$LLM_OUTPUT"
+}
+
 # @cmd Formally install a new AI-generated tool into the system.
 # @option --name! The filename.
 # @option --description The tool description.

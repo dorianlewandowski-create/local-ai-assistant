@@ -44,5 +44,8 @@ log_feedback.sh
 optimize_instructions.sh
 browser_project_match.sh
 consult_agent.sh
+blackboard_post.sh
+blackboard_read.sh
+blackboard_clear.sh
 skill_install.sh
 render_ui.sh

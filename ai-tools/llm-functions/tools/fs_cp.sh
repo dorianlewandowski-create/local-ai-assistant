@@ -12,8 +12,8 @@ set -e
 ROOT_DIR="${LLM_ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
 main() {
-    "$ROOT_DIR/utils/guard_path.sh" "$argc_source" "Copy source '$argc_source'?"
-    "$ROOT_DIR/utils/guard_path.sh" "$argc_path" "Copy to destination '$argc_destination'?"
+    "$ROOT_DIR/utils/guard_security.sh" "$argc_source" "cp_source"
+    "$ROOT_DIR/utils/guard_security.sh" "$argc_destination" "cp_dest"
     
     local cp_args=""
     if [[ -n "$argc_recursive" && "$argc_recursive" == "true" ]]; then

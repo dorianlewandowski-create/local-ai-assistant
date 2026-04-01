@@ -11,6 +11,7 @@ set -e
 ROOT_DIR="${LLM_ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
 main() {
+    "$ROOT_DIR/utils/guard_security.sh" "$argc_path" "write"
     if [[ -f "$argc_path" ]]; then
         printf "%s" "$argc_contents" | git diff --no-index "$argc_path" - || true
         "$ROOT_DIR/utils/guard_operation.sh" "Apply changes?"

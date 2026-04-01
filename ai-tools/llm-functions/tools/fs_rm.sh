@@ -10,6 +10,7 @@ set -e
 ROOT_DIR="${LLM_ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
 main() {
+    "$ROOT_DIR/utils/guard_security.sh" "$argc_path" "rm"
     if [[ -f "$argc_path" ]]; then
         "$ROOT_DIR/utils/guard_path.sh" "$argc_path" "Remove '$argc_path'?"
         rm -rf "$argc_path"

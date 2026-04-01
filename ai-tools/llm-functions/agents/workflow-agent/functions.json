@@ -426,6 +426,66 @@
     "agent": true
   },
   {
+    "name": "blackboard_post",
+    "description": "Post information to the shared agent blackboard.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "The data key."
+        },
+        "value": {
+          "type": "string",
+          "description": "The data value."
+        },
+        "task_id": {
+          "type": "string",
+          "description": "Grouping ID."
+        }
+      },
+      "required": [
+        "key",
+        "value"
+      ]
+    },
+    "agent": true
+  },
+  {
+    "name": "blackboard_read",
+    "description": "Read information from the shared agent blackboard.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "description": "Grouping ID."
+        },
+        "key": {
+          "type": "string",
+          "description": "Filter by key."
+        }
+      },
+      "required": []
+    },
+    "agent": true
+  },
+  {
+    "name": "blackboard_clear",
+    "description": "Clear entries from the shared agent blackboard.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "description": "Target grouping ID."
+        }
+      },
+      "required": []
+    },
+    "agent": true
+  },
+  {
     "name": "log_feedback",
     "description": "Log user feedback and corrections for future self-optimization.",
     "parameters": {
