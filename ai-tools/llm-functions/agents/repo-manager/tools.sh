@@ -30,6 +30,13 @@ repo_push() {
     "$ROOT_DIR/bin/repo_push" --message "${argc_message:-}" >> "$LLM_OUTPUT"
 }
 
+# @cmd Consult another specialist agent for an opinion or information.
+# @option --agent-name! The name of the agent to consult (pa, wa, fm, coder).
+# @option --query! The specific question or task for the specialist.
+consult_agent() {
+    "$ROOT_DIR/bin/consult_agent" --agent-name "$argc_agent_name" --query "$argc_query" >> "$LLM_OUTPUT"
+}
+
 # @cmd List files in the repo.
 # @option --path! Path to list.
 fs_ls() {

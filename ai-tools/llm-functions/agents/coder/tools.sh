@@ -63,4 +63,11 @@ fs_cp() {
     "$ROOT_DIR/bin/fs_cp" --source "$argc_source" --destination "$argc_destination" >> "$LLM_OUTPUT"
 }
 
+# @cmd Consult another specialist agent for an opinion or information.
+# @option --agent-name! The name of the agent to consult (pa, wa, fm, coder).
+# @option --query! The specific question or task for the specialist.
+consult_agent() {
+    "$ROOT_DIR/bin/consult_agent" --agent-name "$argc_agent_name" --query "$argc_query" >> "$LLM_OUTPUT"
+}
+
 eval "$(argc --argc-eval "$0" "$@")"

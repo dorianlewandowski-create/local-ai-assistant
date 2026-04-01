@@ -135,5 +135,27 @@
       ]
     },
     "agent": true
+  },
+  {
+    "name": "consult_agent",
+    "description": "Consult another specialist agent for an opinion or information.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "agent_name": {
+          "type": "string",
+          "description": "The name of the agent to consult (pa, wa, fm, coder)."
+        },
+        "query": {
+          "type": "string",
+          "description": "The specific question or task for the specialist."
+        }
+      },
+      "required": [
+        "agent_name",
+        "query"
+      ]
+    },
+    "agent": true
   }
 ]

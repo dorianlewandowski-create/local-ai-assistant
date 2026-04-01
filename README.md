@@ -23,6 +23,7 @@ local-ai-assistant/
         ├── browser_project_match
         ├── calendar_check_conflicts
         ├── calendar_find_free_slots
+        ├── consult_agent  # Added new tool to get information from other agents
         ├── deep_research
         ├── delegate_to_workflow
         ├── demo_sh
@@ -44,14 +45,15 @@ local-ai-assistant/
         ├── get_current_time
         ├── get_current_weather
         ├── gh_issue
-        ├── log_feedback # Added tool to record feedback from users
+        ├── log_feedback  # Added tool to record feedback from users
         ├── optimize_instructions
         ├── repo_push
         ├── repo_summary
+        ├── send_mail
         ├── search_arxiv
         ├── search_wikipedia
         ├── search_wolframalpha
-        └── send_mail
+        └── send_twilio  # Added new tool for sending SMS messages via Twilio API
     ├── agents/
         ├── coder
         ├── todo
@@ -59,13 +61,10 @@ local-ai-assistant/
         ├── personalAssitant
         ├── visionAssistant
         ├── weeklyReview 
-        ├── workflowAgent # Updated tool for workflows and complex functions
+        ├── workflowAgent
         ├── fileManager  # Added new tool for file management and synchronization
         ├── repoManager   # Added new tool for repository management
-        ├── syncTasksRemindersTool    # Added new tool to create reminders for todo list tasks
-        └── syncMarkdownToSqliteTool # Added new tool for syncing markdown to SQLite database
-└── zsh/                    # Shell helpers and aliases (.zsh_ai_helpers)
-``` 
+        └── swarm  # Added new agent to manage workloads
 
 ## 🛠️ Installation
 

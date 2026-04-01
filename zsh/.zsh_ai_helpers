@@ -18,6 +18,7 @@ aichat() {
 }
 
 # Personal assistant shortcuts
+alias swarm="aichat --role swarm"
 alias pa='aichat --role personal-assistant'
 alias wa='aichat --role workflow-agent'
 alias ghm="aichat --role repo-manager"

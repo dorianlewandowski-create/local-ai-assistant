@@ -43,3 +43,4 @@ repo_push.sh
 log_feedback.sh
 optimize_instructions.sh
 browser_project_match.sh
+consult_agent.sh
