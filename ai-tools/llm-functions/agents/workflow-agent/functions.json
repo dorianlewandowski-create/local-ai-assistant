@@ -443,6 +443,36 @@
     "agent": true
   },
   {
+    "name": "render_ui",
+    "description": "Render professional terminal UI components (panels, tables, markdown).",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "The component type: panel, table, md."
+        },
+        "content": {
+          "type": "string",
+          "description": "The content to render."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title for the component."
+        },
+        "style": {
+          "type": "string",
+          "description": "The color/style for the component (default: blue)."
+        }
+      },
+      "required": [
+        "type",
+        "content"
+      ]
+    },
+    "agent": true
+  },
+  {
     "name": "db_stale_projects",
     "description": "Read stale projects from the SQLite assistant database.",
     "parameters": {

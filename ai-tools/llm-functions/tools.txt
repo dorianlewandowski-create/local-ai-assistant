@@ -45,3 +45,4 @@ optimize_instructions.sh
 browser_project_match.sh
 consult_agent.sh
 skill_install.sh
+render_ui.sh
