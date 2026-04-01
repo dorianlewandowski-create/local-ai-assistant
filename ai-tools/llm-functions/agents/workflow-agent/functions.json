@@ -839,5 +839,90 @@
       ]
     },
     "agent": true
+  },
+  {
+    "name": "send_mail",
+    "description": "Send an email.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "to": {
+          "type": "string",
+          "description": "The recipient email."
+        },
+        "subject": {
+          "type": "string",
+          "description": "The email subject."
+        },
+        "body": {
+          "type": "string",
+          "description": "The email body."
+        }
+      },
+      "required": [
+        "to",
+        "subject",
+        "body"
+      ]
+    },
+    "agent": true
+  },
+  {
+    "name": "mail_recent",
+    "description": "Get the most recent emails from the inbox.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "description": "The number of emails."
+        }
+      },
+      "required": []
+    },
+    "agent": true
+  },
+  {
+    "name": "mail_search",
+    "description": "Search for emails in the inbox.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "The search query."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "The max results."
+        }
+      },
+      "required": [
+        "query"
+      ]
+    },
+    "agent": true
+  },
+  {
+    "name": "mail_read",
+    "description": "Read the body of a specific email.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "subject": {
+          "type": "string",
+          "description": "The email subject."
+        },
+        "sender": {
+          "type": "string",
+          "description": "The email sender."
+        }
+      },
+      "required": [
+        "subject",
+        "sender"
+      ]
+    },
+    "agent": true
   }
 ]

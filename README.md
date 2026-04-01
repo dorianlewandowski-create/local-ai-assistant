@@ -6,10 +6,14 @@ A sophisticated, proactive, and multi-agent AI operating system built for macOS.
 
 ## 🚀 Key Features
 
-*   **Multi-Agent Orchestration**: Specialized agents for daily tasks (`pa`), complex workflows (`wa`), file management (`fm`), coding (`coder`), todo lists (`todo`), notes organization (`notesAssistant`), personal assistance (`personalAssitant`), vision-based assistance (`visionAssistant`), weekly review summarization (`weeklyReview`), and project synchronization (`sync_projects_bidirectional`) are all integrated.
-*   **Proactive Sync**: Background monitoring of project notes using `fswatch` and `launchd` for real-time SQLite and Apple Reminders synchronization, along with syncing tasks and reminders in both directions between project management tools and your local system using `sync_tasks_reminders`, file management via `fs_cp`, `fs_mv`, `fs_mkdir`, fs_rm, `fs_write` and web searching via `web_search_aichat`, `web_search_perplexity`, `web_search_tavily`, Wikipedia with `search_wikipedia`, Wolfram Alpha using `search_wolframalpha`, ArXiv with `search_arxiv`.
-*   **Deep Context**: Integration with Safari/Chrome active tabs using `browser_get_active_tab`, vision-enhanced file organization (using `vision_analyze_organize`, `fs_organize`, `fs_rm`, `fs_write`), deep research (using `deep_research`), autonomous fixation (`autonomous_fix`), coding tasks (`execute_command`, `file_classify`, `file_find`), calendar-based task and event management via `calendar_check_conflicts`, `calendar_find_free_slots`, demo_sh demonstrating `demo_sh`, weather and time checks via `get_current_weather` and `get_current_time`, sending emails using `send_mail` and creating issues on GitHub using `gh_issue`. Additionally, fetching URLs using `fetch_url_via_curl`, `fetch_url_via_jina`, executing SQL code (`execute_sql_code`), getting the summary of a repository via `repo_summary`.
-*   **Dyslexia-Aware**: Optimized instructions focused on intent and semantic meaning over literal spelling and grammar, as well as text classification and search via `file_classify`.
+*   **Multi-Agent Orchestration**: Specialized agents for daily tasks (`pa`), complex workflows (`wa`), file management (`fm`), coding (`coder`), todo lists (`todo`), notes organization (`notesAssistant`), personal assistance (`personalAssitant`), vision-based assistance (`visionAssistant`), weekly review summarization (`weeklyReview`), project synchronization via `sync_projects_bidirectional`, file manager via `fileManager`, and repository management using `repoManager` are all integrated.
+*   **Proactive Sync**: Background monitoring of project notes using `fswatch` and `launchd` for real-time SQLite and Apple Reminders synchronization, along with syncing tasks, reminders in both directions between project management tools and your local system via `sync_tasks_reminders`, file management via `fs_cp`, `fs_mv`, `fs_mkdir`, fs_rm, `fs_write` as well as web searching using `web_search_aichat`, `web_search_perplexity`, `web_search_tavily`, Wikipedia with `search_wikipedia`, Wolfram Alpha via `search_wolframalpha`, and ArXiv with `search_arxiv`.
+*   **Deep Context**: Integration with Safari/Chrome active tabs using `browser_get_active_tab` as well as vision-enhanced file organization via `vision_analyze_organize`, `fs_organize`, `fs_rm`, `fs_write`, deep research using `deep_research`, autonomous fixation (`autonomous_fix`), coding tasks (`execute_command`, `file_classify`, `file_find`), calendar-based task and event management through `calendar_check_conflicts`, `calendar_find_free_slots`, demo_sh demonstrating capabilities of `demo_sh`, weather and time checks via `get_current_weather` and `get_current_time`, sending emails using `send_mail`, creating issues on GitHub with `gh_issue`. Additionally, fetching URLs via `fetch_url_via_curl`, `fetch_url_via_jina`, executing SQL code (`execute_sql_code`), getting the summary of a repository via `repo_summary`.
+*   **Dyslexia-Aware**: Optimized instructions focused on intent and semantic meaning over literal spelling and grammar as well as text classification and search via `file_classify`. Note integration with Notes, Calendar and Reminders using various commands like:
+    *   `get_current_time`
+    *   `get_current_weather`
+    *   `gh_issue create/review/assign issues`
+    *   `mail_read` and related mail search and read tools to fetch inbox contents
 
 ## 📁 Repository Structure
 
@@ -19,11 +23,12 @@ local-ai-assistant/
     ├── tools/
         ├── auto_document
         ├── autonomous_fix
-        ├── browser_get_active_tab
+        ├── browse_get_active_tab
         ├── browser_project_match
         ├── calendar_check_conflicts
         ├── calendar_find_free_slots
-        ├── consult_agent  # Added new tool to get information from other agents
+        ├── consult_agent  # New tool to get information from other agents
+        ├── decode
         ├── deep_research
         ├── delegate_to_workflow
         ├── demo_sh
@@ -45,15 +50,16 @@ local-ai-assistant/
         ├── get_current_time
         ├── get_current_weather
         ├── gh_issue
-        ├── log_feedback  # Added tool to record feedback from users
+        ├── log_feedback  # New tool to record feedback from users
         ├── optimize_instructions
         ├── repo_push
         ├── repo_summary
         ├── send_mail
+        ├── send_twilio  # New tool for sending SMS messages via Twilio API
         ├── search_arxiv
         ├── search_wikipedia
         ├── search_wolframalpha
-        └── send_twilio  # Added new tool for sending SMS messages via Twilio API
+        └── sync_markdown_to_sqlite
     ├── agents/
         ├── coder
         ├── todo
@@ -62,27 +68,29 @@ local-ai-assistant/
         ├── visionAssistant
         ├── weeklyReview 
         ├── workflowAgent
-        ├── fileManager  # Added new tool for file management and synchronization
-        ├── repoManager   # Added new tool for repository management
-        └── swarm  # Added new agent to manage workloads
+        ├── fileManager  # New agent for file management and synchronization
+        ├── repoManager   # New agent for repository management
+        └── swarm  # Agent for managing workloads
 
 ## 🛠️ Installation
 
 1.  Clone this repository.
 2.  Source the shell helpers: `source zsh/.zsh_ai_helpers`.
-3.  Run `argc build` in `ai-tools/llm-functions` to register tools.
+3.  Run `argc build` in `ai-tools/llm-functions` to register tools and agents.
 4.  Set up the background daemon: `launchctl load ~/Library/LaunchAgents/com.ai.assistant.syncwatcher.plist`.
 
 ## 💬 Usage
 
 *   **Daily Brief**: `pa "morning brief"`
 *   **Deep Research**: `pa "Perform deep research on [topic]"`
-*   **File Organization**: `fm "Clean my Downloads folder"`
-*   **Autonomous Fix**: `coder "Fix the failing tests in my project"`
+*   **Code Completion and Fixtures Testing**: `coder ["complete code" | "test fixtures"]`
 *   **Todo List Management**: `todo add/new/delete/complete item`
-*   **Notes Organization**: `notesAssistant organize new/view/update/search notes`
-*   **Personal Assistance**: `personalAssitant help/instructions`
-*   **Vision-Based Assistance**: `visionAssistant recognize/classify/analyze files`
-
----
-Built with ❤️ for a more accessible and autonomous local AI experience.
+*   **Notes Organization**: 
+    +   Search notes: `notesAssistant search query` (e.g., `title`,  `content` or tag) 
+    +   Add new note and auto-index and make relevant fields auto-fill for quick retrieval
+    +   Manage all tasks from single command: `todo add [list] to manage list`
+*   **Personal Assistance**:  Use `consult agent <agent_name>` to ask an integrated agent to "explain how" a task is completed. 
+                                    This example helps complete many tasks, with the ability to provide multiple ways of explanation or to summarize in simpler language.
+    As of today there are:
++ personalAssitant (general knowledge and research)
++ visionAssistant (task automation using images as input)

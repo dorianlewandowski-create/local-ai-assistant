@@ -27,6 +27,9 @@ search_arxiv.sh
 search_wikipedia.sh
 search_wolframalpha.sh
 send_mail.sh
+mail_recent.sh
+mail_search.sh
+mail_read.sh
 send_twilio.sh
 web_search_aichat.sh
 web_search_perplexity.sh
