@@ -216,6 +216,27 @@
     "agent": true
   },
   {
+    "name": "skill_install",
+    "description": "Formally install a new AI-generated tool into the system.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The filename."
+        },
+        "description": {
+          "type": "string",
+          "description": "The tool description."
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "agent": true
+  },
+  {
     "name": "fs_mkdir",
     "description": "Create a new directory at the specified path.",
     "parameters": {

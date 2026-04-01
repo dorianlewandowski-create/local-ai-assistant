@@ -70,4 +70,11 @@ consult_agent() {
     "$ROOT_DIR/bin/consult_agent" --agent-name "$argc_agent_name" --query "$argc_query" >> "$LLM_OUTPUT"
 }
 
+# @cmd Formally install a new AI-generated tool into the system.
+# @option --name! The filename.
+# @option --description The tool description.
+skill_install() {
+    "$ROOT_DIR/bin/skill_install" --name "$argc_name" --description "${argc_description:-}" >> "$LLM_OUTPUT"
+}
+
 eval "$(argc --argc-eval "$0" "$@")"
