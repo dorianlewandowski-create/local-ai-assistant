@@ -404,6 +404,23 @@
     "agent": true
   },
   {
+    "name": "log_feedback",
+    "description": "Log user feedback and corrections for future self-optimization.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "feedback": {
+          "type": "string",
+          "description": "The user's correction or feedback text."
+        }
+      },
+      "required": [
+        "feedback"
+      ]
+    },
+    "agent": true
+  },
+  {
     "name": "db_stale_projects",
     "description": "Read stale projects from the SQLite assistant database.",
     "parameters": {

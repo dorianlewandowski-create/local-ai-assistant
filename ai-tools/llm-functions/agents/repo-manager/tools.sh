@@ -19,6 +19,11 @@ auto_document() {
     "$ROOT_DIR/bin/auto_document" >> "$LLM_OUTPUT"
 }
 
+# @cmd Autonomously optimize agent instructions based on collected user feedback.
+optimize_instructions() {
+    "$ROOT_DIR/bin/optimize_instructions" >> "$LLM_OUTPUT"
+}
+
 # @cmd Commit and push changes to GitHub.
 # @option --message Use a specific commit message.
 repo_push() {
