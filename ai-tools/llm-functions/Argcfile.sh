@@ -10,7 +10,7 @@ VENV_DIR=".venv"
 LANG_CMDS=( \
     "sh:bash" \
     "js:node" \
-    "py:python" \
+    "py:python3" \
 )
 
 # @cmd Run the tool

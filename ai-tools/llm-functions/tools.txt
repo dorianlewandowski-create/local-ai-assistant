@@ -31,6 +31,8 @@ mail_recent.sh
 mail_search.sh
 mail_read.sh
 send_twilio.sh
+send_imessage.sh
+send_email.sh
 web_search_aichat.sh
 web_search_perplexity.sh
 web_search_tavily.sh

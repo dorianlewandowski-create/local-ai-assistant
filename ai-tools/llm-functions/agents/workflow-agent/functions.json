@@ -924,5 +924,22 @@
       ]
     },
     "agent": true
+  },
+  {
+    "name": "get_current_weather",
+    "description": "Get the current weather for a location.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "type": "string",
+          "description": "The city or region."
+        }
+      },
+      "required": [
+        "location"
+      ]
+    },
+    "agent": true
   }
 ]

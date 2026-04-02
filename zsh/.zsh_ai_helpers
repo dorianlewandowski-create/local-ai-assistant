@@ -1,26 +1,19 @@
 # AI assistant helper commands
 
 aichat() {
-  local has_explicit_agent=0
-  for arg in "$@"; do
-    case "$arg" in
-      -a|--agent|--role|--rag|-r)
-        has_explicit_agent=1
-        break
-        ;;
-    esac
-  done
-  if [ "$has_explicit_agent" -eq 1 ]; then
-    command aichat "$@"
+  # If run with no arguments, or just text, use the bridge
+  if [[ "$#" -eq 0 ]] || [[ "$1" != -* ]]; then
+    python3 ~/local-ai-assistant/scripts/agent_bridge.py "$@"
   else
-    command aichat --role personal-assistant "$@"
+    # If run with flags (like --role or --model), use the original binary
+    command aichat "$@"
   fi
 }
 
 # Personal assistant shortcuts
-alias swarm="aichat --role swarm"
-alias pa='aichat --role personal-assistant'
-alias wa='aichat --role workflow-agent'
+alias ai='aichat'
+alias pa='aichat'
+alias wa='aichat'
 alias ghm="aichat --role repo-manager"
 alias fm='aichat --role file-manager'
 alias pnotes='aichat --role notes-assistant'
