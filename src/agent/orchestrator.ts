@@ -111,6 +111,39 @@ function logMonologue(content: string) {
   }
 }
 
+function matchFastPath(prompt: string): { toolName: string; args: Record<string, unknown> } | null {
+  const input = prompt.trim();
+
+  let match = input.match(/^(?:open|otwórz)\s+(.+)$/i);
+  if (match) {
+    return { toolName: 'open_app', args: { appName: match[1].trim() } };
+  }
+
+  match = input.match(/^(?:volume|głośność)\s+(\d+)(%)?$/i) || input.match(/^set volume\s+(\d+)$/i);
+  if (match) {
+    return { toolName: 'set_system_volume', args: { level: Number(match[1]) } };
+  }
+
+  match = input.match(/^(?:play|graj|puść)\s+(.+)$/i);
+  if (match) {
+    return { toolName: 'play_spotify_search', args: { query: match[1].trim() } };
+  }
+
+  if (/^(?:screenshot|zrzut|ekran)$/i.test(input)) {
+    return { toolName: 'take_screenshot', args: {} };
+  }
+
+  if (/^(?:dark mode|tryb ciemny|light mode|tryb jasny)$/i.test(input)) {
+    return { toolName: 'toggle_dark_mode', args: {} };
+  }
+
+  if (/^(?:calendar|kalendarz|plan|dzisiaj)$/i.test(input)) {
+    return { toolName: 'get_today_schedule', args: {} };
+  }
+
+  return null;
+}
+
 export class Orchestrator {
   private readonly activeAgent: AgentConfig;
   private readonly factory: AgentFactory;
@@ -131,6 +164,11 @@ export class Orchestrator {
   }
 
   async processTask(task: TaskEnvelope): Promise<TaskResult> {
+    const fastPath = await this.tryFastPath(task);
+    if (fastPath) {
+      return fastPath;
+    }
+
     const subAgentKind = this.factory.choose(task.prompt, task.metadata);
     const subAgent = this.factory.create(subAgentKind);
 
@@ -188,6 +226,88 @@ export class Orchestrator {
     });
 
     return result.response;
+  }
+
+  private async tryFastPath(task: TaskEnvelope): Promise<TaskResult | null> {
+    const route = matchFastPath(task.prompt);
+    if (!route) {
+      return null;
+    }
+
+    const tool = toolRegistry.getTool(route.toolName);
+    if (!tool) {
+      return null;
+    }
+
+    logger.system(`[FAST-PATH] 🚀 Direct execution: ${route.toolName}`);
+
+    const risk = assessToolRisk(tool.name, route.args);
+    if (risk?.requiresAuthorization) {
+      const authorizer = this.authorizers.get(task.source) ?? this.authorizers.get('default');
+      if (!authorizer) {
+        throw new Error(`Authorization required for ${tool.name} but no authorizer is configured.`);
+      }
+
+      logger.warn(`Authorization required for ${tool.name}: ${risk.reason}`);
+      const approved = await authorizer.requestAuthorization({
+        id: `${task.id}-fast-path-${tool.name}`,
+        source: task.source,
+        toolName: tool.name,
+        command: risk.command,
+        reason: risk.reason,
+      });
+
+      if (!approved) {
+        return {
+          taskId: task.id,
+          source: task.source,
+          agent: 'Fast Path',
+          response: 'Denied by User',
+        };
+      }
+    }
+
+    const result = await tool.execute(route.args as any);
+    if (!result || (typeof result === 'object' && 'success' in result && result.success === false)) {
+      const message = result && typeof result === 'object' && 'error' in result ? String((result as any).error) : `Fast-path tool ${tool.name} failed.`;
+      return {
+        taskId: task.id,
+        source: task.source,
+        agent: 'Fast Path',
+        response: message,
+      };
+    }
+
+    const response = typeof result === 'object' && result !== null && 'result' in result
+      ? String((result as any).result)
+      : JSON.stringify(result);
+
+    if ((task.source === 'whatsapp' || task.source === 'telegram' || task.source === 'slack') && task.sourceId) {
+      const gateway = this.gateways.get(task.source);
+      if (gateway) {
+        await gateway.sendResponse(task.sourceId, response);
+      }
+    }
+
+    logger.chat('assistant', response);
+
+    await vectorStore.store({
+      source: `${task.source}:${task.id}`,
+      scope: 'chat',
+      content: `Prompt: ${task.prompt}\n\nResponse: ${response}`,
+      metadata: {
+        taskId: task.id,
+        source: task.source,
+        subAgent: 'Fast Path',
+      },
+    });
+
+    return {
+      taskId: task.id,
+      source: task.source,
+      agent: 'Fast Path',
+      response,
+    };
   }
 
   private async runSubAgent(agent: AgentConfig, task: TaskEnvelope, managerNote: string): Promise<string> {

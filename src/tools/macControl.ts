@@ -1,4 +1,6 @@
 import { exec, execFile } from 'child_process';
+import os from 'os';
+import path from 'path';
 import { promisify } from 'util';
 import { z } from 'zod';
 import { Tool } from '../types';
@@ -165,6 +167,16 @@ empty the trash
 end tell`;
 }
 
+async function takeScreenshotFile() {
+  const outputPath = path.join(os.tmpdir(), `openmac-screenshot-${Date.now()}.png`);
+  const { stderr } = await execFileAsync('screencapture', ['-x', outputPath]);
+  if (stderr) {
+    throw new Error(stderr.trim());
+  }
+
+  return outputPath;
+}
+
 const ExecuteAppleScriptParams = z.object({
   script: z.string().min(1).describe('Raw AppleScript code to run via osascript. This directly controls macOS applications and system behaviors.'),
 });
@@ -235,6 +247,7 @@ export const playSpotifySearch: Tool<typeof PlaySpotifySearchParams> = {
 
       return {
         success: true,
+        played: true,
         result: `Playing ${playback.track} by ${playback.artist}.`,
       };
     } catch (error: any) {
@@ -242,8 +255,8 @@ export const playSpotifySearch: Tool<typeof PlaySpotifySearchParams> = {
         const fallbackScript = buildPlaySpotifySearchScript(query);
         await runAppleScript(fallbackScript);
         return {
-          success: true,
-          result: `Opened Spotify search for "${query}". Playback was not confirmed automatically.`,
+          success: false,
+          error: `Opened Spotify search for "${query}", but playback was not confirmed automatically. Do not claim that music is playing.`,
         };
       } catch {
         return { success: false, error: error.message };
@@ -339,6 +352,22 @@ export const emptyTrash: Tool<typeof EmptyTrashParams> = {
   },
 };
 
+const TakeScreenshotParams = z.object({});
+
+export const takeScreenshot: Tool<typeof TakeScreenshotParams> = {
+  name: 'take_screenshot',
+  description: 'Take a macOS screenshot and return the saved file path.',
+  parameters: TakeScreenshotParams,
+  execute: async () => {
+    try {
+      const screenshotPath = await takeScreenshotFile();
+      return { success: true, result: `Screenshot saved to ${screenshotPath}`, path: screenshotPath };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+};
+
 toolRegistry.register(executeAppleScript);
 toolRegistry.register(playSpotifyTrack);
 toolRegistry.register(playSpotifySearch);
@@ -347,6 +376,7 @@ toolRegistry.register(toggleDarkMode);
 toolRegistry.register(hideAllApps);
 toolRegistry.register(openApp);
 toolRegistry.register(emptyTrash);
+toolRegistry.register(takeScreenshot);
 
 export const appleScriptTemplates = {
   buildPlaySpotifyTrackScript,
