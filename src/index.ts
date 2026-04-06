@@ -160,23 +160,10 @@ async function main() {
   let watcher: ReturnType<typeof chokidar.watch> | null = null;
 
   const updateStatus = () => {
-    const uptime = (() => {
-      try {
-        return execSync('uptime', { encoding: 'utf-8' }).trim();
-      } catch {
-        return 'Unknown';
-      }
-    })();
     const activeTasks = taskQueue.getActiveTaskCount();
-    const pendingTasks = taskQueue.getPendingTaskCount();
-    const pulse = activeTasks > 0 ? pulseFrames[pulseIndex++ % pulseFrames.length] : '·';
-    const cpuLoad = os.loadavg()[0].toFixed(2);
-    const ollamaStatus = '[Ollama: Gemma 4]';
-    const memoryStatus = `[Memories: ${memoryStore.count()}]`;
-    const cpuStatus = `[CPU: ${cpuLoad}]`;
-    const pulseStatus = `[Pulse: ${pulse} ${activeTasks > 0 ? 'Thinking' : 'Idle'}]`;
-    const taskStatus = `[Tasks: ${activeTasks}/${pendingTasks}]`;
-    logger.status(`${pulseStatus} | ${memoryStatus} | ${cpuStatus} | ${ollamaStatus} | [Uptime: ${uptime}] | ${taskStatus}`);
+    const pulse = activeTasks > 0 ? pulseFrames[pulseIndex++ % pulseFrames.length] : '●';
+    const mode = activeTasks > 0 ? 'FAST-PATH ○' : 'FAST-PATH ⚡';
+    logger.status(`${pulse}  OPENMAC 0.6.0 | VAULT: LOCKED | AI: GEMMA-4 | MODE: ${mode}`);
   };
 
   const proactiveScheduler = createProactiveScheduler(taskQueue, updateStatus);

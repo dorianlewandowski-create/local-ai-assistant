@@ -21,12 +21,12 @@ export class GatekeeperModal {
       tags: true,
       border: 'line',
       label: ' {bold}{yellow-fg} ⚠ SECURITY AUTHORIZATION  {/yellow-fg}{/bold} ',
+      transparent: true as any,
       style: {
         fg: 'white',
-        bg: 'black',
+        bg: -1 as any,
         border: { fg: 'yellow' },
       },
-      shadow: true,
       padding: { left: 1, right: 1, top: 0, bottom: 0 },
     });
 
@@ -37,9 +37,10 @@ export class GatekeeperModal {
       width: '100%-2',
       height: 7,
       tags: true,
+      transparent: true as any,
       style: {
         fg: 'white',
-        bg: 'black',
+        bg: -1 as any,
       },
     });
 

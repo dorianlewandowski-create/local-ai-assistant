@@ -20,11 +20,11 @@ function escapeTags(value: string): string {
 }
 
 function nowStamp(): string {
-  return new Date().toLocaleTimeString([], {
+  return `[${new Date().toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-  });
+  })}]`;
 }
 
 function compactText(value: string): string {
@@ -58,8 +58,9 @@ export class OpenMacTui implements LoggerSink {
       fullUnicode: true,
       title: 'OpenMac | OS Agent v0.6.0',
       dockBorders: true,
+      transparent: true as any,
       style: {
-        bg: 'black',
+        bg: -1 as any,
       },
     });
 
@@ -78,7 +79,7 @@ export class OpenMacTui implements LoggerSink {
       height: '100%',
       border: 'line',
       tags: true,
-      label: ' {bold}{blue-fg} openmac{/blue-fg}{/bold} ',
+      label: ' {gray-fg} openmac{/gray-fg} ',
       scrollable: true,
       alwaysScroll: true,
       keys: true,
@@ -86,9 +87,11 @@ export class OpenMacTui implements LoggerSink {
       padding: { left: 0, right: 0, top: 0, bottom: 0 },
       scrollbar: { ch: ' ' },
       style: {
-        border: { fg: 'blue' },
+        border: { fg: '#333333' as any },
         fg: 'white',
+        bg: -1 as any,
       },
+      transparent: true as any,
       chars: LIGHT_BORDER,
       content: '{gray-fg}Awaiting Command...{/gray-fg}',
     });
@@ -106,7 +109,7 @@ export class OpenMacTui implements LoggerSink {
       height: '50%',
       border: 'line',
       tags: true,
-      label: ' {bold}{blue-fg}rsn{/blue-fg}{/bold} ',
+      label: ' {gray-fg}rsn{/gray-fg} ',
       scrollable: true,
       alwaysScroll: true,
       keys: true,
@@ -114,9 +117,11 @@ export class OpenMacTui implements LoggerSink {
       padding: { left: 0, right: 0, top: 0, bottom: 0 },
       scrollbar: { ch: ' ' },
       style: {
-        border: { fg: 'gray' },
+        border: { fg: '#333333' as any },
         fg: 'white',
+        bg: -1 as any,
       },
+      transparent: true as any,
       chars: LIGHT_BORDER,
       content: '{gray-fg}Idle...{/gray-fg}',
     });
@@ -127,7 +132,7 @@ export class OpenMacTui implements LoggerSink {
       height: '50%',
       border: 'line',
       tags: true,
-      label: ' {bold}{blue-fg}io{/blue-fg}{/bold} ',
+      label: ' {gray-fg}io{/gray-fg} ',
       scrollable: true,
       alwaysScroll: true,
       keys: true,
@@ -135,9 +140,11 @@ export class OpenMacTui implements LoggerSink {
       padding: { left: 0, right: 0, top: 0, bottom: 0 },
       scrollbar: { ch: ' ' },
       style: {
-        border: { fg: 'gray' },
+        border: { fg: '#333333' as any },
         fg: 'white',
+        bg: -1 as any,
       },
+      transparent: true as any,
       chars: LIGHT_BORDER,
       content: '{gray-fg}Idle...{/gray-fg}',
     });
@@ -150,10 +157,10 @@ export class OpenMacTui implements LoggerSink {
       height: 1,
       tags: true,
       style: {
-        fg: 'white',
+        fg: 'black',
         bg: 'blue',
       },
-      content: ' pulse:· idle | openmac standby',
+      content: '  OPENMAC 0.6.0 | VAULT: LOCKED | AI: GEMMA-4 | MODE: FAST-PATH ',
     });
 
     this.inputWrapper = blessed.box({
@@ -164,8 +171,9 @@ export class OpenMacTui implements LoggerSink {
       height: 1,
       style: {
         fg: 'white',
-        bg: 'black',
+        bg: -1 as any,
       },
+      transparent: true as any,
     });
 
     this.input = blessed.textbox({
@@ -179,8 +187,9 @@ export class OpenMacTui implements LoggerSink {
       mouse: true,
       style: {
         fg: 'white',
-        bg: 'black',
+        bg: -1 as any,
       },
+      transparent: true as any,
     });
 
     this.placeholder = blessed.box({
@@ -264,13 +273,13 @@ export class OpenMacTui implements LoggerSink {
 
   appendMonologue(kind: MonologueKind, text: string): void {
     const styles: Record<MonologueKind, { color: string; label: string; target: 'reasoning' | 'system' }> = {
-      thought: { color: 'yellow', label: 'Thought', target: 'reasoning' },
-      plan: { color: 'cyan', label: 'Plan', target: 'reasoning' },
-      reflection: { color: 'yellow', label: 'Reflect', target: 'reasoning' },
-      tool: { color: 'magenta', label: 'Exec', target: 'system' },
+      thought: { color: 'yellow', label: '○', target: 'reasoning' },
+      plan: { color: 'cyan', label: '○', target: 'reasoning' },
+      reflection: { color: 'yellow', label: '○', target: 'reasoning' },
+      tool: { color: 'magenta', label: '⚡', target: 'system' },
       tool_result: { color: 'green', label: 'OK', target: 'system' },
-      debug: { color: 'gray', label: 'Debug', target: 'system' },
-      info: { color: 'blue', label: 'Info', target: 'system' },
+      debug: { color: 'gray', label: '●', target: 'system' },
+      info: { color: 'blue', label: '●', target: 'system' },
       warn: { color: 'yellow', label: 'Warn', target: 'system' },
       error: { color: 'red', label: 'Err', target: 'system' },
     };
@@ -339,10 +348,10 @@ export class OpenMacTui implements LoggerSink {
   }
 
   private updatePanelFocus(active: 'chat' | 'reasoning' | 'system' | 'input') {
-    this.chatBox.style.border.fg = active === 'chat' ? 'blue' : 'gray';
-    this.reasoningBox.style.border.fg = active === 'reasoning' ? 'blue' : 'gray';
-    this.systemBox.style.border.fg = active === 'system' ? 'blue' : 'gray';
-    this.inputWrapper.style.fg = active === 'input' ? 'blue' : 'white';
+    this.chatBox.style.border.fg = active === 'chat' ? 'gray' : '#333333';
+    this.reasoningBox.style.border.fg = active === 'reasoning' ? 'gray' : '#333333';
+    this.systemBox.style.border.fg = active === 'system' ? 'gray' : '#333333';
+    this.inputWrapper.style.fg = active === 'input' ? 'gray' : 'white';
     this.queueRender();
   }
 
