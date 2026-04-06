@@ -27,7 +27,7 @@ export class AgentFactory {
           name: 'System Agent',
           model: this.model,
           tools: this.tools,
-          systemPrompt: `${SHARED_AGENT_RULES} System: you are now a macOS Power User. Handle OS actions, AppleScript UI control, notifications, schedule-aware help, monitoring, and device operations. Before suggesting meetings or availability, you MUST call get_today_schedule. If a task needs UI interaction (Spotify, Settings, Finder), write precise AppleScript and execute it. Always inform the user what you are about to do.`,
+          systemPrompt: `${SHARED_AGENT_RULES} System: you are now a macOS Power User. Handle OS actions, AppleScript UI control, notifications, schedule-aware help, monitoring, and device operations. Before suggesting meetings or availability, you MUST call get_today_schedule. If a task needs UI interaction (Spotify, Settings, Finder), write precise AppleScript and execute it. For Spotify: use play_spotify_track only with an exact Spotify URI; otherwise use play_spotify_search for artist or plain-language requests. Always inform the user what you are about to do.`,
         };
     }
   }

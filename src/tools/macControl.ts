@@ -1,4 +1,4 @@
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
 import { z } from 'zod';
 import { Tool } from '../types';
@@ -6,11 +6,13 @@ import { toolRegistry } from './registry';
 import { logger } from '../utils/logger';
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+const SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token';
+const SPOTIFY_SEARCH_URL = 'https://api.spotify.com/v1/search';
 
 async function runAppleScript(script: string) {
   logger.system('⌨️ Executing System Command...');
-  const command = `osascript -e ${JSON.stringify(script)}`;
-  const { stdout, stderr } = await execAsync(command);
+  const { stdout, stderr } = await execFileAsync('osascript', ['-e', script]);
 
   if (stderr) {
     throw new Error(stderr.trim());
@@ -19,11 +21,122 @@ async function runAppleScript(script: string) {
   return stdout.trim();
 }
 
-function buildPlaySpotifyTrackScript(trackName: string) {
+async function getSpotifyAccessToken() {
+  const clientId = process.env.SPOTIFY_CLIENT_ID?.trim();
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET?.trim();
+
+  if (!clientId || !clientSecret) {
+    throw new Error('Spotify API is not configured. Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in .env.');
+  }
+
+  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+  const response = await fetch(SPOTIFY_TOKEN_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({ grant_type: 'client_credentials' }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Spotify token request failed with status ${response.status}`);
+  }
+
+  const data: any = await response.json();
+  if (!data.access_token) {
+    throw new Error('Spotify token response did not include an access token.');
+  }
+
+  return data.access_token as string;
+}
+
+function normalizeSpotifyQuery(query: string) {
+  const trimmed = query.trim();
+  const anySongMatch = trimmed.match(/any song from\s+(.+)/i);
+  if (anySongMatch) {
+    return {
+      searchQuery: `artist:${anySongMatch[1].trim()}`,
+      mode: 'artist',
+    };
+  }
+
+  const fromArtistMatch = trimmed.match(/(.+)\s+from\s+(.+)/i);
+  if (fromArtistMatch) {
+    return {
+      searchQuery: `track:${fromArtistMatch[1].trim()} artist:${fromArtistMatch[2].trim()}`,
+      mode: 'track',
+    };
+  }
+
+  return {
+    searchQuery: trimmed,
+    mode: 'track',
+  };
+}
+
+async function searchSpotifyTrackUri(query: string) {
+  const accessToken = await getSpotifyAccessToken();
+  const normalized = normalizeSpotifyQuery(query);
+  const url = new URL(SPOTIFY_SEARCH_URL);
+  url.searchParams.set('q', normalized.searchQuery);
+  url.searchParams.set('type', 'track');
+  url.searchParams.set('limit', '1');
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Spotify search failed with status ${response.status}`);
+  }
+
+  const data: any = await response.json();
+  const track = data.tracks?.items?.[0];
+  if (!track?.uri) {
+    throw new Error(`No Spotify track found for query: ${query}`);
+  }
+
+  return {
+    uri: track.uri as string,
+    name: track.name as string,
+    artist: Array.isArray(track.artists) ? track.artists.map((artist: any) => artist.name).join(', ') : 'Unknown artist',
+  };
+}
+
+function buildPlaySpotifyTrackScript(trackUri: string) {
   return `tell application "Spotify"
 activate
-play track ${JSON.stringify(trackName)}
+open location ${JSON.stringify(trackUri)}
+delay 2
+play
+delay 1
+set playerState to (player state as string)
+set trackName to name of current track
+set artistName to artist of current track
+set trackId to id of current track
+return playerState & " | " & trackName & " | " & artistName & " | " & trackId
 end tell`;
+}
+
+function buildPlaySpotifySearchScript(query: string) {
+  return `tell application "Spotify"
+activate
+open location ${JSON.stringify(`spotify:search:${query}`)}
+delay 1
+end tell`;
+}
+
+function parseSpotifyPlaybackResult(result: string) {
+  const parts = result.split(' | ');
+  return {
+    state: parts[0] || 'stopped',
+    track: parts[1] || '',
+    artist: parts[2] || '',
+    uri: parts[3] || '',
+  };
 }
 
 function buildSetSystemVolumeScript(level: number) {
@@ -71,20 +184,70 @@ export const executeAppleScript: Tool<typeof ExecuteAppleScriptParams> = {
 };
 
 const PlaySpotifyTrackParams = z.object({
-  name: z.string().min(1).describe('The exact track name to play in Spotify.'),
+  uri: z.string().min(1).describe('The exact Spotify track URI, such as spotify:track:123abc. Use this only when you already know the URI.'),
 });
 
 export const playSpotifyTrack: Tool<typeof PlaySpotifyTrackParams> = {
   name: 'play_spotify_track',
-  description: 'Open Spotify and play a requested track.',
+  description: 'Open Spotify and play a track by exact Spotify URI.',
   parameters: PlaySpotifyTrackParams,
-  execute: async ({ name }) => {
+  execute: async ({ uri }) => {
     try {
-      const script = buildPlaySpotifyTrackScript(name);
+      const script = buildPlaySpotifyTrackScript(uri);
       const result = await runAppleScript(script);
-      return { success: true, result: result || `Requested Spotify playback for ${name}` };
+      const playback = parseSpotifyPlaybackResult(result);
+      const matched = playback.uri === uri;
+      if (playback.state !== 'playing' || !matched) {
+        return {
+          success: false,
+          error: `Spotify did not confirm playback for ${uri}. Current state: ${playback.state || 'unknown'}, current track: ${playback.track || 'unknown'}.`,
+        };
+      }
+
+      return {
+        success: true,
+        result: `Playing ${playback.track} by ${playback.artist}.`,
+      };
     } catch (error: any) {
       return { success: false, error: error.message };
+    }
+  },
+};
+
+const PlaySpotifySearchParams = z.object({
+  query: z.string().min(1).describe('A plain-language Spotify search query, such as an artist name, album name, or track request like "labrinth" or "any song from Labrinth".'),
+});
+
+export const playSpotifySearch: Tool<typeof PlaySpotifySearchParams> = {
+  name: 'play_spotify_search',
+  description: 'Resolve a plain-language Spotify request into an exact track URI using the Spotify Web API, then play it in Spotify.',
+  parameters: PlaySpotifySearchParams,
+  execute: async ({ query }) => {
+    try {
+      const match = await searchSpotifyTrackUri(query);
+      const script = buildPlaySpotifyTrackScript(match.uri);
+      const result = await runAppleScript(script);
+      const playback = parseSpotifyPlaybackResult(result);
+      const matched = playback.uri === match.uri;
+      if (playback.state !== 'playing' || !matched) {
+        throw new Error(`Spotify search resolved ${match.name}, but playback was not confirmed.`);
+      }
+
+      return {
+        success: true,
+        result: `Playing ${playback.track} by ${playback.artist}.`,
+      };
+    } catch (error: any) {
+      try {
+        const fallbackScript = buildPlaySpotifySearchScript(query);
+        await runAppleScript(fallbackScript);
+        return {
+          success: true,
+          result: `Opened Spotify search for "${query}". Playback was not confirmed automatically.`,
+        };
+      } catch {
+        return { success: false, error: error.message };
+      }
     }
   },
 };
@@ -178,6 +341,7 @@ export const emptyTrash: Tool<typeof EmptyTrashParams> = {
 
 toolRegistry.register(executeAppleScript);
 toolRegistry.register(playSpotifyTrack);
+toolRegistry.register(playSpotifySearch);
 toolRegistry.register(setSystemVolume);
 toolRegistry.register(toggleDarkMode);
 toolRegistry.register(hideAllApps);
@@ -186,6 +350,7 @@ toolRegistry.register(emptyTrash);
 
 export const appleScriptTemplates = {
   buildPlaySpotifyTrackScript,
+  buildPlaySpotifySearchScript,
   buildSetSystemVolumeScript,
   buildOpenAppScript,
   buildToggleDarkModeScript,

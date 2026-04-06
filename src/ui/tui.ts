@@ -50,6 +50,7 @@ export class OpenMacTui implements LoggerSink {
   private onExitHandler: (() => void) | null = null;
   private activePanel: 'chat' | 'reasoning' | 'system' | 'input' = 'input';
   private pendingAuthorization: { resolve: (approved: boolean) => void } | null = null;
+  private lastPrintableKey: { sequence: string; at: number } | null = null;
 
   constructor() {
     this.screen = blessed.screen({
@@ -195,7 +196,8 @@ export class OpenMacTui implements LoggerSink {
 
     this.gatekeeper = new GatekeeperModal(this.screen);
 
-    this.input.on('keypress', () => {
+    this.input.on('keypress', (_ch, key) => {
+      this.dedupePrintableKey(key);
       this.updatePlaceholder();
     });
 
@@ -221,6 +223,11 @@ export class OpenMacTui implements LoggerSink {
     this.screen.key(['g'], () => this.scrollActivePanelToTop());
     this.screen.key(['G'], () => this.scrollActivePanelToBottom());
     this.screen.key(['escape', 'C-c'], () => this.onExitHandler?.());
+    this.screen.program.on('focus', () => {
+      if (!this.pendingAuthorization) {
+        this.focusPanel('input');
+      }
+    });
     this.screen.on('keypress', (_ch, key) => {
       if (!this.pendingAuthorization) {
         return;
@@ -407,5 +414,23 @@ export class OpenMacTui implements LoggerSink {
     (this.screen as any).restoreFocus?.();
     this.focusPanel('input');
     resolve(approved);
+  }
+
+  private dedupePrintableKey(key: blessed.Widgets.Events.IKeyEventArg | undefined) {
+    const sequence = key?.sequence;
+    if (!sequence || sequence.length !== 1 || key?.ctrl || key?.meta) {
+      this.lastPrintableKey = sequence ? { sequence, at: Date.now() } : null;
+      return;
+    }
+
+    const now = Date.now();
+    if (this.lastPrintableKey && this.lastPrintableKey.sequence === sequence && now - this.lastPrintableKey.at < 25) {
+      const value = this.input.getValue();
+      if (value.endsWith(sequence)) {
+        this.input.setValue(value.slice(0, -1));
+      }
+    }
+
+    this.lastPrintableKey = { sequence, at: now };
   }
 }

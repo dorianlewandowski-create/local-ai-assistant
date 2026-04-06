@@ -3,7 +3,7 @@ import path from 'path';
 const DANGEROUS_KEYWORDS = ['rm', 'rf', 'mv', 'sudo', 'chmod', 'delete', 'unlink'];
 const PROTECTED_PATHS = ['/', '/System', '/Users/Shared'];
 const MUTATING_TOOLS = new Set(['fs_rm', 'fs_mv', 'fs_write', 'fs_patch', 'fs_mkdir', 'fs_cp', 'fs_organize', 'calendar_create_event', 'calendar_delete_event']);
-const APPLESCRIPT_TOOLS = new Set(['execute_applescript', 'play_spotify_track', 'set_system_volume', 'toggle_dark_mode', 'hide_all_apps', 'open_app', 'empty_trash']);
+const APPLESCRIPT_TOOLS = new Set(['execute_applescript', 'play_spotify_track', 'play_spotify_search', 'set_system_volume', 'toggle_dark_mode', 'hide_all_apps', 'open_app', 'empty_trash']);
 
 export interface GuardianDecision {
   requiresAuthorization: boolean;
@@ -16,8 +16,12 @@ function buildAppleScriptPreview(toolName: string, args: any): string | null {
     case 'execute_applescript':
       return typeof args?.script === 'string' ? args.script : null;
     case 'play_spotify_track':
-      return typeof args?.name === 'string'
-        ? `tell application "Spotify"\nactivate\nplay track ${JSON.stringify(args.name)}\nend tell`
+      return typeof args?.uri === 'string'
+        ? `tell application "Spotify"\nactivate\nplay track ${JSON.stringify(args.uri)}\nend tell`
+        : null;
+    case 'play_spotify_search':
+      return typeof args?.query === 'string'
+        ? `tell application "Spotify"\nactivate\nopen location ${JSON.stringify(`spotify:search:${args.query}`)}\nend tell`
         : null;
     case 'set_system_volume':
       return typeof args?.level === 'number' ? `set volume output volume ${args.level}` : null;
