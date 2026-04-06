@@ -211,35 +211,6 @@ export const fsOrganize: Tool<typeof OrganizeParams> = {
   },
 };
 
-// --- CLASSIFY TOOL ---
-const ClassifyParams = z.object({
-  files: z.string().describe('Comma-separated list of filenames or paths.'),
-  contextDirs: z.string().optional().describe('Comma-separated list of potential target directories.'),
-});
-
-export const fileClassify: Tool<typeof ClassifyParams> = {
-  name: 'file_classify',
-  description: 'Classify a list of files to suggest target directories and descriptive names.',
-  parameters: ClassifyParams,
-  execute: async ({ files, contextDirs }) => {
-    try {
-      const scriptPath = '/Users/dorianlewandowski/local-ai-assistant/ai-tools/llm-functions/tools/file_classify.sh';
-      let cmd = `${scriptPath} --files "${files}"`;
-      if (contextDirs) cmd += ` --context-dirs "${contextDirs}"`;
-      
-      const { stdout } = await execAsync(cmd);
-      // The script might output JSON wrapped in other text or just JSON
-      const jsonMatch = stdout.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        return { success: true, classification: JSON.parse(jsonMatch[0]) };
-      }
-      return { success: true, output: stdout };
-    } catch (error: any) {
-      return { success: false, error: error.message };
-    }
-  },
-};
-
 // --- PATCH TOOL ---
 const PatchParams = z.object({
   path: z.string().describe('The path of the file to apply to'),
@@ -252,16 +223,8 @@ export const fsPatch: Tool<typeof PatchParams> = {
   parameters: PatchParams,
   execute: async ({ path: targetPath, contents }) => {
     try {
-      const scriptPath = '/Users/dorianlewandowski/local-ai-assistant/ai-tools/llm-functions/tools/fs_patch.sh';
-      // Use a temporary file for the patch contents to avoid shell escaping issues
-      const tmpPatchPath = path.join('/tmp', `patch-${Date.now()}.diff`);
-      await fs.writeFile(tmpPatchPath, contents);
-      
-      const cmd = `${scriptPath} --path "${targetPath}" --contents "$(cat ${tmpPatchPath})"`;
-      
-      const { stdout, stderr } = await execAsync(cmd);
-      await fs.rm(tmpPatchPath, { force: true });
-      return { success: true, message: stdout, stderr };
+      await fs.writeFile(targetPath, contents, 'utf-8');
+      return { success: true, message: `Patched ${targetPath}` };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
@@ -275,5 +238,4 @@ toolRegistry.register(fsMv);
 toolRegistry.register(fsRm);
 toolRegistry.register(fileFind);
 toolRegistry.register(fsOrganize);
-toolRegistry.register(fileClassify);
 toolRegistry.register(fsPatch);

@@ -1,1 +1,0 @@
-../personal-assistant/note_append.sh

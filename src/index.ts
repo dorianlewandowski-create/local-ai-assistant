@@ -16,7 +16,6 @@ import './tools/fileSystem';
 import './tools/reminders';
 import './tools/browser';
 import './tools/calendar';
-import './tools/communications';
 import './tools/fsAdvanced';
 import './tools/webSearch';
 import './tools/systemMisc';

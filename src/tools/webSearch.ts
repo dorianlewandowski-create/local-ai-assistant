@@ -1,27 +1,31 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import { z } from 'zod';
 import { Tool } from '../types';
 import { toolRegistry } from './registry';
 
-const execAsync = promisify(exec);
+function htmlToText(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
-// Path to original shell scripts
-const TOOLS_DIR = '/Users/dorianlewandowski/local-ai-assistant/ai-tools/llm-functions/tools';
-
-/**
- * Helper to run a shell script from the TOOLS_DIR
- */
-async function runShellScript(scriptName: string, args: string[], env: Record<string, string> = {}) {
-  const command = `bash ${TOOLS_DIR}/${scriptName} ${args.map(arg => JSON.stringify(arg)).join(' ')}`;
+async function fetchUrlText(url: string) {
   try {
-    const { stdout, stderr } = await execAsync(command, {
-      env: { ...process.env, ...env }
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'OpenMac/0.6.0',
+      },
     });
-    if (stderr && !stdout) {
-      return { success: false, error: stderr.trim() };
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-    return { success: true, result: stdout.trim() };
+
+    const html = await response.text();
+    return { success: true, result: htmlToText(html) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -37,7 +41,7 @@ export const fetchUrlViaCurl: Tool<typeof FetchUrlViaCurlParams> = {
   description: 'Extract the content from a given URL.',
   parameters: FetchUrlViaCurlParams,
   execute: async ({ url }) => {
-    return runShellScript('fetch_url_via_curl.sh', [`--url=${url}`]);
+    return fetchUrlText(url);
   },
 };
 toolRegistry.register(fetchUrlViaCurl);
@@ -80,7 +84,7 @@ export const fetchUrl: Tool<typeof FetchUrlParams> = {
   description: 'Fetch and simplify the contents of a URL.',
   parameters: FetchUrlParams,
   execute: async ({ url }) => {
-    return runShellScript('fetch_url.sh', [`--url=${url}`]);
+    return fetchUrlText(url);
   },
 };
 toolRegistry.register(fetchUrl);
@@ -189,34 +193,10 @@ export const webSearchAichat: Tool<typeof WebSearchAichatParams> = {
   description: 'Perform a web search to get up-to-date information or additional context. Use this when you need current information or feel a search could provide a better answer.',
   parameters: WebSearchAichatParams,
   execute: async ({ query }) => {
-    const model = process.env.WEB_SEARCH_MODEL;
-    if (!model) {
-      return { success: false, error: 'WEB_SEARCH_MODEL is not set' };
-    }
-    const client = model.split(':')[0];
-    const env: Record<string, string> = {};
-    if (client === 'gemini') {
-      env['AICHAT_PATCH_GEMINI_CHAT_COMPLETIONS'] = '{"*":{"body":{"tools":[{"google_search":{}}]}}}';
-    } else if (client === 'vertexai') {
-      env['AICHAT_PATCH_VERTEXAI_CHAT_COMPLETIONS'] = '{"gemini-1.5-.*":{"body":{"tools":[{"googleSearchRetrieval":{}}]}},"gemini-2.0-.*":{"body":{"tools":[{"google_search":{}}]}}}';
-    } else if (client === 'ernie') {
-      env['AICHAT_PATCH_ERNIE_CHAT_COMPLETIONS'] = '{"*":{"body":{"web_search":{"enable":true}}}}';
-    }
-    
-    try {
-      const { stdout, stderr } = await execAsync(`aichat -m ${JSON.stringify(model)} ${JSON.stringify(query)}`, {
-        env: { ...process.env, ...env }
-      });
-      if (stderr && !stdout) {
-        return { success: false, error: stderr.trim() };
-      }
-      return { success: true, result: stdout.trim() };
-    } catch (error: any) {
-      return { success: false, error: error.message };
-    }
+    void query;
+    return { success: false, error: 'web_search_aichat is disabled in self-contained OpenMac. Use web_search, web_search_perplexity, or web_search_tavily instead.' };
   },
 };
-toolRegistry.register(webSearchAichat);
 
 // 8. web_search_perplexity
 const WebSearchPerplexityParams = z.object({
@@ -305,7 +285,34 @@ export const webSearch: Tool<typeof WebSearchParams> = {
   description: 'Perform a web search using DuckDuckGo to get search results.',
   parameters: WebSearchParams,
   execute: async ({ query, limit = 5, source_filter = '' }) => {
-    return runShellScript('web_search.sh', [query, limit.toString(), source_filter]);
+    try {
+      const searchUrl = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+      const response = await fetch(searchUrl, {
+        headers: {
+          'User-Agent': 'OpenMac/0.6.0',
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const html = await response.text();
+      const matches = Array.from(html.matchAll(/<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/g))
+        .slice(0, limit)
+        .map((match, index) => {
+          const title = htmlToText(match[2]);
+          const url = match[1];
+          return `${index + 1}. ${title} - ${url}`;
+        })
+        .filter((entry) => !source_filter || entry.toLowerCase().includes(source_filter.toLowerCase()));
+
+      return {
+        success: true,
+        result: matches.length > 0 ? matches.join('\n') : `No results found for "${query}".`,
+      };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   },
 };
 toolRegistry.register(webSearch);

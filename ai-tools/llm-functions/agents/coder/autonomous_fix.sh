@@ -1,1 +1,0 @@
-../../tools/autonomous_fix.sh

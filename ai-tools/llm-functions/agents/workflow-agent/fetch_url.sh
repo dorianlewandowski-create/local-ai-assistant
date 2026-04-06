@@ -1,1 +1,0 @@
-../personal-assistant/fetch_url.sh
