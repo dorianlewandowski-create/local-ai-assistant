@@ -33,6 +33,15 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
     console.log('[Telegram] Initializing bot');
     this.bot = new Telegraf(this.botToken);
 
+    this.bot.use(async (ctx, next) => {
+      // Telegram bot updates are delivered by Telegram infrastructure, not directly
+      // from the user's iPhone, so Tailscale IP filtering cannot be enforced here.
+      // Keep TELEGRAM_CHAT_ID as the primary identity gate and keep local services
+      // like Ollama bound to localhost or a Tailscale-only interface.
+      logger.debug(`[Telegram] update type: ${ctx.updateType}`);
+      return next();
+    });
+
     const sendStatus = async (chatId: string) => {
       const memoryCount = await vectorStore.count();
       const uptime = this.getSystemUptime();

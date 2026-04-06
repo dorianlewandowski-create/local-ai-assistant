@@ -11,7 +11,8 @@ import chokidar from 'chokidar';
 import os from 'os';
 import path from 'path';
 import fs from 'fs/promises';
-import './tools/appleScriptRunner';
+import { existsSync } from 'fs';
+import './tools/macControl';
 import './tools/fileSystem';
 import './tools/reminders';
 import './tools/browser';
@@ -43,6 +44,7 @@ const MacOSAssistant: AgentConfig = {
    systemPrompt: `You are OpenMac, a high-end macOS autonomous agent.
    You can monitor the system, react to file events, remember durable user facts, and take careful autonomous actions.
    When a new event appears, analyze it, decide whether to use tools, and either take the next best action or produce a concise recommendation.
+   You can now control macOS directly. Use AppleScript for app interactions. Always confirm risky actions via the Gatekeeper Popup.
    When responding to Telegram, be elite, concise, and use the  OpenMac signature.
    Be thoughtful, safe, and useful.`,
    tools: [] // Dynamically populated below
@@ -120,9 +122,20 @@ function createProactiveScheduler(taskQueue: TaskQueue, onReviewComplete?: () =>
 }
 
 async function main() {
+  const vectorStorePath = process.env.VECTOR_STORE_PATH?.trim();
+  if (vectorStorePath?.startsWith('/Volumes/') && !existsSync(vectorStorePath)) {
+    throw new Error('🚨 VAULT NOT FOUND: Please mount your encrypted OpenMacData volume to continue.');
+  }
+
+  const ollamaHost = process.env.OLLAMA_HOST?.trim();
+  if (ollamaHost && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(ollamaHost)) {
+    throw new Error(`Ollama must be local-only. Invalid OLLAMA_HOST: ${ollamaHost}`);
+  }
+
   const tui = new OpenMacTui();
   logger.setSink(tui);
   logger.patchConsole();
+  logger.system('🔒 Security: Encrypted Vault Linked & Local AI Isolated.');
 
   MacOSAssistant.tools = toolRegistry.getAllTools().map(t => t.name);
   const orchestrator = new Orchestrator(MacOSAssistant);

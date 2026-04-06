@@ -20,7 +20,7 @@ interface VectorRow {
   createdAt: string;
 }
 
-const DEFAULT_DB_PATH = path.join(process.cwd(), 'data', 'lancedb');
+const DEFAULT_DB_PATH = process.env.VECTOR_STORE_PATH?.trim() || path.join(process.cwd(), 'data', 'lancedb');
 const VECTOR_TABLE_NAME = 'knowledge_chunks';
 const EMBEDDING_MODEL = process.env.OLLAMA_EMBEDDING_MODEL || 'nomic-embed-text';
 const MAX_CONTENT_LENGTH = 12000;

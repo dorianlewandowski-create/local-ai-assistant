@@ -27,7 +27,7 @@ export class AgentFactory {
           name: 'System Agent',
           model: this.model,
           tools: this.tools,
-          systemPrompt: `${SHARED_AGENT_RULES} System: handle OS actions, notifications, schedules, monitoring, and device operations.`,
+          systemPrompt: `${SHARED_AGENT_RULES} System: handle OS actions, AppleScript app control, notifications, schedules, monitoring, and device operations.`,
         };
     }
   }
