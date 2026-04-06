@@ -1,17 +1,19 @@
-import { Input, Telegraf } from 'telegraf';
-import { GatewayProvider, GatewayTaskSink } from './base';
+import { Input, Markup, Telegraf } from 'telegraf';
+import { AuthorizationRequester, GatewayProvider, GatewayTaskSink } from './base';
 import { logger } from '../utils/logger';
 import { vectorStore } from '../db/vectorStore';
+import { AuthorizationRequest } from '../types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs/promises';
 import { execSync } from 'child_process';
 
-export class TelegramGateway extends GatewayProvider {
+export class TelegramGateway extends GatewayProvider implements AuthorizationRequester {
   private bot: Telegraf | null = null;
   private readonly isEnabled = process.env.TELEGRAM_ENABLED === '1' || process.env.TELEGRAM_ENABLED === 'true';
   private readonly botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
   private readonly allowedChatId = process.env.TELEGRAM_CHAT_ID?.trim();
+  private readonly pendingAuthorizations = new Map<string, (approved: boolean) => void>();
 
   constructor(sink: GatewayTaskSink) {
     super('telegram', sink);
@@ -96,6 +98,22 @@ export class TelegramGateway extends GatewayProvider {
       }
     });
 
+    this.bot.action(/openmac_auth_yes:(.+)/, async (ctx) => {
+      await ctx.answerCbQuery('Authorized');
+      const id = ctx.match[1];
+      const resolver = this.pendingAuthorizations.get(id);
+      this.pendingAuthorizations.delete(id);
+      resolver?.(true);
+    });
+
+    this.bot.action(/openmac_auth_no:(.+)/, async (ctx) => {
+      await ctx.answerCbQuery('Denied');
+      const id = ctx.match[1];
+      const resolver = this.pendingAuthorizations.get(id);
+      this.pendingAuthorizations.delete(id);
+      resolver?.(false);
+    });
+
     this.bot.on('text', async (ctx) => {
       const chatId = String(ctx.chat.id);
       const fromId = String(ctx.from?.id ?? '');
@@ -176,6 +194,28 @@ export class TelegramGateway extends GatewayProvider {
   async stop(): Promise<void> {
     await this.bot?.stop();
     this.bot = null;
+  }
+
+  async requestAuthorization(request: AuthorizationRequest): Promise<boolean> {
+    if (!this.bot || !this.allowedChatId) {
+      throw new Error('Telegram authorization requested but bot is not initialized.');
+    }
+
+    await this.bot.telegram.sendMessage(
+      this.allowedChatId,
+      `⚠️ OpenMac wants to execute: \`${request.command}\`. Authorize?`,
+      {
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard([
+          Markup.button.callback('YES', `openmac_auth_yes:${request.id}`),
+          Markup.button.callback('NO', `openmac_auth_no:${request.id}`),
+        ]),
+      },
+    );
+
+    return new Promise<boolean>((resolve) => {
+      this.pendingAuthorizations.set(request.id, resolve);
+    });
   }
 
   private isAuthorized(fromId: number | undefined): boolean {

@@ -5,8 +5,9 @@ import { toolRegistry } from '../tools/registry';
 import { memoryStore } from '../db/memory';
 import { vectorStore } from '../db/vectorStore';
 import { AgentFactory } from './factory';
-import { GatewayResponder } from '../gateways/base';
+import { AuthorizationRequester, GatewayResponder } from '../gateways/base';
 import { logger } from '../utils/logger';
+import { assessToolRisk } from './guardian';
 
 const AUTONOMOUS_AGENT_SYSTEM_PROMPT = `You are OpenMac, an elite autonomous agent for macOS. You are precise, helpful, and sophisticated. Use the  OpenMac signature in final responses.
 
@@ -114,6 +115,7 @@ export class Orchestrator {
   private readonly activeAgent: AgentConfig;
   private readonly factory: AgentFactory;
   private readonly gateways = new Map<string, GatewayResponder>();
+  private readonly authorizers = new Map<string, AuthorizationRequester>();
 
   constructor(agent: AgentConfig) {
     this.activeAgent = agent;
@@ -122,6 +124,10 @@ export class Orchestrator {
 
   registerGateway(source: 'whatsapp' | 'telegram' | 'slack', gateway: GatewayResponder) {
     this.gateways.set(source, gateway);
+  }
+
+  registerAuthorizer(source: string, authorizer: AuthorizationRequester) {
+    this.authorizers.set(source, authorizer);
   }
 
   async processTask(task: TaskEnvelope): Promise<TaskResult> {
@@ -301,6 +307,29 @@ export class Orchestrator {
             ? (rawArgs.trim() ? JSON.parse(rawArgs) : {})
             : (rawArgs ?? {});
           const validatedArgs = tool.parameters.parse(parsedArgs);
+
+          const risk = assessToolRisk(tool.name, validatedArgs);
+          if (risk?.requiresAuthorization) {
+            const authorizer = this.authorizers.get(task.source) ?? this.authorizers.get('default');
+            if (!authorizer) {
+              throw new Error(`Authorization required for ${tool.name} but no authorizer is configured.`);
+            }
+
+            logger.warn(`Authorization required for ${tool.name}: ${risk.reason}`);
+            const approved = await authorizer.requestAuthorization({
+              id: `${task.id}-${toolCall.id}`,
+              source: task.source,
+              toolName: tool.name,
+              command: risk.command,
+              reason: risk.reason,
+            });
+
+            if (!approved) {
+              throw new Error('Denied by User');
+            }
+
+            logger.system(`Authorization granted for ${tool.name}`);
+          }
 
           logger.tool(`Call ${tool.name} ${JSON.stringify(validatedArgs)}`);
 

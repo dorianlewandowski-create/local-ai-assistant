@@ -133,6 +133,11 @@ async function main() {
   orchestrator.registerGateway('whatsapp', whatsappGateway);
   orchestrator.registerGateway('telegram', telegramGateway);
   orchestrator.registerGateway('slack', slackGateway);
+  orchestrator.registerAuthorizer('telegram', telegramGateway);
+  orchestrator.registerAuthorizer('terminal', tui);
+  orchestrator.registerAuthorizer('file_watcher', tui);
+  orchestrator.registerAuthorizer('scheduler', tui);
+  orchestrator.registerAuthorizer('default', tui);
   const prompt = process.argv.slice(2).join(' ').trim();
   let pulseIndex = 0;
   const pulseFrames = ['·', '•', '◦', '•'];

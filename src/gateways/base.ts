@@ -1,4 +1,4 @@
-import { TaskEnvelope, TaskSource } from '../types';
+import { AuthorizationRequest, TaskEnvelope, TaskSource } from '../types';
 
 export interface GatewayTaskSink {
   enqueue(task: TaskEnvelope): Promise<unknown>;
@@ -6,6 +6,10 @@ export interface GatewayTaskSink {
 
 export interface GatewayResponder {
   sendResponse(to: string, text: string): Promise<void>;
+}
+
+export interface AuthorizationRequester {
+  requestAuthorization(request: AuthorizationRequest): Promise<boolean>;
 }
 
 export abstract class GatewayProvider implements GatewayResponder {

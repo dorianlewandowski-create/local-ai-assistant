@@ -1,5 +1,7 @@
 import blessed from 'neo-blessed';
+import { AuthorizationRequest } from '../types';
 import { ChatRole, LoggerSink, MonologueKind } from '../utils/logger';
+import { GatekeeperModal } from './components/Gatekeeper';
 
 const MAX_LINES = 500;
 const LIGHT_BORDER = {
@@ -39,6 +41,7 @@ export class OpenMacTui implements LoggerSink {
   private readonly inputWrapper: blessed.Widgets.BoxElement;
   private readonly input: blessed.Widgets.TextboxElement;
   private readonly placeholder: blessed.Widgets.BoxElement;
+  private readonly gatekeeper: GatekeeperModal;
   private readonly chatLines: string[] = [];
   private readonly reasoningLines: string[] = [];
   private readonly systemLines: string[] = [];
@@ -46,6 +49,7 @@ export class OpenMacTui implements LoggerSink {
   private onSubmitHandler: ((value: string) => void) | null = null;
   private onExitHandler: (() => void) | null = null;
   private activePanel: 'chat' | 'reasoning' | 'system' | 'input' = 'input';
+  private pendingAuthorization: { resolve: (approved: boolean) => void } | null = null;
 
   constructor() {
     this.screen = blessed.screen({
@@ -189,6 +193,8 @@ export class OpenMacTui implements LoggerSink {
       content: '{gray-fg}> [ Command OpenMac...]{/gray-fg}',
     });
 
+    this.gatekeeper = new GatekeeperModal(this.screen);
+
     this.input.on('keypress', () => {
       this.updatePlaceholder();
     });
@@ -215,6 +221,17 @@ export class OpenMacTui implements LoggerSink {
     this.screen.key(['g'], () => this.scrollActivePanelToTop());
     this.screen.key(['G'], () => this.scrollActivePanelToBottom());
     this.screen.key(['escape', 'C-c'], () => this.onExitHandler?.());
+    this.screen.on('keypress', (_ch, key) => {
+      if (!this.pendingAuthorization) {
+        return;
+      }
+
+      if (key.full === 'y' || key.full === 'Y') {
+        this.resolveAuthorization(true);
+      } else if (key.full === 'n' || key.full === 'N') {
+        this.resolveAuthorization(false);
+      }
+    });
 
     this.focusPanel('input');
     this.queueRender();
@@ -270,6 +287,18 @@ export class OpenMacTui implements LoggerSink {
     this.screen.destroy();
   }
 
+  async requestAuthorization(request: AuthorizationRequest): Promise<boolean> {
+    (this.screen as any).saveFocus?.();
+    this.input.hide();
+    this.placeholder.hide();
+    this.gatekeeper.show(request);
+    this.queueRender();
+
+    return new Promise<boolean>((resolve) => {
+      this.pendingAuthorization = { resolve };
+    });
+  }
+
   private queueRender() {
     if (this.renderQueued) {
       return;
@@ -289,6 +318,10 @@ export class OpenMacTui implements LoggerSink {
   }
 
   private updatePlaceholder() {
+    if (this.pendingAuthorization) {
+      return;
+    }
+
     const value = this.input.getValue();
     if (value.trim().length > 0) {
       this.placeholder.hide();
@@ -359,5 +392,20 @@ export class OpenMacTui implements LoggerSink {
       return this.systemBox;
     }
     return null;
+  }
+
+  private resolveAuthorization(approved: boolean) {
+    if (!this.pendingAuthorization) {
+      return;
+    }
+
+    const { resolve } = this.pendingAuthorization;
+    this.pendingAuthorization = null;
+    this.gatekeeper.hide();
+    this.input.show();
+    this.updatePlaceholder();
+    (this.screen as any).restoreFocus?.();
+    this.focusPanel('input');
+    resolve(approved);
   }
 }

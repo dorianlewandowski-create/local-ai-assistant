@@ -53,6 +53,14 @@ export interface TaskResult {
   response: string;
 }
 
+export interface AuthorizationRequest {
+  id: string;
+  source: TaskSource;
+  toolName: string;
+  command: string;
+  reason: string;
+}
+
 export interface OrchestratorState {
   messages: Message[];
   activeAgent: string;
