@@ -1,10 +1,80 @@
 import { z } from 'zod';
 import { Tool } from '../types';
 import { toolRegistry } from './registry';
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
+import { logger } from '../utils/logger';
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+
+async function runAppleScript(script: string) {
+  const { stdout, stderr } = await execFileAsync('osascript', ['-e', script]);
+  if (stderr && !stdout.trim()) {
+    throw new Error(stderr.trim());
+  }
+
+  return stdout.trim();
+}
+
+// --- TODAY SCHEDULE TOOL ---
+const TodayScheduleParams = z.object({});
+
+export const getTodaySchedule: Tool<typeof TodayScheduleParams> = {
+  name: 'get_today_schedule',
+  description: 'Read today\'s appointments from the local macOS Calendar app. This is read-only.',
+  parameters: TodayScheduleParams,
+  execute: async () => {
+    try {
+      logger.system('📅 Reading macOS Calendar to verify schedule...');
+      const script = `
+        set nowDate to current date
+        set startOfDay to nowDate
+        set time of startOfDay to 0
+        set endOfDay to startOfDay + (1 * days)
+        set outputLines to {}
+
+        tell application "Calendar"
+          repeat with cal in every calendar
+            set calName to name of cal
+            set todaysEvents to every event of cal whose start date < endOfDay and end date > startOfDay
+            repeat with e in todaysEvents
+              set eventTitle to summary of e
+              set eventStart to (start date of e) as string
+              set eventEnd to (end date of e) as string
+              set end of outputLines to (calName & " | " & eventTitle & " | " & eventStart & " | " & eventEnd)
+            end repeat
+          end repeat
+        end tell
+
+        if (count of outputLines) is 0 then
+          return "No appointments found for today."
+        end if
+
+        set AppleScript's text item delimiters to linefeed
+        set outputText to outputLines as text
+        set AppleScript's text item delimiters to ""
+        return outputText
+      `;
+
+      const output = await runAppleScript(script);
+      const result = output
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .join('\n');
+
+      return { success: true, result: result || 'No appointments found for today.' };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: 'Error: Could not access macOS Calendar. Please ensure the app has necessary permissions.',
+      };
+    }
+  },
+};
+
+toolRegistry.register(getTodaySchedule);
 
 // --- LIST NAMES TOOL ---
 const ListNamesParams = z.object({});
@@ -29,8 +99,8 @@ export const calendarListNames: Tool<typeof ListNamesParams> = {
         set AppleScript's text item delimiters to ""
         return outputText
       `;
-      const { stdout } = await execAsync(`osascript -e ${JSON.stringify(script)}`);
-      return { success: true, result: stdout.trim() };
+      const result = await runAppleScript(script);
+      return { success: true, result };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
@@ -78,8 +148,8 @@ export const calendarCreateEvent: Tool<typeof CreateEventParams> = {
           return "Created event in '" & (name of targetCalendar) & "': " & (summary of newEvent)
         end tell
       `;
-      const { stdout } = await execAsync(`osascript -e ${JSON.stringify(script)}`);
-      return { success: true, result: stdout.trim() };
+      const result = await runAppleScript(script);
+      return { success: true, result };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
@@ -132,8 +202,8 @@ export const calendarDeleteEvent: Tool<typeof DeleteEventParams> = {
 
         return "No matching event found."
       `;
-      const { stdout } = await execAsync(`osascript -e ${JSON.stringify(script)}`);
-      return { success: true, result: stdout.trim() };
+      const result = await runAppleScript(script);
+      return { success: true, result };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
@@ -190,8 +260,8 @@ export const calendarListEvents: Tool<typeof ListEventsParams> = {
         set AppleScript's text item delimiters to ""
         return outputText
       `;
-      const { stdout } = await execAsync(`osascript -e ${JSON.stringify(script)}`);
-      return { success: true, result: stdout.trim() };
+      const result = await runAppleScript(script);
+      return { success: true, result };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
@@ -252,8 +322,8 @@ export const calendarSearchEvents: Tool<typeof SearchEventsParams> = {
         set AppleScript's text item delimiters to ""
         return outputText
       `;
-      const { stdout } = await execAsync(`osascript -e ${JSON.stringify(script)}`);
-      return { success: true, result: stdout.trim() };
+      const result = await runAppleScript(script);
+      return { success: true, result };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
@@ -317,8 +387,8 @@ export const calendarUpdateEvent: Tool<typeof UpdateEventParams> = {
 
         return "No matching event found."
       `;
-      const { stdout } = await execAsync(`osascript -e ${JSON.stringify(script)}`);
-      return { success: true, result: stdout.trim() };
+      const result = await runAppleScript(script);
+      return { success: true, result };
     } catch (error: any) {
       return { success: false, error: error.message };
     }

@@ -27,7 +27,7 @@ export class AgentFactory {
           name: 'System Agent',
           model: this.model,
           tools: this.tools,
-          systemPrompt: `${SHARED_AGENT_RULES} System: handle OS actions, AppleScript app control, notifications, schedules, monitoring, and device operations.`,
+          systemPrompt: `${SHARED_AGENT_RULES} System: you are now a macOS Power User. Handle OS actions, AppleScript UI control, notifications, schedule-aware help, monitoring, and device operations. Before suggesting meetings or availability, you MUST call get_today_schedule. If a task needs UI interaction (Spotify, Settings, Finder), write precise AppleScript and execute it. Always inform the user what you are about to do.`,
         };
     }
   }

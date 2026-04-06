@@ -3,10 +3,12 @@ import { promisify } from 'util';
 import { z } from 'zod';
 import { Tool } from '../types';
 import { toolRegistry } from './registry';
+import { logger } from '../utils/logger';
 
 const execAsync = promisify(exec);
 
 async function runAppleScript(script: string) {
+  logger.system('⌨️ Executing System Command...');
   const command = `osascript -e ${JSON.stringify(script)}`;
   const { stdout, stderr } = await execAsync(command);
 
@@ -17,19 +19,31 @@ async function runAppleScript(script: string) {
   return stdout.trim();
 }
 
-function buildPlayMusicScript(trackName: string) {
-  return `tell application "Music"
+function buildPlaySpotifyTrackScript(trackName: string) {
+  return `tell application "Spotify"
 activate
 play track ${JSON.stringify(trackName)}
 end tell`;
 }
 
-function buildSetVolumeScript(level: number) {
+function buildSetSystemVolumeScript(level: number) {
   return `set volume output volume ${level}`;
 }
 
 function buildOpenAppScript(appName: string) {
   return `tell application ${JSON.stringify(appName)} to activate`;
+}
+
+function buildToggleDarkModeScript() {
+  return `tell application "System Events"
+tell appearance preferences
+set dark mode to not dark mode
+end tell
+end tell`;
+}
+
+function buildHideAllAppsScript() {
+  return `tell application "System Events" to key code 103 using {command down}`;
 }
 
 function buildEmptyTrashScript() {
@@ -56,38 +70,70 @@ export const executeAppleScript: Tool<typeof ExecuteAppleScriptParams> = {
   },
 };
 
-const PlayMusicParams = z.object({
-  trackName: z.string().min(1).describe('The exact song name to play in the Music app.'),
+const PlaySpotifyTrackParams = z.object({
+  name: z.string().min(1).describe('The exact track name to play in Spotify.'),
 });
 
-export const playMusic: Tool<typeof PlayMusicParams> = {
-  name: 'play_music',
-  description: 'Open the Music app and play a requested track.',
-  parameters: PlayMusicParams,
-  execute: async ({ trackName }) => {
+export const playSpotifyTrack: Tool<typeof PlaySpotifyTrackParams> = {
+  name: 'play_spotify_track',
+  description: 'Open Spotify and play a requested track.',
+  parameters: PlaySpotifyTrackParams,
+  execute: async ({ name }) => {
     try {
-      const script = buildPlayMusicScript(trackName);
+      const script = buildPlaySpotifyTrackScript(name);
       const result = await runAppleScript(script);
-      return { success: true, result: result || `Requested playback for ${trackName}` };
+      return { success: true, result: result || `Requested Spotify playback for ${name}` };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
   },
 };
 
-const SetVolumeParams = z.object({
+const SetSystemVolumeParams = z.object({
   level: z.number().int().min(0).max(100).describe('System output volume level from 0 to 100.'),
 });
 
-export const setVolume: Tool<typeof SetVolumeParams> = {
-  name: 'set_volume',
+export const setSystemVolume: Tool<typeof SetSystemVolumeParams> = {
+  name: 'set_system_volume',
   description: 'Adjust the macOS system output volume.',
-  parameters: SetVolumeParams,
+  parameters: SetSystemVolumeParams,
   execute: async ({ level }) => {
     try {
-      const script = buildSetVolumeScript(level);
+      const script = buildSetSystemVolumeScript(level);
       const result = await runAppleScript(script);
       return { success: true, result: result || `Volume set to ${level}` };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+};
+
+const ToggleDarkModeParams = z.object({});
+
+export const toggleDarkMode: Tool<typeof ToggleDarkModeParams> = {
+  name: 'toggle_dark_mode',
+  description: 'Toggle macOS dark mode via System Events.',
+  parameters: ToggleDarkModeParams,
+  execute: async () => {
+    try {
+      const result = await runAppleScript(buildToggleDarkModeScript());
+      return { success: true, result: result || 'Toggled dark mode.' };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+};
+
+const HideAllAppsParams = z.object({});
+
+export const hideAllApps: Tool<typeof HideAllAppsParams> = {
+  name: 'hide_all_apps',
+  description: 'Show the desktop by hiding other apps.',
+  parameters: HideAllAppsParams,
+  execute: async () => {
+    try {
+      const result = await runAppleScript(buildHideAllAppsScript());
+      return { success: true, result: result || 'Hid all apps.' };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
@@ -131,14 +177,18 @@ export const emptyTrash: Tool<typeof EmptyTrashParams> = {
 };
 
 toolRegistry.register(executeAppleScript);
-toolRegistry.register(playMusic);
-toolRegistry.register(setVolume);
+toolRegistry.register(playSpotifyTrack);
+toolRegistry.register(setSystemVolume);
+toolRegistry.register(toggleDarkMode);
+toolRegistry.register(hideAllApps);
 toolRegistry.register(openApp);
 toolRegistry.register(emptyTrash);
 
 export const appleScriptTemplates = {
-  buildPlayMusicScript,
-  buildSetVolumeScript,
+  buildPlaySpotifyTrackScript,
+  buildSetSystemVolumeScript,
   buildOpenAppScript,
+  buildToggleDarkModeScript,
+  buildHideAllAppsScript,
   buildEmptyTrashScript,
 };
