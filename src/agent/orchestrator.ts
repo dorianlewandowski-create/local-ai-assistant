@@ -8,6 +8,7 @@ import { AgentFactory } from './factory';
 import { AuthorizationRequester, GatewayResponder } from '../gateways/base';
 import { logger } from '../utils/logger';
 import { assessToolRisk } from './guardian';
+import { findRelevantExperience, saveExperience, savePerformanceNote } from './memory';
 
 const AUTONOMOUS_AGENT_SYSTEM_PROMPT = `You are OpenMac, an elite autonomous agent for macOS. You are precise, helpful, and sophisticated. Use the  OpenMac signature in final responses.
 
@@ -314,9 +315,19 @@ export class Orchestrator {
     const memoryContext = memoryStore.formatContext(task.prompt, 5);
     const recentNotifications = memoryStore.formatRecentNotificationContext(5);
     const vectorContext = await vectorStore.searchSimilar(task.prompt, 3);
+    const experiences = await findRelevantExperience(task.prompt, 3);
     const vectorSummary = vectorContext.length === 0
       ? 'No related vector memory matches found.'
       : vectorContext.map((item) => `- [${item.scope}] ${item.content}`).join('\n');
+    const experienceSummary = experiences.length === 0
+      ? 'No relevant past experience found.'
+      : experiences
+        .map((experience) => `PAST EXPERIENCE: Last time you tried this, it failed with ${experience.error}. You fixed it by ${experience.successPlan}. Use this knowledge.`)
+        .join('\n');
+
+    if (experiences.length > 0) {
+      logger.system(`💡 Correction: Adjusting strategy based on past failure`);
+    }
 
     const messages: Message[] = [
       {
@@ -338,6 +349,10 @@ export class Orchestrator {
       {
         role: 'system',
         content: `Relevant vector memory:\n${vectorSummary}`,
+      },
+      {
+        role: 'system',
+        content: experienceSummary,
       },
     ];
 
@@ -376,6 +391,7 @@ export class Orchestrator {
       logMonologue(assistantMessage.content);
 
       if (awaitingReflection && !hasReflection(assistantMessage.content)) {
+        await saveExperience(task.prompt, 'Missing required Reflection after tool results.', 'Include Reflection before the next action or final answer.');
         messages.push({
           role: 'system',
           content: 'You must include Reflection: after tool results before taking the next action or finishing.',
@@ -385,6 +401,11 @@ export class Orchestrator {
 
       if (!assistantMessage.tool_calls || assistantMessage.tool_calls.length === 0) {
         if (hasFinished(assistantMessage.content)) {
+          if (step > 3) {
+            const note = `This task took ${step} turns. Reduce tool thrashing, commit to direct actions sooner, and summarize tool results more compactly.`;
+            logger.system(`🧠 Learning: Performance note captured for slow task`);
+            await savePerformanceNote(task.prompt, note);
+          }
           return assistantMessage.content;
         }
 
@@ -397,6 +418,7 @@ export class Orchestrator {
       }
 
       if (!hasThought(assistantMessage.content) || !hasPlan(assistantMessage.content)) {
+        await saveExperience(task.prompt, 'Attempted tool call without Thought/Plan.', 'Always emit Thought and Plan before calling tools.');
         messages.push({
           role: 'system',
           content: 'Before calling any tool, you must include both Thought: and Plan: in your assistant message.',
@@ -445,6 +467,7 @@ export class Orchestrator {
             });
 
             if (!approved) {
+              await saveExperience(task.prompt, `Denied by User for ${tool.name}.`, 'Explain the action clearly first, then request approval again only if still necessary.');
               throw new Error('Denied by User');
             }
 
@@ -484,6 +507,10 @@ export class Orchestrator {
           });
         } catch (error) {
           logger.error(`Tool ${tool.name} ${getErrorMessage(error)}`);
+          await saveExperience(task.prompt, `Tool ${tool.name} failed with error: ${getErrorMessage(error)}`, `Adjust ${tool.name} arguments based on the error and retry with a narrower, validated plan.`);
+          if (/applescript|spotify|music|finder|system events/i.test(tool.name) || /spotify|music|finder|system events/i.test(getErrorMessage(error))) {
+            logger.system(`🧠 Learning: Optimized AppleScript for ${tool.name}`);
+          }
           messages.push({
             role: 'tool',
             content: formatToolError(tool.name, toolCall.function.arguments, error),

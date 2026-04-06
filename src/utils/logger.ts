@@ -7,8 +7,13 @@ export interface LoggerSink {
   setStatus(text: string): void;
 }
 
+export interface LoggerMirror {
+  write(channel: string, message: string): void;
+}
+
 class Logger {
   private sink: LoggerSink | null = null;
+  private mirror: LoggerMirror | null = null;
   private consolePatched = false;
   private readonly originalConsole = {
     log: console.log.bind(console),
@@ -18,6 +23,10 @@ class Logger {
 
   setSink(sink: LoggerSink | null) {
     this.sink = sink;
+  }
+
+  setMirror(mirror: LoggerMirror | null) {
+    this.mirror = mirror;
   }
 
   patchConsole() {
@@ -67,6 +76,7 @@ class Logger {
   }
 
   chat(role: ChatRole, text: string) {
+    this.mirror?.write(role.toUpperCase(), text);
     if (this.sink) {
       this.sink.appendChat(role, text);
       return;
@@ -112,6 +122,7 @@ class Logger {
   }
 
   monologue(kind: MonologueKind, text: string) {
+    this.mirror?.write(kind.toUpperCase(), text);
     if (this.sink) {
       this.sink.appendMonologue(kind, text);
       return;
@@ -122,6 +133,7 @@ class Logger {
   }
 
   status(text: string) {
+    this.mirror?.write('STATUS', text);
     if (this.sink) {
       this.sink.setStatus(text);
       return;

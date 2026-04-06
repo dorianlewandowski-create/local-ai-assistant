@@ -6,6 +6,7 @@ import { TaskQueue } from './runtime/taskQueue';
 import { OpenMacTui } from './ui/tui';
 import { logger } from './utils/logger';
 import { memoryStore } from './db/memory';
+import { sessionLogger } from './runtime/sessionLogger';
 import { execSync } from 'child_process';
 import chokidar from 'chokidar';
 import os from 'os';
@@ -135,8 +136,11 @@ async function main() {
 
   const tui = new OpenMacTui();
   logger.setSink(tui);
+  sessionLogger.start();
+  logger.setMirror(sessionLogger);
   logger.patchConsole();
   logger.system('🔒 Security: Encrypted Vault Linked & Local AI Isolated.');
+  logger.system(`📝 Session log: ${sessionLogger.getPath()}`);
 
   MacOSAssistant.tools = toolRegistry.getAllTools().map(t => t.name);
   const orchestrator = new Orchestrator(MacOSAssistant);
@@ -184,6 +188,8 @@ async function main() {
     await slackGateway.stop();
     await watcher?.close();
     logger.restoreConsole();
+    sessionLogger.stop();
+    logger.setMirror(null);
     logger.setSink(null);
     tui.destroy();
     process.exit(0);
