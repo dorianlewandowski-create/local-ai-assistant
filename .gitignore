@@ -9,3 +9,9 @@ dist/
 .wwebjs_cache/
 *.db
 *.db-*
+.gemini/
+cache/
+functions.json
+*.tmp
+__pycache__/
+.venv/
