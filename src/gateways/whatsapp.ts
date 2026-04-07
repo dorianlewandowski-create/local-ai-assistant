@@ -2,6 +2,7 @@ import { Client, LocalAuth } from 'whatsapp-web.js';
 import qrcode from 'qrcode-terminal';
 import fs from 'fs';
 import { GatewayProvider, GatewayTaskSink } from './base';
+import { AuthorizationRequester, AuthorizationRequest } from './base';
 import { logger } from '../utils/logger';
 import { config } from '../config';
 import { TaskEnvelope } from '../types';
@@ -9,6 +10,7 @@ import { chunkRemoteResponse, formatRemoteAssistantText } from './responseFormat
 import { getGatewayStatusLines } from './status';
 import { getOrCreatePairingCode } from '../security/channelPairingStore';
 import { isWhatsAppMessageAuthorized } from './whatsappPolicy';
+import { NativeApprovalManager } from './nativeApproval';
 
 type AdminCommandHandler = (task: TaskEnvelope, input: string) => Promise<string | null>;
 
@@ -23,8 +25,9 @@ function getExecutablePath(): string | undefined {
   return CHROME_CANDIDATES.find((candidate) => fs.existsSync(candidate));
 }
 
-export class WhatsAppGateway extends GatewayProvider {
+export class WhatsAppGateway extends GatewayProvider implements AuthorizationRequester {
   private client: Client | null = null;
+  private readonly approvals = new NativeApprovalManager();
 
   constructor(sink: GatewayTaskSink, private readonly handleAdminCommand?: AdminCommandHandler) {
     super('whatsapp', sink);
@@ -78,6 +81,20 @@ export class WhatsAppGateway extends GatewayProvider {
 
       if (text === '/status') {
         void this.sendStatus(message.from);
+        return;
+      }
+
+      if (text.startsWith('/approve ')) {
+        const approvalId = text.split(/\s+/, 2)[1];
+        const settled = this.approvals.settle(approvalId, true);
+        void message.reply(settled ? `Approved ${approvalId}.` : `Approval ${approvalId} was not found.`);
+        return;
+      }
+
+      if (text.startsWith('/deny ')) {
+        const approvalId = text.split(/\s+/, 2)[1];
+        const settled = this.approvals.settle(approvalId, false);
+        void message.reply(settled ? `Denied ${approvalId}.` : `Approval ${approvalId} was not found.`);
         return;
       }
 
@@ -143,8 +160,28 @@ export class WhatsAppGateway extends GatewayProvider {
   }
 
   async stop(): Promise<void> {
+    this.approvals.stop();
     await this.client?.destroy();
     this.client = null;
+  }
+
+  async requestAuthorization(request: AuthorizationRequest): Promise<boolean> {
+    if (!this.client || !request.sourceId) {
+      throw new Error('WhatsApp authorization requested but client is not initialized or sourceId is missing.');
+    }
+
+    return this.approvals.request(request, async (pendingRequest) => {
+      await this.sendResponse(
+        request.sourceId!,
+        [
+          `Approval required: ${pendingRequest.permissionClass.toUpperCase()}`,
+          `ID: ${pendingRequest.id}`,
+          `Tool: ${pendingRequest.toolName}`,
+          `Reason: ${pendingRequest.reason}`,
+          `Reply with /approve ${pendingRequest.id} or /deny ${pendingRequest.id}`,
+        ].join('\n'),
+      );
+    });
   }
 }
 

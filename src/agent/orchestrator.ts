@@ -301,6 +301,7 @@ export class Orchestrator {
       const approved = await authorizer.requestAuthorization({
         id: `${task.id}-fast-path-${tool.name}`,
         source: task.source,
+        sourceId: task.sourceId,
         toolName: tool.name,
         command: risk.command,
         reason: risk.reason,
@@ -587,6 +588,7 @@ export class Orchestrator {
             const approved = await authorizer.requestAuthorization({
               id: `${task.id}-${toolCall.id}`,
               source: task.source,
+              sourceId: task.sourceId,
               toolName: tool.name,
               command: risk.command,
               reason: risk.reason,

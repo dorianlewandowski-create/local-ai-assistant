@@ -57,8 +57,8 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   orchestrator.registerGateway('telegram', telegramGateway);
   orchestrator.registerGateway('slack', slackGateway);
   orchestrator.registerAuthorizer('telegram', telegramGateway);
-  orchestrator.registerAuthorizer('whatsapp', createFailClosedRemoteAuthorizer('whatsapp'));
-  orchestrator.registerAuthorizer('slack', createFailClosedRemoteAuthorizer('slack'));
+  orchestrator.registerAuthorizer('whatsapp', whatsappGateway);
+  orchestrator.registerAuthorizer('slack', slackGateway);
   orchestrator.registerAuthorizer('terminal', tui);
   orchestrator.registerAuthorizer('file_watcher', tui);
   orchestrator.registerAuthorizer('scheduler', tui);

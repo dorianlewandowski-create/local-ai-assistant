@@ -89,6 +89,7 @@ export interface TaskResult {
 export interface AuthorizationRequest {
   id: string;
   source: TaskSource;
+  sourceId?: string;
   toolName: string;
   command: string;
   reason: string;

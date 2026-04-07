@@ -1,5 +1,7 @@
 import { AuthorizationRequest, TaskEnvelope, TaskSource } from '../types';
 
+export type { AuthorizationRequest } from '../types';
+
 export interface GatewayTaskSink {
   enqueue(task: TaskEnvelope): Promise<unknown>;
 }

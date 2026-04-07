@@ -1,15 +1,17 @@
 import { App } from '@slack/bolt';
-import { GatewayProvider, GatewayTaskSink } from './base';
+import { AuthorizationRequester, AuthorizationRequest, GatewayProvider, GatewayTaskSink } from './base';
 import { logger } from '../utils/logger';
 import { config } from '../config';
 import { chunkRemoteResponse, formatRemoteAssistantText } from './responseFormatting';
 import { TaskEnvelope } from '../types';
 import { getOrCreatePairingCode, isChannelSubjectApproved } from '../security/channelPairingStore';
+import { NativeApprovalManager } from './nativeApproval';
 
 type AdminCommandHandler = (task: TaskEnvelope, input: string) => Promise<string | null>;
 
-export class SlackGateway extends GatewayProvider {
+export class SlackGateway extends GatewayProvider implements AuthorizationRequester {
   private app: App | null = null;
+  private readonly approvals = new NativeApprovalManager();
 
   constructor(sink: GatewayTaskSink, private readonly handleAdminCommand?: AdminCommandHandler) {
     super('slack', sink);
@@ -51,6 +53,18 @@ export class SlackGateway extends GatewayProvider {
 
       if (text === '/status') {
         await this.sendResponse(message.channel, 'OpenMac Slack DM is connected. Use /doctor, /queue, /sessions, /memory, /safe, /sandbox, /model, or send a task.');
+        return;
+      }
+
+      if (text.startsWith('/approve ')) {
+        const approvalId = text.split(/\s+/, 2)[1];
+        await this.sendResponse(message.channel, this.approvals.settle(approvalId, true) ? `Approved ${approvalId}.` : `Approval ${approvalId} was not found.`);
+        return;
+      }
+
+      if (text.startsWith('/deny ')) {
+        const approvalId = text.split(/\s+/, 2)[1];
+        await this.sendResponse(message.channel, this.approvals.settle(approvalId, false) ? `Denied ${approvalId}.` : `Approval ${approvalId} was not found.`);
         return;
       }
 
@@ -103,8 +117,28 @@ export class SlackGateway extends GatewayProvider {
   }
 
   async stop(): Promise<void> {
+    this.approvals.stop();
     await this.app?.stop();
     this.app = null;
+  }
+
+  async requestAuthorization(request: AuthorizationRequest): Promise<boolean> {
+    if (!this.app || !request.sourceId) {
+      throw new Error('Slack authorization requested but app is not initialized or sourceId is missing.');
+    }
+
+    return this.approvals.request(request, async (pendingRequest) => {
+      await this.sendResponse(
+        request.sourceId!,
+        [
+          `Approval required: ${pendingRequest.permissionClass.toUpperCase()}`,
+          `ID: ${pendingRequest.id}`,
+          `Tool: ${pendingRequest.toolName}`,
+          `Reason: ${pendingRequest.reason}`,
+          `Reply with /approve ${pendingRequest.id} or /deny ${pendingRequest.id}`,
+        ].join('\n'),
+      );
+    });
   }
 
   private isAuthorized(userId: string): boolean {
