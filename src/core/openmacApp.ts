@@ -22,7 +22,7 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   let localClient: ReturnType<typeof createLocalTuiClient>;
 
   const updateStatus = () => {
-    const snapshot = runtimeHost.appContext.taskQueue.getSnapshot();
+    const snapshot = runtimeHost.getQueueSnapshot();
     const activeTasks = snapshot.active;
     const pulse = activeTasks > 0 ? pulseFrames[pulseIndex++ % pulseFrames.length] : '●';
     const mode = activeTasks > 0 ? 'FAST-PATH ○' : 'FAST-PATH ⚡';

@@ -7,10 +7,12 @@ import { createRuntimeRunner } from './runtimeRunner';
 import { config } from '../config';
 import { LocalConsoleRuntime } from '../clients/localConsole';
 import { logger } from '../utils/logger';
+import { TaskQueueSnapshot } from './taskQueue';
 
 export interface RuntimeHost {
   appContext: ReturnType<typeof createAppContext>;
   localConsole: LocalConsoleRuntime;
+  getQueueSnapshot(): TaskQueueSnapshot;
   startLifecycle(shutdown: () => Promise<void>): void;
   start(): Promise<void>;
   stop(): Promise<void>;
@@ -53,6 +55,9 @@ export function createRuntimeHost(localAuthorizer: AuthorizationRequester, onSta
         return result.response;
       },
     } satisfies LocalConsoleRuntime,
+    getQueueSnapshot() {
+      return appContextWithApprovals.taskQueue.getSnapshot();
+    },
     startLifecycle(shutdown: () => Promise<void>) {
       lifecycle = attachProcessLifecycle(shutdown);
     },
