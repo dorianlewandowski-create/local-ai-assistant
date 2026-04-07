@@ -4,11 +4,7 @@ import { validateStartup } from '../startupValidation';
 import { createTuiClient } from '../clients/tuiClient';
 import { attachLocalConsole, runInitialConsolePrompt } from '../clients/localConsole';
 import { sessionStore } from '../runtime/sessionStore';
-import { createAppContext } from '../runtime/appContext';
-import { createRuntimeRunner } from '../runtime/runtimeRunner';
-import { composeGateways } from '../runtime/gatewayComposition';
-import { attachProcessLifecycle } from '../runtime/lifecycle';
-import { createRuntimeCore } from '../runtime/runtimeCore';
+import { createRuntimeHost } from '../runtime/runtimeHost';
 
 export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   const startupWarnings = await validateStartup();
@@ -19,10 +15,6 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   await sessionStore.loadFromDisk();
 
   const { tui, destroy } = createTuiClient();
-  const { orchestrator, taskQueue } = createRuntimeCore();
-  const appContext = createAppContext(taskQueue);
-  const gateways = composeGateways(orchestrator, taskQueue, appContext, tui);
-  const appContextWithApprovals = createAppContext(taskQueue, gateways.approvalCounter);
 
   const prompt = argv.join(' ').trim();
   let pulseIndex = 0;
@@ -31,15 +23,17 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   let statusInterval: NodeJS.Timeout | null = null;
 
   const updateStatus = () => {
-    const snapshot = appContextWithApprovals.taskQueue.getSnapshot();
+    const snapshot = runtimeHost.appContext.taskQueue.getSnapshot();
     const activeTasks = snapshot.active;
     const pulse = activeTasks > 0 ? pulseFrames[pulseIndex++ % pulseFrames.length] : '●';
     const mode = activeTasks > 0 ? 'FAST-PATH ○' : 'FAST-PATH ⚡';
     logger.status(`${pulse}  OPENMAC ${config.app.version} | VAULT: LOCKED | AI: ${config.app.statusAiLabel} | Q:${snapshot.active}/${snapshot.pending} | MODE: ${mode}`);
   };
 
-  const runtimeRunner = createRuntimeRunner(appContextWithApprovals.taskQueue, updateStatus);
-  let lifecycle: ReturnType<typeof attachProcessLifecycle> | null = null;
+  const runtimeHost = createRuntimeHost(tui, updateStatus, () => {
+    destroy();
+    process.exit(0);
+  });
 
   const shutdown = async () => {
     if (shuttingDown) {
@@ -48,35 +42,26 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
 
     shuttingDown = true;
     logger.system('Shutting down');
-    await runtimeRunner.stop();
     if (statusInterval) {
       clearInterval(statusInterval);
     }
-    await gateways.stopAll();
-    await appContextWithApprovals.dashboard.stop();
-    lifecycle?.detach();
-    destroy();
-    process.exit(0);
+    await runtimeHost.stop();
   };
 
-  lifecycle = attachProcessLifecycle(shutdown);
+  runtimeHost.startLifecycle(shutdown);
 
-  attachLocalConsole(appContextWithApprovals, tui, updateStatus, shutdown);
+  attachLocalConsole(runtimeHost.appContext, tui, updateStatus, shutdown);
 
   if (prompt) {
-    await runInitialConsolePrompt(appContextWithApprovals, prompt, updateStatus);
+    await runInitialConsolePrompt(runtimeHost.appContext, prompt, updateStatus);
   }
 
   logger.system('Resident mode active');
   logger.system(`Watching: ${config.watcher.directories.join(', ')}`);
   if (config.dashboard.enabled) {
-    logger.system(`Dashboard: http://127.0.0.1:${appContextWithApprovals.dashboard.getPort()}`);
+    logger.system(`Dashboard: http://127.0.0.1:${runtimeHost.appContext.dashboard.getPort()}`);
   }
-  runtimeRunner.start();
-  await Promise.all([
-    gateways.startAll(config.gateways.telegram.enabled),
-    appContextWithApprovals.dashboard.start(),
-  ]);
+  await runtimeHost.start();
   updateStatus();
   statusInterval = setInterval(updateStatus, 5000);
 
