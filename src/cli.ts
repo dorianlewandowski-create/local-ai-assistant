@@ -3,7 +3,7 @@ import { runOpenMac } from './index';
 import { runOnboard } from './onboard';
 import { installLaunchdPlist } from './launchd';
 import { runUpdateHelp } from './update';
-import { runReleasePack } from './release';
+import { runReleasePack, runReleaseVerify } from './release';
 import { runPairing } from './pairing';
 
 export function resolveCliCommand(argv: string[]) {
@@ -27,6 +27,10 @@ export function resolveCliCommand(argv: string[]) {
 
   if (command === 'release-pack') {
     return { command: 'release-pack' as const, argv: rest };
+  }
+
+  if (command === 'release-verify') {
+    return { command: 'release-verify' as const, argv: rest };
   }
 
   if (command === 'pairing') {
@@ -61,6 +65,11 @@ async function main() {
 
   if (resolved.command === 'release-pack') {
     const exitCode = await runReleasePack();
+    process.exit(exitCode);
+  }
+
+  if (resolved.command === 'release-verify') {
+    const exitCode = await runReleaseVerify();
     process.exit(exitCode);
   }
 

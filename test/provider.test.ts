@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ollamaAudioTranscriptionProvider, ollamaChatProvider, ollamaEmbeddingProvider, ollamaVisionProvider } from '../src/models/ollama';
 import { chatWithFallback, embedWithFallback } from '../src/models/runtime';
+import { getTranscriptionSetupHint } from '../src/media/transcription';
 
 test('ollama provider modules expose expected methods', () => {
   assert.equal(typeof ollamaChatProvider.chat, 'function');
@@ -47,4 +48,9 @@ test('embedding fallback uses secondary model when primary fails', async () => {
 
   const result = await embedWithFallback(provider, 'primary-embed', 'hello', 'fallback-embed');
   assert.deepEqual(result, [1, 2, 3]);
+});
+
+test('transcription setup hint explains configuration path', () => {
+  assert.match(getTranscriptionSetupHint(), /OLLAMA_TRANSCRIPTION_MODEL/);
+  assert.match(getTranscriptionSetupHint(), /models\.transcription/);
 });

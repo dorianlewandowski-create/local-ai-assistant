@@ -14,7 +14,7 @@ import { NativeApprovalManager } from './nativeApproval';
 import { captureScreenshot, cleanupScreenshot } from './screenshot';
 import { MessageMedia } from 'whatsapp-web.js';
 import { cleanupTempFile, writeTempMediaFile } from '../media/files';
-import { transcribeAudioFile } from '../media/transcription';
+import { getTranscriptionSetupHint, transcribeAudioFile } from '../media/transcription';
 import path from 'path';
 
 type AdminCommandHandler = (task: TaskEnvelope, input: string) => Promise<string | null>;
@@ -220,7 +220,7 @@ export class WhatsAppGateway extends GatewayProvider implements AuthorizationReq
           return;
         } catch (error: any) {
           await cleanupTempFile(filePath);
-          await message.reply(`OpenMac received the voice note, but transcription is unavailable: ${error.message}`);
+          await message.reply(`OpenMac received the voice note, but transcription is unavailable: ${error.message} ${getTranscriptionSetupHint()}`);
           return;
         }
       }

@@ -3,6 +3,16 @@ import path from 'path';
 import { execFileSync } from 'child_process';
 
 const RELEASES_DIR = 'releases';
+const REQUIRED_RELEASE_FILES = [
+  'dist/cli.js',
+  'dist/index.js',
+  'bin/openmac',
+  'README.md',
+  '.env.example',
+  'openmac.json.example',
+  'package.json',
+  'package-lock.json',
+];
 
 function copyRecursive(source: string, target: string): void {
   const stats = fs.statSync(source);
@@ -74,5 +84,37 @@ export async function runReleasePack(write: (line: string) => void = console.log
   write(`Release staging directory: ${stagingDir}`);
   write(`Release archive: ${archivePath}`);
   write('Install flow: tar -xzf <archive> && cd openmac-<version> && npm ci --omit=dev');
+  return 0;
+}
+
+export async function runReleaseVerify(write: (line: string) => void = console.log): Promise<number> {
+  const root = process.cwd();
+  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')) as { version: string };
+  const releaseName = `openmac-${pkg.version}`;
+  const stagingDir = path.join(root, RELEASES_DIR, releaseName);
+  const archivePath = path.join(root, RELEASES_DIR, `${releaseName}.tar.gz`);
+
+  if (!fs.existsSync(stagingDir)) {
+    throw new Error(`Release staging directory missing: ${stagingDir}. Run npm run release:pack first.`);
+  }
+
+  if (!fs.existsSync(archivePath)) {
+    throw new Error(`Release archive missing: ${archivePath}. Run npm run release:pack first.`);
+  }
+
+  for (const relativePath of REQUIRED_RELEASE_FILES) {
+    const fullPath = path.join(stagingDir, relativePath);
+    if (!fs.existsSync(fullPath)) {
+      throw new Error(`Release verification failed. Missing ${relativePath} in ${stagingDir}`);
+    }
+  }
+
+  const archiveStats = fs.statSync(archivePath);
+  if (archiveStats.size === 0) {
+    throw new Error(`Release archive is empty: ${archivePath}`);
+  }
+
+  write(`Release verification passed for ${releaseName}`);
+  write(`Verified archive: ${archivePath}`);
   return 0;
 }

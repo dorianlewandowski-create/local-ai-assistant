@@ -13,7 +13,7 @@ import fs from 'fs/promises';
 import { execSync } from 'child_process';
 import { TaskEnvelope } from '../types';
 import { cleanupTempFile, writeTempMediaFile } from '../media/files';
-import { transcribeAudioFile } from '../media/transcription';
+import { getTranscriptionSetupHint, transcribeAudioFile } from '../media/transcription';
 import { chunkRemoteResponse, formatRemoteAssistantText } from './responseFormatting';
 import { getGatewayStatusLines } from './status';
 import { captureScreenshot, cleanupScreenshot } from './screenshot';
@@ -350,7 +350,7 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
         });
       } catch (error: any) {
         await cleanupTempFile(filePath);
-        await ctx.reply(` Voice note received, but transcription is unavailable: ${error.message}`);
+        await ctx.reply(` Voice note received, but transcription is unavailable: ${error.message} ${getTranscriptionSetupHint()}`);
       }
     });
 

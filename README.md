@@ -109,6 +109,7 @@ npm run onboard
 npm run launchd:install
 npm run update:help
 npm run release:pack
+npm run release:verify
 npm run typecheck
 npm run test
 npm run build
@@ -118,6 +119,7 @@ Release packaging:
 
 ```bash
 npm run release:pack
+npm run release:verify
 ```
 
 This creates:
@@ -128,6 +130,8 @@ This creates:
 The release bundle includes compiled `dist/`, a production `bin/openmac` launcher, `README.md`, example config files, and `package-lock.json` for deterministic installs.
 
 Additional optional keys are included in `.env.example` and `openmac.json.example`.
+
+For voice-note transcription, set `OLLAMA_TRANSCRIPTION_MODEL` (or `models.transcription` in `openmac.json`) to a local transcription-capable model.
 
 ## Telegram Command Center
 

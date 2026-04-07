@@ -14,6 +14,7 @@
     "launchd:install": "ts-node src/cli.ts launchd-install",
     "update:help": "ts-node src/cli.ts update",
     "release:pack": "npm run build && ts-node src/cli.ts release-pack",
+    "release:verify": "ts-node src/cli.ts release-verify",
     "lint": "tsc --noEmit --pretty false",
     "typecheck": "tsc --noEmit",
     "test": "node --require ts-node/register --test test/**/*.test.ts"

@@ -85,6 +85,7 @@ interface RawConfig {
   };
   media?: {
     maxTelegramFileBytes?: number;
+    maxVoiceNoteBytes?: number;
   };
 }
 
@@ -166,6 +167,7 @@ export interface OpenMacConfig {
   };
   media: {
     maxTelegramFileBytes: number;
+    maxVoiceNoteBytes: number;
   };
   meta: {
     configPath: string | null;
@@ -353,6 +355,7 @@ function buildEnvConfig(env: EnvSource): RawConfig {
     },
     media: {
       maxTelegramFileBytes: readNumberEnv(env, 'OPENMAC_MAX_TELEGRAM_FILE_BYTES'),
+      maxVoiceNoteBytes: readNumberEnv(env, 'OPENMAC_MAX_VOICE_NOTE_BYTES'),
     },
   };
 }
@@ -447,6 +450,7 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
     },
     media: {
       maxTelegramFileBytes: 10 * 1024 * 1024,
+      maxVoiceNoteBytes: 10 * 1024 * 1024,
     },
   };
 
@@ -496,6 +500,7 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
   };
   const mediaConfig = {
     maxTelegramFileBytes: 10 * 1024 * 1024,
+    maxVoiceNoteBytes: 10 * 1024 * 1024,
     ...(merged.media ?? {}),
   };
   const vectorStorePath = merged.storage?.vectorStorePath ?? path.join(cwd, 'data', 'lancedb');
@@ -579,6 +584,7 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
     },
     media: {
       maxTelegramFileBytes: mediaConfig.maxTelegramFileBytes,
+      maxVoiceNoteBytes: mediaConfig.maxVoiceNoteBytes,
     },
     meta: {
       configPath,
