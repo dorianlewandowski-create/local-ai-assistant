@@ -15,6 +15,8 @@ export interface SessionSettings {
   model?: string;
   verbosity?: 'low' | 'medium' | 'high';
   approvalMode?: 'standard' | 'strict';
+  allowedTools?: string[];
+  blockedTools?: string[];
 }
 
 export interface SessionRecord {

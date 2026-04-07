@@ -30,6 +30,13 @@ export type ToolCategory =
 
 export type ToolRiskLevel = 'low' | 'medium' | 'high';
 
+export interface ToolManifest {
+  category: ToolCategory;
+  riskLevel: ToolRiskLevel;
+  permissionClass: PermissionClass;
+  allowedSources?: TaskSource[];
+}
+
 export interface ToolResult {
   success: boolean;
   message: string;
@@ -44,6 +51,7 @@ export interface Tool<T extends z.ZodObject<any> = any> {
   description: string;
   category?: ToolCategory;
   riskLevel?: ToolRiskLevel;
+  manifest?: ToolManifest;
   parameters: T;
   execute: (args: z.infer<T>) => Promise<ToolResult | any>;
 }

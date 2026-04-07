@@ -263,7 +263,7 @@ export class Orchestrator {
 
     logger.system(`[FAST-PATH] 🚀 Direct execution: ${route.toolName}`);
 
-    const risk = assessToolRisk(tool.name, route.args, task.source);
+    const risk = assessToolRisk(tool, route.args, task.source, sessionStore.getSession(task).settings);
     if (!risk.allowed) {
       writeSecurityAudit({
         timestamp: new Date().toISOString(),
@@ -554,7 +554,7 @@ export class Orchestrator {
             : (rawArgs ?? {});
           const validatedArgs = tool.parameters.parse(parsedArgs);
 
-          const risk = assessToolRisk(tool.name, validatedArgs, task.source);
+          const risk = assessToolRisk(tool, validatedArgs, task.source, sessionStore.getSession(task).settings);
           if (!risk.allowed) {
             writeSecurityAudit({
               timestamp: new Date().toISOString(),

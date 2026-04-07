@@ -47,10 +47,10 @@ Use this file to track the next round of improvements after `0.7.0`.
 ## Phase 14: Improve Remote Safety Further
 
 - [ ] Add stronger sandboxing for remote sessions
-- [ ] Add per-channel tool allowlists
-- [ ] Add per-session tool policy overrides
-- [ ] Add explicit tool manifests instead of mostly inferred metadata
-- [ ] Add better audit browsing and filtering
+- [x] Add per-channel tool allowlists
+- [x] Add per-session tool policy overrides
+- [x] Add explicit tool manifests instead of mostly inferred metadata
+- [x] Add better audit browsing and filtering
 
 ## Phase 15: Improve Media Pipeline
 

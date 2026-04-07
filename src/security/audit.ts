@@ -13,6 +13,12 @@ export interface SecurityAuditEvent {
   detail: string;
 }
 
+export interface SecurityAuditFilter {
+  limit?: number;
+  type?: SecurityAuditEvent['type'];
+  source?: string;
+}
+
 export function getSecurityAuditPath(): string {
   return AUDIT_LOG_PATH;
 }
@@ -22,15 +28,18 @@ export function writeSecurityAudit(event: SecurityAuditEvent): void {
   fs.appendFileSync(AUDIT_LOG_PATH, `${JSON.stringify(event)}\n`, 'utf8');
 }
 
-export function readRecentSecurityAudit(limit = 25): SecurityAuditEvent[] {
+export function readRecentSecurityAudit(filter: SecurityAuditFilter | number = 25): SecurityAuditEvent[] {
+  const normalizedFilter = typeof filter === 'number' ? { limit: filter } : filter;
   try {
     const raw = fs.readFileSync(AUDIT_LOG_PATH, 'utf8');
     return raw
       .trim()
       .split('\n')
       .filter(Boolean)
-      .slice(-limit)
       .map((line) => JSON.parse(line) as SecurityAuditEvent)
+      .filter((event) => !normalizedFilter.type || event.type === normalizedFilter.type)
+      .filter((event) => !normalizedFilter.source || event.source === normalizedFilter.source)
+      .slice(-(normalizedFilter.limit ?? 25))
       .reverse();
   } catch (error: any) {
     if (error?.code === 'ENOENT') {

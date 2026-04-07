@@ -3,17 +3,36 @@ import assert from 'node:assert/strict';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { z } from 'zod';
 import { assessToolRisk } from '../src/security/policy';
 import { approveTelegramUser, getPairingStorePath, isTelegramUserPaired } from '../src/security/pairingStore';
+import { resolveToolManifest } from '../src/tools/result';
+import { Tool } from '../src/types';
+
+function makeTool(name: string): Tool {
+  const tool: Tool = {
+    name,
+    description: name,
+    parameters: z.object({}).passthrough(),
+    async execute() {
+      return { success: true, message: 'ok' };
+    },
+  };
+
+  return {
+    ...tool,
+    manifest: resolveToolManifest(tool),
+  };
+}
 
 test('policy blocks destructive remote operations in remote-safe mode', () => {
-  const decision = assessToolRisk('empty_trash', {}, 'telegram');
+  const decision = assessToolRisk(makeTool('empty_trash'), {}, 'telegram');
   assert.equal(decision.allowed, false);
   assert.equal(decision.permissionClass, 'destructive');
 });
 
 test('policy requires approval for local automation tools', () => {
-  const decision = assessToolRisk('open_app', { appName: 'Safari' }, 'terminal');
+  const decision = assessToolRisk(makeTool('open_app'), { appName: 'Safari' }, 'terminal');
   assert.equal(decision.allowed, true);
   assert.equal(decision.requiresAuthorization, true);
   assert.equal(decision.permissionClass, 'automation');

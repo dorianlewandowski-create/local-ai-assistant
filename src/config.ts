@@ -68,6 +68,7 @@ interface RawConfig {
     remoteAllowedPermissions?: Array<'read' | 'write' | 'automation' | 'destructive'>;
     authorizationTimeoutMs?: number;
     pairingCodeTtlMs?: number;
+    channelToolAllowlists?: Partial<Record<'telegram' | 'slack' | 'whatsapp', string[]>>;
   };
   dashboard?: {
     enabled?: boolean;
@@ -136,6 +137,7 @@ export interface OpenMacConfig {
     remoteAllowedPermissions: Array<'read' | 'write' | 'automation' | 'destructive'>;
     authorizationTimeoutMs: number;
     pairingCodeTtlMs: number;
+    channelToolAllowlists: Partial<Record<'telegram' | 'slack' | 'whatsapp', string[]>>;
   };
   dashboard: {
     enabled: boolean;
@@ -306,6 +308,11 @@ function buildEnvConfig(env: EnvSource): RawConfig {
       remoteAllowedPermissions: readCsvEnv(env, 'OPENMAC_REMOTE_ALLOWED_PERMISSIONS') as Array<'read' | 'write' | 'automation' | 'destructive'> | undefined,
       authorizationTimeoutMs: readNumberEnv(env, 'OPENMAC_AUTHORIZATION_TIMEOUT_MS'),
       pairingCodeTtlMs: readNumberEnv(env, 'OPENMAC_PAIRING_CODE_TTL_MS'),
+      channelToolAllowlists: {
+        telegram: readCsvEnv(env, 'OPENMAC_TELEGRAM_ALLOWED_TOOLS'),
+        slack: readCsvEnv(env, 'OPENMAC_SLACK_ALLOWED_TOOLS'),
+        whatsapp: readCsvEnv(env, 'OPENMAC_WHATSAPP_ALLOWED_TOOLS'),
+      },
     },
     dashboard: {
       enabled: readBooleanEnv(env, 'OPENMAC_DASHBOARD_ENABLED'),
@@ -387,6 +394,7 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
       remoteAllowedPermissions: ['read', 'write', 'automation'],
       authorizationTimeoutMs: 5 * 60 * 1000,
       pairingCodeTtlMs: 10 * 60 * 1000,
+      channelToolAllowlists: {},
     },
     dashboard: {
       enabled: false,
@@ -422,6 +430,7 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
     remoteAllowedPermissions: ['read', 'write', 'automation'] as Array<'read' | 'write' | 'automation' | 'destructive'>,
     authorizationTimeoutMs: 5 * 60 * 1000,
     pairingCodeTtlMs: 10 * 60 * 1000,
+    channelToolAllowlists: {},
     ...(merged.security ?? {}),
   };
   const dashboardConfig = {
@@ -493,6 +502,7 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
       remoteAllowedPermissions: securityConfig.remoteAllowedPermissions,
       authorizationTimeoutMs: securityConfig.authorizationTimeoutMs,
       pairingCodeTtlMs: securityConfig.pairingCodeTtlMs,
+      channelToolAllowlists: securityConfig.channelToolAllowlists,
     },
     dashboard: {
       enabled: dashboardConfig.enabled,

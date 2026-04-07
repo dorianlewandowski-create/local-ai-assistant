@@ -54,6 +54,11 @@
       "automation"
     ],
     "authorizationTimeoutMs": 300000,
-    "pairingCodeTtlMs": 600000
+    "pairingCodeTtlMs": 600000,
+    "channelToolAllowlists": {
+      "telegram": [],
+      "slack": [],
+      "whatsapp": []
+    }
   }
 }

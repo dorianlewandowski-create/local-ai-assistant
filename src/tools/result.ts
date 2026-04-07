@@ -1,4 +1,5 @@
-import { Tool, ToolCategory, ToolResult, ToolRiskLevel } from '../types';
+import { PermissionClass, Tool, ToolCategory, ToolManifest, ToolResult, ToolRiskLevel } from '../types';
+import { getToolManifest } from '../security/toolManifest';
 
 const CATEGORY_BY_PREFIX: Array<[string, ToolCategory]> = [
   ['fs_', 'filesystem'],
@@ -25,6 +26,7 @@ const MEDIUM_RISK_TOOLS = new Set([
   'calendar_create_event', 'calendar_update_event', 'execute_applescript',
   'open_app', 'play_spotify_track', 'play_spotify_search', 'toggle_dark_mode',
   'set_system_volume', 'hide_all_apps', 'take_screenshot', 'send_system_notification',
+  'save_fact', 'reminders_create_item', 'reminders_complete_item', 'reminders_delete_item',
 ]);
 
 export function inferToolCategory(toolName: string): ToolCategory {
@@ -53,8 +55,31 @@ export function inferToolRiskLevel(toolName: string): ToolRiskLevel {
   return 'low';
 }
 
+export function inferToolPermissionClass(toolName: string): PermissionClass {
+  if (HIGH_RISK_TOOLS.has(toolName)) {
+    return 'destructive';
+  }
+
+  if (toolName.startsWith('execute_') || toolName.startsWith('open_') || toolName.startsWith('play_') || toolName.startsWith('set_') || toolName.startsWith('toggle_') || toolName.startsWith('send_') || toolName.startsWith('take_')) {
+    return 'automation';
+  }
+
+  if (MEDIUM_RISK_TOOLS.has(toolName) || toolName.startsWith('fs_') || toolName.startsWith('calendar_') || toolName.startsWith('reminders_') || toolName.startsWith('save_')) {
+    return 'write';
+  }
+
+  return 'read';
+}
+
+export function resolveToolManifest(tool: Tool): ToolManifest {
+  const category = tool.category ?? inferToolCategory(tool.name);
+  const riskLevel = tool.riskLevel ?? inferToolRiskLevel(tool.name);
+  const permissionClass = inferToolPermissionClass(tool.name);
+  return getToolManifest(tool, category, riskLevel, permissionClass);
+}
+
 export function normalizeToolResult(tool: Tool, result: unknown): ToolResult {
-  const risk = tool.riskLevel ?? inferToolRiskLevel(tool.name);
+  const risk = tool.manifest?.riskLevel ?? tool.riskLevel ?? inferToolRiskLevel(tool.name);
 
   if (result && typeof result === 'object' && 'success' in result) {
     const typed = result as Record<string, unknown>;
