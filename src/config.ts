@@ -87,6 +87,10 @@ interface RawConfig {
     maxTelegramFileBytes?: number;
     maxVoiceNoteBytes?: number;
   };
+  plugins?: {
+    enabled?: boolean;
+    directory?: string;
+  };
 }
 
 export interface OpenMacConfig {
@@ -168,6 +172,10 @@ export interface OpenMacConfig {
   media: {
     maxTelegramFileBytes: number;
     maxVoiceNoteBytes: number;
+  };
+  plugins: {
+    enabled: boolean;
+    directory: string;
   };
   meta: {
     configPath: string | null;
@@ -357,6 +365,10 @@ function buildEnvConfig(env: EnvSource): RawConfig {
       maxTelegramFileBytes: readNumberEnv(env, 'OPENMAC_MAX_TELEGRAM_FILE_BYTES'),
       maxVoiceNoteBytes: readNumberEnv(env, 'OPENMAC_MAX_VOICE_NOTE_BYTES'),
     },
+    plugins: {
+      enabled: readBooleanEnv(env, 'OPENMAC_PLUGINS_ENABLED'),
+      directory: readEnv(env, 'OPENMAC_PLUGINS_DIRECTORY'),
+    },
   };
 }
 
@@ -452,6 +464,10 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
       maxTelegramFileBytes: 10 * 1024 * 1024,
       maxVoiceNoteBytes: 10 * 1024 * 1024,
     },
+    plugins: {
+      enabled: true,
+      directory: path.join(cwd, 'plugins'),
+    },
   };
 
   const fileConfig = loadConfigFile(configPath);
@@ -502,6 +518,11 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
     maxTelegramFileBytes: 10 * 1024 * 1024,
     maxVoiceNoteBytes: 10 * 1024 * 1024,
     ...(merged.media ?? {}),
+  };
+  const pluginConfig = {
+    enabled: true,
+    directory: path.join(cwd, 'plugins'),
+    ...(merged.plugins ?? {}),
   };
   const vectorStorePath = merged.storage?.vectorStorePath ?? path.join(cwd, 'data', 'lancedb');
   const sessionStorePath = merged.storage?.sessionStorePath ?? path.join(cwd, 'data', 'sessions.json');
@@ -585,6 +606,10 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
     media: {
       maxTelegramFileBytes: mediaConfig.maxTelegramFileBytes,
       maxVoiceNoteBytes: mediaConfig.maxVoiceNoteBytes,
+    },
+    plugins: {
+      enabled: pluginConfig.enabled,
+      directory: expandHomePath(pluginConfig.directory),
     },
     meta: {
       configPath,
