@@ -15,6 +15,10 @@ export interface RuntimeHost {
   stop(): Promise<void>;
 }
 
+export interface LocalRuntimeHostView {
+  localConsole: LocalConsoleRuntime;
+}
+
 export function createRuntimeHost(localAuthorizer: AuthorizationRequester, onStatusChange: () => void, onShutdown: () => void): RuntimeHost {
   const { orchestrator, taskQueue } = createRuntimeCore();
   const appContext = createAppContext(taskQueue);

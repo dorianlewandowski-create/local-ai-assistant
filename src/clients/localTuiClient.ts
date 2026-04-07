@@ -1,8 +1,8 @@
 import { createTuiClient } from './tuiClient';
 import { attachLocalConsole, runInitialConsolePrompt } from './localConsole';
-import { RuntimeHost } from '../runtime/runtimeHost';
+import { LocalRuntimeHostView } from '../runtime/runtimeHost';
 
-export function createLocalTuiClient(runtimeHost: RuntimeHost, updateStatus: () => void, shutdown: () => void) {
+export function createLocalTuiClient(runtimeHost: LocalRuntimeHostView, updateStatus: () => void, shutdown: () => void) {
   const { tui, destroy } = createTuiClient();
 
   return {
