@@ -26,12 +26,15 @@ export interface SessionRecord {
 
 const MAX_SESSION_HISTORY = 12;
 const MAX_SOURCE_HISTORY = 20;
+const MAX_SESSIONS = 100;
 
 export class SessionStore {
   private readonly sessions = new Map<string, SessionRecord>();
   private readonly sourceHistory = new Map<string, SessionEntry[]>();
 
   getSession(task: TaskEnvelope): SessionRecord {
+    this.evictIfNeeded();
+
     const key = this.getSessionKey(task);
     const sourceId = task.sourceId || 'default';
     const sourceKey = this.getSourceKey(task.source);
@@ -115,6 +118,19 @@ export class SessionStore {
 
   getSourceKey(source: TaskSource): string {
     return `source:${source}`;
+  }
+
+  private evictIfNeeded(): void {
+    if (this.sessions.size < MAX_SESSIONS) {
+      return;
+    }
+
+    const oldest = Array.from(this.sessions.values())
+      .sort((left, right) => left.updatedAt.localeCompare(right.updatedAt))[0];
+
+    if (oldest) {
+      this.sessions.delete(oldest.key);
+    }
   }
 }
 

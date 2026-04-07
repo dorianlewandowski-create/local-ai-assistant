@@ -336,15 +336,17 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
   private async sendPairingInstructions(ctx: any): Promise<void> {
     const userId = String(ctx.from?.id ?? '');
     const chatId = String(ctx.chat?.id ?? '');
-    const pending = this.getOrCreatePairing(userId, chatId);
+    const { pairing: pending, isNew } = this.getOrCreatePairing(userId, chatId);
 
-    writeSecurityAudit({
-      timestamp: new Date().toISOString(),
-      type: 'pairing_requested',
-      source: 'telegram',
-      actor: userId,
-      detail: `Pairing requested with code ${pending.code}`,
-    });
+    if (isNew) {
+      writeSecurityAudit({
+        timestamp: new Date().toISOString(),
+        type: 'pairing_requested',
+        source: 'telegram',
+        actor: userId,
+        detail: `Pairing requested with code ${pending.code}`,
+      });
+    }
 
     await ctx.reply([
       ' This Telegram account is not paired yet.',
@@ -352,15 +354,15 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
       'Send `/approve <code>` from the owner Telegram account to allow access.',
     ].join('\n'));
 
-    if (this.bot && this.ownerChatId) {
+    if (isNew && this.bot && this.ownerChatId) {
       await this.bot.telegram.sendMessage(this.ownerChatId, `OpenMac pairing request from ${userId}. Approve with /approve ${pending.code} or deny with /deny ${pending.code}.`);
     }
   }
 
-  private getOrCreatePairing(userId: string, chatId: string): PendingPairing {
+  private getOrCreatePairing(userId: string, chatId: string): { pairing: PendingPairing; isNew: boolean } {
     const existing = this.pendingPairingsByUser.get(userId);
     if (existing && existing.expiresAt > Date.now()) {
-      return existing;
+      return { pairing: existing, isNew: false };
     }
 
     if (existing) {
@@ -376,7 +378,7 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
     };
     this.pendingPairingsByUser.set(userId, pairing);
     this.pendingPairingsByCode.set(pairing.code, pairing);
-    return pairing;
+    return { pairing, isNew: true };
   }
 
   private async approvePairing(code: string): Promise<boolean> {

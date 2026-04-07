@@ -1,6 +1,6 @@
 #  OpenMac | Autonomous OS Agent for Power Users
 
-OpenMac is a local-first autonomous macOS agent designed for operators who want a persistent, high-signal command layer over their workstation. It combines elite local reasoning, a dense mission-control TUI, Telegram-based remote control, and semantic long-term memory into a single system built for serious personal automation.
+OpenMac is a local-first autonomous macOS agent designed for operators who want a persistent, high-signal command layer over their workstation. It combines local reasoning, a dense mission-control TUI, Telegram-based remote control, durable memory, and macOS automation into a single system built for serious personal workflows.
 
 ![OpenMac TUI Dashboard](assets/tui-preview.png)
 
@@ -8,20 +8,23 @@ Save the TUI screenshot at `assets/tui-preview.png` to render the preview above.
 
 ## Core Pillars
 
-- 🧠 **Elite Reasoning**: Powered by Google Gemma 4 via Ollama.
+- 🧠 **Local Model Runtime**: Ollama-backed chat, embedding, and vision providers.
 - 📟 **High-Density TUI**: A mission-control interface built with `neo-blessed`.
-- 📱 **Telegram Command Center**: Remote screenshotting, status checks, and file analysis.
-- 💾 **Semantic Memory**: Persistent vector storage using LanceDB for long-term recall.
+- 📱 **Telegram Command Center**: Remote screenshotting, status checks, pairing, and file analysis.
+- 💾 **Layered Memory**: SQLite facts, LanceDB vector memory, and in-memory session/source context.
+- 🔐 **Remote Safety**: Pairing, approval expiry, audit logs, and remote-safe tool policy.
 
 ## Architecture
 
-OpenMac is structured as a living agent rather than a single-turn assistant.
+OpenMac is structured as a resident agent rather than a single-turn assistant.
 
-- A resident orchestrator manages tasks from the terminal, file watchers, and gateways.
+- A resident orchestrator manages tasks from the terminal, file watchers, schedulers, and gateways.
 - Specialized sub-agents split work across research, coding, and system operations.
-- LanceDB stores semantic memory for contextual recall across sessions.
-- Telegram acts as a secure remote surface for commands, screenshots, and image-triggered analysis.
-- The TUI presents a dense operational view of chat, reasoning, and system I/O in real time.
+- Keyed queues isolate work by source and session.
+- Session state tracks recent conversation per source and per source ID.
+- LanceDB stores semantic memory for contextual recall across files, chats, and learned experiences.
+- Telegram acts as a secure remote surface for commands, screenshots, approvals, and image-triggered analysis.
+- The TUI presents chat, reasoning, queue state, and system I/O in real time.
 
 ## Getting Started
 
@@ -44,15 +47,27 @@ npm install
 cp .env.example .env
 ```
 
-4. Fill in the required values inside `.env`.
+4. Optionally copy `openmac.json.example` to `openmac.json` and move stable config there.
 
-5. Link the global command.
+```bash
+cp openmac.json.example openmac.json
+```
+
+5. Fill in the required values inside `.env` and/or `openmac.json`.
+
+6. Run a startup health check.
+
+```bash
+npm run doctor
+```
+
+7. Link the global command.
 
 ```bash
 npm link
 ```
 
-6. Run OpenMac from anywhere.
+8. Run OpenMac from anywhere.
 
 ```bash
 openmac
@@ -60,7 +75,7 @@ openmac
 
 ## Required Environment
 
-At minimum, configure the following inside `.env`:
+At minimum, configure the following:
 
 ```env
 TELEGRAM_ENABLED=
@@ -69,15 +84,36 @@ TELEGRAM_CHAT_ID=
 OLLAMA_MODEL=
 ```
 
-Additional optional keys are included in `.env.example` for advanced integrations.
+Recommended config split:
+
+- `.env` for secrets and tokens
+- `openmac.json` for non-secret runtime behavior like watcher directories, schedules, and security policy
+
+Useful commands:
+
+```bash
+npm run doctor
+npm run typecheck
+npm run test
+npm run build
+```
+
+Additional optional keys are included in `.env.example` and `openmac.json.example`.
 
 ## Telegram Command Center
 
-OpenMac supports a secure Telegram control path bound to a single allowed chat ID.
+OpenMac uses an owner-based Telegram model:
+
+- `TELEGRAM_CHAT_ID` is the owner account used for approvals
+- New Telegram users pair using a generated code
+- The owner approves pairing with `/approve <code>` or denies it with `/deny <code>`
+- Dangerous remote actions can be blocked by remote-safe policy before approval
 
 - `/start` boots the remote session.
 - `/status` reports system state.
 - `/screen` captures the current desktop.
+- `/approve <code>` approves a pending pairing request.
+- `/deny <code>` denies a pending pairing request.
 - Sending plain text creates a task.
 - Sending a photo triggers image analysis through the agent pipeline.
 
@@ -87,16 +123,23 @@ Your `.env` file contains tokens, identifiers, and runtime configuration. Keep i
 
 - `.env` is ignored by git.
 - Never commit production tokens.
-- Restrict Telegram access to your own `TELEGRAM_CHAT_ID`.
+- `TELEGRAM_CHAT_ID` should point to the owner Telegram account.
+- Review `OPENMAC_REMOTE_SAFE_MODE` and `OPENMAC_REMOTE_ALLOWED_PERMISSIONS` before enabling remote control broadly.
+- Security audit events are written to `data/security-audit.jsonl`.
+- Telegram pairings are stored in `data/telegram-pairings.json`.
 - Treat screenshots and local memory data as sensitive operator context.
 
 ## Developer Notes
 
-- Local model runtime: Ollama
+- Runtime entrypoint: `src/core/openmacApp.ts`
+- CLI entrypoint: `src/cli.ts`
+- Local model runtime: Ollama via provider abstraction in `src/models/`
 - Default orchestration model: Gemma 4
 - Vector memory: LanceDB
 - Terminal interface: `neo-blessed`
 - Persistent memory: SQLite + semantic retrieval
+- Session memory: in-memory session/source history
+- Queue model: keyed queue isolation by source and source ID
 
 ## Operational Philosophy
 

@@ -11,6 +11,16 @@ import { openMacAssistantConfig } from './assistantConfig';
 import { createProactiveScheduler } from '../runtime/proactiveScheduler';
 import { createTuiClient } from '../clients/tuiClient';
 import { startResidentFileWatcher } from '../runtime/fileWatcher';
+import { AuthorizationRequest, TaskSource } from '../types';
+
+function createFailClosedRemoteAuthorizer(source: TaskSource) {
+  return {
+    async requestAuthorization(_request: AuthorizationRequest): Promise<boolean> {
+      logger.warn(`Authorization denied for ${source}: no remote approval flow is implemented for this channel.`);
+      return false;
+    },
+  };
+}
 
 export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   const startupWarnings = await validateStartup();
@@ -31,6 +41,8 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   orchestrator.registerGateway('telegram', telegramGateway);
   orchestrator.registerGateway('slack', slackGateway);
   orchestrator.registerAuthorizer('telegram', telegramGateway);
+  orchestrator.registerAuthorizer('whatsapp', createFailClosedRemoteAuthorizer('whatsapp'));
+  orchestrator.registerAuthorizer('slack', createFailClosedRemoteAuthorizer('slack'));
   orchestrator.registerAuthorizer('terminal', tui);
   orchestrator.registerAuthorizer('file_watcher', tui);
   orchestrator.registerAuthorizer('scheduler', tui);
