@@ -18,7 +18,7 @@ export interface AppContext {
   dashboard: ReturnType<typeof createDashboardServer>;
 }
 
-export function createAppContext(taskQueue: TaskQueue, approvals: PendingApprovalCounter): AppContext {
+export function createAppContext(taskQueue: TaskQueue, approvals: PendingApprovalCounter = { getPendingApprovalCount: () => 0 }): AppContext {
   const adminCommands = createAdminCommandHandler({ taskQueue, approvals, services: runtimeServices });
   const dashboard = createDashboardServer(taskQueue, approvals, runtimeServices);
 

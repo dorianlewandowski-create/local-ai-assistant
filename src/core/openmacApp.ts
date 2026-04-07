@@ -2,28 +2,15 @@ import { Orchestrator } from '../agent/orchestrator';
 import { toolRegistry } from '../tools/registry';
 import { TaskQueue } from '../runtime/taskQueue';
 import { logger } from '../utils/logger';
-import { createWhatsAppGateway } from '../gateways/whatsapp';
-import { createTelegramGateway } from '../gateways/telegram';
-import { createSlackGateway } from '../gateways/slack';
 import { config } from '../config';
 import { validateStartup } from '../startupValidation';
 import { openMacAssistantConfig } from './assistantConfig';
 import { createTuiClient } from '../clients/tuiClient';
 import { attachLocalConsole, runInitialConsolePrompt } from '../clients/localConsole';
-import { AuthorizationRequest, TaskSource } from '../types';
 import { sessionStore } from '../runtime/sessionStore';
 import { createAppContext } from '../runtime/appContext';
 import { createRuntimeRunner } from '../runtime/runtimeRunner';
-
-function createFailClosedRemoteAuthorizer(source: TaskSource) {
-  return {
-    async requestAuthorization(request: AuthorizationRequest): Promise<boolean> {
-      logger.warn(`Authorization denied for ${source}: no remote approval flow is implemented for this channel.`);
-      logger.chat('assistant', `[${source}] Approval required for ${request.toolName}, but this channel does not support remote approvals yet.`);
-      return false;
-    },
-  };
-}
+import { composeGateways } from '../runtime/gatewayComposition';
 
 export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   const startupWarnings = await validateStartup();
@@ -38,24 +25,9 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   openMacAssistantConfig.tools = toolRegistry.getAllTools().map((tool) => tool.name);
   const orchestrator = new Orchestrator(openMacAssistantConfig);
   const taskQueue = new TaskQueue((task) => orchestrator.processTask(task));
-  let telegramGateway: ReturnType<typeof createTelegramGateway>;
-  const appContext = createAppContext(taskQueue, {
-    getPendingApprovalCount: () => telegramGateway?.getPendingApprovalCount() ?? 0,
-  });
-  const whatsappGateway = createWhatsAppGateway(taskQueue, appContext.adminCommands);
-  telegramGateway = createTelegramGateway(taskQueue, appContext.adminCommands);
-  const slackGateway = createSlackGateway(taskQueue, appContext.adminCommands);
-
-  orchestrator.registerGateway('whatsapp', whatsappGateway);
-  orchestrator.registerGateway('telegram', telegramGateway);
-  orchestrator.registerGateway('slack', slackGateway);
-  orchestrator.registerAuthorizer('telegram', telegramGateway);
-  orchestrator.registerAuthorizer('whatsapp', whatsappGateway);
-  orchestrator.registerAuthorizer('slack', slackGateway);
-  orchestrator.registerAuthorizer('terminal', tui);
-  orchestrator.registerAuthorizer('file_watcher', tui);
-  orchestrator.registerAuthorizer('scheduler', tui);
-  orchestrator.registerAuthorizer('default', tui);
+  const appContext = createAppContext(taskQueue);
+  const gateways = composeGateways(orchestrator, taskQueue, appContext, tui);
+  const appContextWithApprovals = createAppContext(taskQueue, gateways.approvalCounter);
 
   const prompt = argv.join(' ').trim();
   let pulseIndex = 0;
@@ -64,14 +36,14 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   let statusInterval: NodeJS.Timeout | null = null;
 
   const updateStatus = () => {
-    const snapshot = appContext.taskQueue.getSnapshot();
+    const snapshot = appContextWithApprovals.taskQueue.getSnapshot();
     const activeTasks = snapshot.active;
     const pulse = activeTasks > 0 ? pulseFrames[pulseIndex++ % pulseFrames.length] : '●';
     const mode = activeTasks > 0 ? 'FAST-PATH ○' : 'FAST-PATH ⚡';
     logger.status(`${pulse}  OPENMAC ${config.app.version} | VAULT: LOCKED | AI: ${config.app.statusAiLabel} | Q:${snapshot.active}/${snapshot.pending} | MODE: ${mode}`);
   };
 
-  const runtimeRunner = createRuntimeRunner(appContext.taskQueue, updateStatus);
+  const runtimeRunner = createRuntimeRunner(appContextWithApprovals.taskQueue, updateStatus);
 
   const shutdown = async () => {
     if (shuttingDown) {
@@ -84,33 +56,27 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
     if (statusInterval) {
       clearInterval(statusInterval);
     }
-    await whatsappGateway.stop();
-    await telegramGateway.stop();
-    await slackGateway.stop();
-    await appContext.dashboard.stop();
+    await gateways.stopAll();
+    await appContextWithApprovals.dashboard.stop();
     destroy();
     process.exit(0);
   };
 
-  attachLocalConsole(appContext, tui, updateStatus, shutdown);
+  attachLocalConsole(appContextWithApprovals, tui, updateStatus, shutdown);
 
   if (prompt) {
-    await runInitialConsolePrompt(appContext, prompt, updateStatus);
+    await runInitialConsolePrompt(appContextWithApprovals, prompt, updateStatus);
   }
 
   logger.system('Resident mode active');
   logger.system(`Watching: ${config.watcher.directories.join(', ')}`);
   if (config.dashboard.enabled) {
-    logger.system(`Dashboard: http://127.0.0.1:${appContext.dashboard.getPort()}`);
+    logger.system(`Dashboard: http://127.0.0.1:${appContextWithApprovals.dashboard.getPort()}`);
   }
   runtimeRunner.start();
   await Promise.all([
-    whatsappGateway.start(),
-    config.gateways.telegram.enabled
-      ? telegramGateway.start()
-      : Promise.resolve().then(() => logger.system('Telegram disabled')),
-    slackGateway.start(),
-    appContext.dashboard.start(),
+    gateways.startAll(config.gateways.telegram.enabled),
+    appContextWithApprovals.dashboard.start(),
   ]);
   updateStatus();
   statusInterval = setInterval(updateStatus, 5000);
