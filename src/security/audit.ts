@@ -21,3 +21,22 @@ export function writeSecurityAudit(event: SecurityAuditEvent): void {
   fs.mkdirSync(path.dirname(AUDIT_LOG_PATH), { recursive: true });
   fs.appendFileSync(AUDIT_LOG_PATH, `${JSON.stringify(event)}\n`, 'utf8');
 }
+
+export function readRecentSecurityAudit(limit = 25): SecurityAuditEvent[] {
+  try {
+    const raw = fs.readFileSync(AUDIT_LOG_PATH, 'utf8');
+    return raw
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .slice(-limit)
+      .map((line) => JSON.parse(line) as SecurityAuditEvent)
+      .reverse();
+  } catch (error: any) {
+    if (error?.code === 'ENOENT') {
+      return [];
+    }
+
+    throw error;
+  }
+}

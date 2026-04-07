@@ -38,11 +38,11 @@ Use this file to track the next round of improvements after `0.7.0`.
 
 ## Phase 13: Build Web Control UI
 
-- [ ] Add a lightweight local web dashboard
-- [ ] Show queue and session status
-- [ ] Show approval requests and audit log entries
-- [ ] Add memory search/view tools
-- [ ] Add gateway and runtime health view
+- [x] Add a lightweight local web dashboard
+- [x] Show queue and session status
+- [x] Show approval requests and audit log entries
+- [x] Add memory search/view tools
+- [x] Add gateway and runtime health view
 
 ## Phase 14: Improve Remote Safety Further
 
@@ -74,4 +74,4 @@ Use this file to track the next round of improvements after `0.7.0`.
 - [x] Persist session settings
 - [ ] Improve Slack and WhatsApp behavior
 - [x] Add basic admin commands
-- [ ] Design the web control UI surface
+- [x] Design the web control UI surface

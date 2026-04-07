@@ -14,6 +14,7 @@ import { startResidentFileWatcher } from '../runtime/fileWatcher';
 import { AuthorizationRequest, TaskSource } from '../types';
 import { sessionStore } from '../runtime/sessionStore';
 import { createAdminCommandHandler } from '../runtime/adminCommands';
+import { createDashboardServer } from '../web/dashboard';
 
 function createFailClosedRemoteAuthorizer(source: TaskSource) {
   return {
@@ -48,6 +49,9 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   });
   telegramGateway = createTelegramGateway(taskQueue, adminCommands);
   const slackGateway = createSlackGateway(taskQueue);
+  const dashboard = createDashboardServer(taskQueue, {
+    getPendingApprovalCount: () => telegramGateway?.getPendingApprovalCount() ?? 0,
+  });
 
   orchestrator.registerGateway('whatsapp', whatsappGateway);
   orchestrator.registerGateway('telegram', telegramGateway);
@@ -91,6 +95,7 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
     await whatsappGateway.stop();
     await telegramGateway.stop();
     await slackGateway.stop();
+    await dashboard.stop();
     await watcher?.close();
     destroy();
     process.exit(0);
@@ -161,6 +166,9 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
 
   logger.system('Resident mode active');
   logger.system(`Watching: ${config.watcher.directories.join(', ')}`);
+  if (config.dashboard.enabled) {
+    logger.system(`Dashboard: http://127.0.0.1:${dashboard.getPort()}`);
+  }
   proactiveScheduler.start();
   await Promise.all([
     whatsappGateway.start(),
@@ -168,6 +176,7 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
       ? telegramGateway.start()
       : Promise.resolve().then(() => logger.system('Telegram disabled')),
     slackGateway.start(),
+    dashboard.start(),
   ]);
   updateStatus();
   statusInterval = setInterval(updateStatus, 5000);

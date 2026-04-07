@@ -69,6 +69,10 @@ interface RawConfig {
     authorizationTimeoutMs?: number;
     pairingCodeTtlMs?: number;
   };
+  dashboard?: {
+    enabled?: boolean;
+    port?: number;
+  };
 }
 
 export interface OpenMacConfig {
@@ -132,6 +136,10 @@ export interface OpenMacConfig {
     remoteAllowedPermissions: Array<'read' | 'write' | 'automation' | 'destructive'>;
     authorizationTimeoutMs: number;
     pairingCodeTtlMs: number;
+  };
+  dashboard: {
+    enabled: boolean;
+    port: number;
   };
   meta: {
     configPath: string | null;
@@ -299,6 +307,10 @@ function buildEnvConfig(env: EnvSource): RawConfig {
       authorizationTimeoutMs: readNumberEnv(env, 'OPENMAC_AUTHORIZATION_TIMEOUT_MS'),
       pairingCodeTtlMs: readNumberEnv(env, 'OPENMAC_PAIRING_CODE_TTL_MS'),
     },
+    dashboard: {
+      enabled: readBooleanEnv(env, 'OPENMAC_DASHBOARD_ENABLED'),
+      port: readNumberEnv(env, 'OPENMAC_DASHBOARD_PORT'),
+    },
   };
 }
 
@@ -376,6 +388,10 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
       authorizationTimeoutMs: 5 * 60 * 1000,
       pairingCodeTtlMs: 10 * 60 * 1000,
     },
+    dashboard: {
+      enabled: false,
+      port: 18788,
+    },
   };
 
   const fileConfig = loadConfigFile(configPath);
@@ -407,6 +423,11 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
     authorizationTimeoutMs: 5 * 60 * 1000,
     pairingCodeTtlMs: 10 * 60 * 1000,
     ...(merged.security ?? {}),
+  };
+  const dashboardConfig = {
+    enabled: false,
+    port: 18788,
+    ...(merged.dashboard ?? {}),
   };
   const vectorStorePath = merged.storage?.vectorStorePath ?? path.join(cwd, 'data', 'lancedb');
   const sessionStorePath = merged.storage?.sessionStorePath ?? path.join(cwd, 'data', 'sessions.json');
@@ -472,6 +493,10 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
       remoteAllowedPermissions: securityConfig.remoteAllowedPermissions,
       authorizationTimeoutMs: securityConfig.authorizationTimeoutMs,
       pairingCodeTtlMs: securityConfig.pairingCodeTtlMs,
+    },
+    dashboard: {
+      enabled: dashboardConfig.enabled,
+      port: dashboardConfig.port,
     },
     meta: {
       configPath,

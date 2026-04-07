@@ -31,6 +31,10 @@
   "sessions": {
     "maxPersistedSessions": 100
   },
+  "dashboard": {
+    "enabled": false,
+    "port": 18788
+  },
   "gateways": {
     "telegram": {
       "enabled": false,
