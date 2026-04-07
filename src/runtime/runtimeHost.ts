@@ -6,6 +6,7 @@ import { createRuntimeCore } from './runtimeCore';
 import { createRuntimeRunner } from './runtimeRunner';
 import { config } from '../config';
 import { LocalConsoleRuntime } from '../clients/localConsole';
+import { logger } from '../utils/logger';
 
 export interface RuntimeHost {
   appContext: ReturnType<typeof createAppContext>;
@@ -30,8 +31,27 @@ export function createRuntimeHost(localAuthorizer: AuthorizationRequester, onSta
   return {
     appContext: appContextWithApprovals,
     localConsole: {
-      taskQueue,
-      adminCommands: appContextWithApprovals.adminCommands,
+      async runPrompt(prompt: string): Promise<string | null> {
+        const adminResponse = await appContextWithApprovals.adminCommands({
+          id: `terminal-admin-${Date.now()}`,
+          source: 'terminal',
+          sourceId: 'local-console',
+          prompt,
+        }, prompt);
+        if (adminResponse) {
+          return adminResponse;
+        }
+
+        logger.chat('user', prompt);
+        const result = await taskQueue.enqueue({
+          id: `terminal-${Date.now()}`,
+          source: 'terminal',
+          sourceId: 'local-console',
+          prompt,
+          timeoutMs: 120_000,
+        });
+        return result.response;
+      },
     } satisfies LocalConsoleRuntime,
     startLifecycle(shutdown: () => Promise<void>) {
       lifecycle = attachProcessLifecycle(shutdown);
