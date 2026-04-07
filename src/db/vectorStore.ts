@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
-import ollama from 'ollama';
 import { connect, Connection, Table } from '@lancedb/lancedb';
 import { config } from '../config';
+import { ollamaEmbeddingProvider } from '../models/ollama';
 
 export interface VectorRecordInput {
   source: string;
@@ -126,12 +126,7 @@ export class VectorStore {
   }
 
   private async embed(input: string): Promise<number[]> {
-    const response = await ollama.embed({
-      model: EMBEDDING_MODEL,
-      input,
-    });
-
-    return Array.from(response.embeddings[0] ?? []);
+    return ollamaEmbeddingProvider.embed(EMBEDDING_MODEL, input);
   }
 
   private async getConnection(): Promise<Connection> {

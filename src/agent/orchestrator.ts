@@ -1,4 +1,3 @@
-import ollama from 'ollama';
 import fs from 'fs/promises';
 import { AgentConfig, Message, TaskEnvelope, TaskResult, ToolCall } from '../types';
 import { toolRegistry } from '../tools/registry';
@@ -12,6 +11,7 @@ import { findRelevantExperience, saveExperience, savePerformanceNote } from './m
 import { writeSecurityAudit } from '../security/audit';
 import { config } from '../config';
 import { sessionStore } from '../runtime/sessionStore';
+import { ollamaChatProvider } from '../models/ollama';
 
 const AUTONOMOUS_AGENT_SYSTEM_PROMPT = `You are OpenMac, an elite autonomous agent for macOS. You are precise, helpful, and sophisticated. Use the  OpenMac signature in final responses.
 
@@ -460,14 +460,14 @@ export class Orchestrator {
     let awaitingReflection = false;
 
     for (let step = 1; step <= MAX_REASONING_STEPS; step++) {
-      const response = await ollama.chat({
+      const response = await ollamaChatProvider.chat({
         model: agent.model,
-        messages: messages as any,
+        messages: messages,
         tools: toolRegistry.getOllamaToolsDefinition(agent.tools) as any,
       });
 
       const assistantMessage: Message = {
-        role: 'assistant',
+        role: response.message.role,
         content: response.message.content,
         tool_calls: response.message.tool_calls as unknown as ToolCall[],
       };

@@ -49,9 +49,9 @@ Use this file to track progress against the roadmap.
 
 ## Phase 7: Add Provider Abstraction
 
-- [ ] Create an LLM provider interface
-- [ ] Move Ollama calls behind the provider
-- [ ] Separate chat, embeddings, and vision providers
+- [x] Create an LLM provider interface
+- [x] Move Ollama calls behind the provider
+- [x] Separate chat, embeddings, and vision providers
 - [ ] Add optional fallback provider support
 
 ## Phase 8: Improve Tooling Surface

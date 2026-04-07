@@ -1,12 +1,12 @@
 import fs from 'fs/promises';
 import path from 'path';
-import ollama from 'ollama';
 import { PDFParse } from 'pdf-parse';
 import { z } from 'zod';
 import { Tool } from '../types';
 import { toolRegistry } from './registry';
 import { vectorStore } from '../db/vectorStore';
 import { config } from '../config';
+import { ollamaVisionProvider } from '../models/ollama';
 
 const TEXT_FILE_EXTENSIONS = new Set(['.txt', '.md', '.js', '.ts', '.json']);
 const IMAGE_FILE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png']);
@@ -117,16 +117,11 @@ export const analyzeImageContent: Tool<typeof AnalyzeImageContentParams> = {
       }
 
       await fs.access(filePath);
-      const response = await ollama.chat({
-        model: VISION_MODEL,
-        messages: [{
-          role: 'user',
-          content: prompt || 'Describe this image in a concise but useful way for an autonomous desktop agent. Mention notable objects, visible text, document type, and anything action-worthy.',
-          images: [filePath],
-        }] as any,
-      });
-
-      const description = response.message.content.trim();
+      const description = await ollamaVisionProvider.analyzeImage(
+        VISION_MODEL,
+        filePath,
+        prompt || 'Describe this image in a concise but useful way for an autonomous desktop agent. Mention notable objects, visible text, document type, and anything action-worthy.'
+      );
       const summary = description ? `Image analysis for ${filePath}: ${description}` : `Image analysis for ${filePath}: the vision model returned an empty description.`;
       await vectorStore.store({
         source: filePath,
