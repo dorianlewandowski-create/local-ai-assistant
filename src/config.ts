@@ -57,6 +57,12 @@ interface RawConfig {
     tavilyApiKey?: string;
     arxivMaxResults?: string;
   };
+  security?: {
+    remoteSafeMode?: boolean;
+    remoteAllowedPermissions?: Array<'read' | 'write' | 'automation' | 'destructive'>;
+    authorizationTimeoutMs?: number;
+    pairingCodeTtlMs?: number;
+  };
 }
 
 export interface OpenMacConfig {
@@ -108,6 +114,12 @@ export interface OpenMacConfig {
     perplexityApiKey?: string;
     tavilyApiKey?: string;
     arxivMaxResults: string;
+  };
+  security: {
+    remoteSafeMode: boolean;
+    remoteAllowedPermissions: Array<'read' | 'write' | 'automation' | 'destructive'>;
+    authorizationTimeoutMs: number;
+    pairingCodeTtlMs: number;
   };
   meta: {
     configPath: string | null;
@@ -263,6 +275,12 @@ function buildEnvConfig(env: EnvSource): RawConfig {
       tavilyApiKey: readEnv(env, 'TAVILY_API_KEY'),
       arxivMaxResults: readEnv(env, 'ARXIV_MAX_RESULTS'),
     },
+    security: {
+      remoteSafeMode: readBooleanEnv(env, 'OPENMAC_REMOTE_SAFE_MODE'),
+      remoteAllowedPermissions: readCsvEnv(env, 'OPENMAC_REMOTE_ALLOWED_PERMISSIONS') as Array<'read' | 'write' | 'automation' | 'destructive'> | undefined,
+      authorizationTimeoutMs: readNumberEnv(env, 'OPENMAC_AUTHORIZATION_TIMEOUT_MS'),
+      pairingCodeTtlMs: readNumberEnv(env, 'OPENMAC_PAIRING_CODE_TTL_MS'),
+    },
   };
 }
 
@@ -328,6 +346,12 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
       tavilyApiKey: '',
       arxivMaxResults: '3',
     },
+    security: {
+      remoteSafeMode: true,
+      remoteAllowedPermissions: ['read', 'write', 'automation'],
+      authorizationTimeoutMs: 5 * 60 * 1000,
+      pairingCodeTtlMs: 10 * 60 * 1000,
+    },
   };
 
   const fileConfig = loadConfigFile(configPath);
@@ -352,6 +376,13 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
     clientId: '',
     clientSecret: '',
     ...(merged.integrations?.spotify ?? {}),
+  };
+  const securityConfig = {
+    remoteSafeMode: true,
+    remoteAllowedPermissions: ['read', 'write', 'automation'] as Array<'read' | 'write' | 'automation' | 'destructive'>,
+    authorizationTimeoutMs: 5 * 60 * 1000,
+    pairingCodeTtlMs: 10 * 60 * 1000,
+    ...(merged.security ?? {}),
   };
   const vectorStorePath = merged.storage?.vectorStorePath ?? path.join(cwd, 'data', 'lancedb');
 
@@ -404,6 +435,12 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
       perplexityApiKey: merged.integrations?.perplexityApiKey || undefined,
       tavilyApiKey: merged.integrations?.tavilyApiKey || undefined,
       arxivMaxResults: merged.integrations?.arxivMaxResults ?? '3',
+    },
+    security: {
+      remoteSafeMode: securityConfig.remoteSafeMode,
+      remoteAllowedPermissions: securityConfig.remoteAllowedPermissions,
+      authorizationTimeoutMs: securityConfig.authorizationTimeoutMs,
+      pairingCodeTtlMs: securityConfig.pairingCodeTtlMs,
     },
     meta: {
       configPath,

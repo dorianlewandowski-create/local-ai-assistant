@@ -27,11 +27,11 @@ Use this file to track progress against the roadmap.
 
 ## Phase 4: Harden Remote Safety
 
-- [ ] Replace single `TELEGRAM_CHAT_ID` auth with pairing/approval
-- [ ] Add per-tool permission classes
-- [ ] Add approval expiry
-- [ ] Log all approvals and denials
-- [ ] Add a remote-safe mode for dangerous tools
+- [x] Replace single `TELEGRAM_CHAT_ID` auth with pairing/approval
+- [x] Add per-tool permission classes
+- [x] Add approval expiry
+- [x] Log all approvals and denials
+- [x] Add a remote-safe mode for dangerous tools
 
 ## Phase 5: Split The Monolith
 

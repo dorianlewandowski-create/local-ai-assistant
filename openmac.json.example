@@ -35,5 +35,15 @@
       "enabled": false,
       "executablePath": ""
     }
+  },
+  "security": {
+    "remoteSafeMode": true,
+    "remoteAllowedPermissions": [
+      "read",
+      "write",
+      "automation"
+    ],
+    "authorizationTimeoutMs": 300000,
+    "pairingCodeTtlMs": 600000
   }
 }

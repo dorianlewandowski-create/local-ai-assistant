@@ -9,6 +9,8 @@ import { AuthorizationRequester, GatewayResponder } from '../gateways/base';
 import { logger } from '../utils/logger';
 import { assessToolRisk } from './guardian';
 import { findRelevantExperience, saveExperience, savePerformanceNote } from './memory';
+import { writeSecurityAudit } from '../security/audit';
+import { config } from '../config';
 
 const AUTONOMOUS_AGENT_SYSTEM_PROMPT = `You are OpenMac, an elite autonomous agent for macOS. You are precise, helpful, and sophisticated. Use the  OpenMac signature in final responses.
 
@@ -242,23 +244,61 @@ export class Orchestrator {
 
     logger.system(`[FAST-PATH] 🚀 Direct execution: ${route.toolName}`);
 
-    const risk = assessToolRisk(tool.name, route.args);
-    if (risk?.requiresAuthorization) {
+    const risk = assessToolRisk(tool.name, route.args, task.source);
+    if (!risk.allowed) {
+      writeSecurityAudit({
+        timestamp: new Date().toISOString(),
+        type: 'policy_blocked',
+        source: task.source,
+        actor: task.sourceId,
+        toolName: tool.name,
+        permissionClass: risk.permissionClass,
+        detail: risk.reason,
+      });
+      return {
+        taskId: task.id,
+        source: task.source,
+        agent: 'Fast Path',
+        response: risk.reason,
+      };
+    }
+
+    if (risk.requiresAuthorization) {
       const authorizer = this.authorizers.get(task.source) ?? this.authorizers.get('default');
       if (!authorizer) {
         throw new Error(`Authorization required for ${tool.name} but no authorizer is configured.`);
       }
 
       logger.warn(`Authorization required for ${tool.name}: ${risk.reason}`);
+      writeSecurityAudit({
+        timestamp: new Date().toISOString(),
+        type: 'authorization_requested',
+        source: task.source,
+        actor: task.sourceId,
+        toolName: tool.name,
+        permissionClass: risk.permissionClass,
+        detail: risk.reason,
+      });
       const approved = await authorizer.requestAuthorization({
         id: `${task.id}-fast-path-${tool.name}`,
         source: task.source,
         toolName: tool.name,
         command: risk.command,
         reason: risk.reason,
+        permissionClass: risk.permissionClass,
+        expiresAt: new Date(Date.now() + config.security.authorizationTimeoutMs).toISOString(),
       });
 
       if (!approved) {
+        writeSecurityAudit({
+          timestamp: new Date().toISOString(),
+          type: 'authorization_denied',
+          source: task.source,
+          actor: task.sourceId,
+          toolName: tool.name,
+          permissionClass: risk.permissionClass,
+          detail: `Denied fast-path execution for ${tool.name}`,
+        });
         return {
           taskId: task.id,
           source: task.source,
@@ -266,6 +306,16 @@ export class Orchestrator {
           response: 'Denied by User',
         };
       }
+
+      writeSecurityAudit({
+        timestamp: new Date().toISOString(),
+        type: 'authorization_approved',
+        source: task.source,
+        actor: task.sourceId,
+        toolName: tool.name,
+        permissionClass: risk.permissionClass,
+        detail: `Approved fast-path execution for ${tool.name}`,
+      });
     }
 
     const result = await tool.execute(route.args as any);
@@ -450,28 +500,70 @@ export class Orchestrator {
             : (rawArgs ?? {});
           const validatedArgs = tool.parameters.parse(parsedArgs);
 
-          const risk = assessToolRisk(tool.name, validatedArgs);
-          if (risk?.requiresAuthorization) {
+          const risk = assessToolRisk(tool.name, validatedArgs, task.source);
+          if (!risk.allowed) {
+            writeSecurityAudit({
+              timestamp: new Date().toISOString(),
+              type: 'policy_blocked',
+              source: task.source,
+              actor: task.sourceId,
+              toolName: tool.name,
+              permissionClass: risk.permissionClass,
+              detail: risk.reason,
+            });
+            throw new Error(risk.reason);
+          }
+
+          if (risk.requiresAuthorization) {
             const authorizer = this.authorizers.get(task.source) ?? this.authorizers.get('default');
             if (!authorizer) {
               throw new Error(`Authorization required for ${tool.name} but no authorizer is configured.`);
             }
 
             logger.warn(`Authorization required for ${tool.name}: ${risk.reason}`);
+            writeSecurityAudit({
+              timestamp: new Date().toISOString(),
+              type: 'authorization_requested',
+              source: task.source,
+              actor: task.sourceId,
+              toolName: tool.name,
+              permissionClass: risk.permissionClass,
+              detail: risk.reason,
+            });
             const approved = await authorizer.requestAuthorization({
               id: `${task.id}-${toolCall.id}`,
               source: task.source,
               toolName: tool.name,
               command: risk.command,
               reason: risk.reason,
+              permissionClass: risk.permissionClass,
+              expiresAt: new Date(Date.now() + config.security.authorizationTimeoutMs).toISOString(),
             });
 
             if (!approved) {
+              writeSecurityAudit({
+                timestamp: new Date().toISOString(),
+                type: 'authorization_denied',
+                source: task.source,
+                actor: task.sourceId,
+                toolName: tool.name,
+                permissionClass: risk.permissionClass,
+                detail: `Denied tool execution for ${tool.name}`,
+              });
               await saveExperience(task.prompt, `Denied by User for ${tool.name}.`, 'Explain the action clearly first, then request approval again only if still necessary.');
               throw new Error('Denied by User');
             }
 
             logger.system(`Authorization granted for ${tool.name}`);
+            writeSecurityAudit({
+              timestamp: new Date().toISOString(),
+              type: 'authorization_approved',
+              source: task.source,
+              actor: task.sourceId,
+              toolName: tool.name,
+              permissionClass: risk.permissionClass,
+              detail: `Approved tool execution for ${tool.name}`,
+            });
           }
 
           logger.tool(`Call ${tool.name} ${JSON.stringify(validatedArgs)}`);

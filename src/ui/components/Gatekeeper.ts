@@ -61,11 +61,14 @@ export class GatekeeperModal {
       '{yellow-fg}Tool Call{/yellow-fg}',
       compact(request.toolName),
       '',
+      `{yellow-fg}Permission{/yellow-fg} ${compact(request.permissionClass)}`,
+      request.expiresAt ? `{yellow-fg}Expires{/yellow-fg} ${compact(request.expiresAt)}` : '',
+      '',
       '{yellow-fg}Command / Arguments{/yellow-fg}',
       compact(request.command),
       '',
       `{yellow-fg}Reason{/yellow-fg} ${compact(request.reason)}`,
-    ].join('\n'));
+    ].filter(Boolean).join('\n'));
     this.box.show();
     this.box.setFront();
     this.box.focus();

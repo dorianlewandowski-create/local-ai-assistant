@@ -35,6 +35,7 @@ export interface AgentConfig {
 export type SubAgentKind = 'researcher' | 'coder' | 'system';
 
 export type TaskSource = 'terminal' | 'file_watcher' | 'whatsapp' | 'telegram' | 'slack' | 'scheduler';
+export type PermissionClass = 'read' | 'write' | 'automation' | 'destructive';
 
 export interface TaskEnvelope {
   id: string;
@@ -60,6 +61,8 @@ export interface AuthorizationRequest {
   toolName: string;
   command: string;
   reason: string;
+  permissionClass: PermissionClass;
+  expiresAt?: string;
 }
 
 export interface OrchestratorState {
