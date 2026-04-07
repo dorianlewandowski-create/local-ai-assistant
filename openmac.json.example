@@ -35,6 +35,9 @@
     "enabled": false,
     "port": 18788
   },
+  "media": {
+    "maxTelegramFileBytes": 10485760
+  },
   "gateways": {
     "telegram": {
       "enabled": false,

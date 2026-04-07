@@ -74,6 +74,9 @@ interface RawConfig {
     enabled?: boolean;
     port?: number;
   };
+  media?: {
+    maxTelegramFileBytes?: number;
+  };
 }
 
 export interface OpenMacConfig {
@@ -142,6 +145,9 @@ export interface OpenMacConfig {
   dashboard: {
     enabled: boolean;
     port: number;
+  };
+  media: {
+    maxTelegramFileBytes: number;
   };
   meta: {
     configPath: string | null;
@@ -318,6 +324,9 @@ function buildEnvConfig(env: EnvSource): RawConfig {
       enabled: readBooleanEnv(env, 'OPENMAC_DASHBOARD_ENABLED'),
       port: readNumberEnv(env, 'OPENMAC_DASHBOARD_PORT'),
     },
+    media: {
+      maxTelegramFileBytes: readNumberEnv(env, 'OPENMAC_MAX_TELEGRAM_FILE_BYTES'),
+    },
   };
 }
 
@@ -400,6 +409,9 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
       enabled: false,
       port: 18788,
     },
+    media: {
+      maxTelegramFileBytes: 10 * 1024 * 1024,
+    },
   };
 
   const fileConfig = loadConfigFile(configPath);
@@ -437,6 +449,10 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
     enabled: false,
     port: 18788,
     ...(merged.dashboard ?? {}),
+  };
+  const mediaConfig = {
+    maxTelegramFileBytes: 10 * 1024 * 1024,
+    ...(merged.media ?? {}),
   };
   const vectorStorePath = merged.storage?.vectorStorePath ?? path.join(cwd, 'data', 'lancedb');
   const sessionStorePath = merged.storage?.sessionStorePath ?? path.join(cwd, 'data', 'sessions.json');
@@ -507,6 +523,9 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
     dashboard: {
       enabled: dashboardConfig.enabled,
       port: dashboardConfig.port,
+    },
+    media: {
+      maxTelegramFileBytes: mediaConfig.maxTelegramFileBytes,
     },
     meta: {
       configPath,

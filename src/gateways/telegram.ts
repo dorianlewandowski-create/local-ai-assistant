@@ -12,8 +12,15 @@ import path from 'path';
 import fs from 'fs/promises';
 import { execSync } from 'child_process';
 import { TaskEnvelope } from '../types';
+import { cleanupTempFile, writeTempMediaFile } from '../media/files';
+import { transcribeAudioFile } from '../media/transcription';
 
 type AdminCommandHandler = (task: TaskEnvelope, input: string) => Promise<string | null>;
+const TELEGRAM_IMAGE_EXTENSIONS: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+};
+const TELEGRAM_DOCUMENT_EXTENSIONS = new Set(['.pdf', '.txt', '.md', '.jpg', '.jpeg', '.png']);
 
 interface PendingAuthorization {
   resolve: (approved: boolean) => void;
@@ -257,15 +264,8 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
       }
 
       try {
-        const fileUrl = await this.bot!.telegram.getFileLink(photo.file_id);
-        const response = await fetch(fileUrl);
-        if (!response.ok) {
-          throw new Error(`Telegram file download failed with status ${response.status}`);
-        }
-
-        const buffer = Buffer.from(await response.arrayBuffer());
-        const imagePath = path.join(os.tmpdir(), `openmac-telegram-photo-${Date.now()}.jpg`);
-        await fs.writeFile(imagePath, buffer);
+        const { buffer, filePath } = await this.downloadTelegramFile(photo.file_id, 'openmac-telegram-photo', '.jpg');
+        const imagePath = filePath;
         logger.chat('user', '[Telegram] Sent a photo');
         void this.dispatch(
           `Analyze this Telegram image immediately using analyze_image_content with path "${imagePath}". Describe what is important, extract any visible text if relevant, and recommend or take the next best action.`,
@@ -277,13 +277,78 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
             downloadedImagePath: imagePath,
           },
         ).catch(async (error: any) => {
-          await fs.unlink(imagePath).catch(() => undefined);
+          await cleanupTempFile(imagePath);
           logger.error(`[Telegram] photo dispatch failed: ${error.message}`);
           await ctx.reply(' I could not queue that image for analysis.');
         });
       } catch (error: any) {
         console.log(`[Telegram] photo handling failed: ${error.message}`);
         await ctx.reply(' I could not process that image.');
+      }
+    });
+
+    this.bot.on('document', async (ctx) => {
+      if (!(await this.ensureAuthorized(ctx))) {
+        return;
+      }
+
+      const document = ctx.message.document;
+      const extension = path.extname(document.file_name || '').toLowerCase();
+      if (!TELEGRAM_DOCUMENT_EXTENSIONS.has(extension)) {
+        await ctx.reply(' Unsupported document type. Send PDF, text, markdown, or supported image files.');
+        return;
+      }
+
+      let filePath: string | undefined;
+      try {
+        const download = await this.downloadTelegramFile(document.file_id, 'openmac-telegram-document', extension || '.bin');
+        filePath = download.filePath;
+        const prompt = extension === '.pdf'
+          ? `Read this PDF immediately using read_pdf_content with path "${filePath}". Summarize the important contents and recommend the next best action.`
+          : ['.jpg', '.jpeg', '.png'].includes(extension)
+            ? `Analyze this image immediately using analyze_image_content with path "${filePath}". Describe what is important, extract any visible text if relevant, and recommend the next best action.`
+            : `Read this file immediately using read_text_file with path "${filePath}". Summarize the important contents and recommend the next best action.`;
+
+        void this.dispatch(prompt, String(ctx.chat.id), {
+          username: ctx.from?.username,
+          firstName: ctx.from?.first_name,
+          telegramDocumentId: document.file_id,
+          downloadedFilePath: filePath,
+        }).catch(async (error: any) => {
+          await cleanupTempFile(filePath);
+          logger.error(`[Telegram] document dispatch failed: ${error.message}`);
+          await ctx.reply(' I could not queue that document for analysis.');
+        });
+      } catch (error: any) {
+        await cleanupTempFile(filePath);
+        logger.error(`[Telegram] document handling failed: ${error.message}`);
+        await ctx.reply(` I could not process that document: ${error.message}`);
+      }
+    });
+
+    this.bot.on('voice', async (ctx) => {
+      if (!(await this.ensureAuthorized(ctx))) {
+        return;
+      }
+
+      let filePath: string | undefined;
+      try {
+        const download = await this.downloadTelegramFile(ctx.message.voice.file_id, 'openmac-telegram-voice', '.ogg');
+        filePath = download.filePath;
+        const transcript = await transcribeAudioFile(filePath);
+        void this.dispatch(`The user sent a voice note. Transcript: ${transcript}`, String(ctx.chat.id), {
+          username: ctx.from?.username,
+          firstName: ctx.from?.first_name,
+          telegramVoiceId: ctx.message.voice.file_id,
+        }).catch(async (error: any) => {
+          logger.error(`[Telegram] voice dispatch failed: ${error.message}`);
+          await ctx.reply(' I could not queue that voice note.');
+        }).finally(async () => {
+          await cleanupTempFile(filePath);
+        });
+      } catch (error: any) {
+        await cleanupTempFile(filePath);
+        await ctx.reply(` Voice note received, but transcription is unavailable: ${error.message}`);
       }
     });
 
@@ -475,6 +540,28 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
 
   private generatePairingCode(): string {
     return Math.random().toString(36).slice(2, 8).toUpperCase();
+  }
+
+  private async downloadTelegramFile(fileId: string, prefix: string, extension: string): Promise<{ buffer: Buffer; filePath: string }> {
+    const fileUrl = await this.bot!.telegram.getFileLink(fileId);
+    const response = await fetch(fileUrl);
+    if (!response.ok) {
+      throw new Error(`Telegram file download failed with status ${response.status}`);
+    }
+
+    const contentLengthHeader = response.headers.get('content-length');
+    const contentLength = contentLengthHeader ? Number(contentLengthHeader) : 0;
+    if (contentLength > config.media.maxTelegramFileBytes) {
+      throw new Error(`File exceeds ${config.media.maxTelegramFileBytes} bytes.`);
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.byteLength > config.media.maxTelegramFileBytes) {
+      throw new Error(`File exceeds ${config.media.maxTelegramFileBytes} bytes.`);
+    }
+
+    const filePath = await writeTempMediaFile(prefix, extension, buffer);
+    return { buffer, filePath };
   }
 
   private getBatteryLevel(): string {

@@ -54,11 +54,11 @@ Use this file to track the next round of improvements after `0.7.0`.
 
 ## Phase 15: Improve Media Pipeline
 
-- [ ] Add audio/voice-note ingestion
-- [ ] Add speech-to-text support
-- [ ] Add document/media size limits
-- [ ] Add stronger temp-file lifecycle management
-- [ ] Add better user-facing media failure messages
+- [x] Add audio/voice-note ingestion
+- [x] Add speech-to-text support
+- [x] Add document/media size limits
+- [x] Add stronger temp-file lifecycle management
+- [x] Add better user-facing media failure messages
 
 ## Phase 16: Improve Packaging And Onboarding
 
