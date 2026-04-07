@@ -2,6 +2,7 @@ import { WebClient } from '@slack/web-api';
 import { GatewayProvider, GatewayTaskSink } from './base';
 import { logger } from '../utils/logger';
 import { config } from '../config';
+import { chunkRemoteResponse, formatRemoteAssistantText } from './responseFormatting';
 
 export class SlackGateway extends GatewayProvider {
   private client: WebClient | null = null;
@@ -17,7 +18,7 @@ export class SlackGateway extends GatewayProvider {
     }
 
     this.client = new WebClient(config.gateways.slack.botToken);
-    logger.system('Slack skeleton initialized; event subscription wiring is pending');
+    logger.warn('Slack send-only mode initialized. Incoming events, approvals, and rich parity are not wired yet.');
   }
 
   async sendResponse(to: string, text: string): Promise<void> {
@@ -25,10 +26,12 @@ export class SlackGateway extends GatewayProvider {
       throw new Error('Slack client is not initialized.');
     }
 
-    await this.client.chat.postMessage({
-      channel: to,
-      text,
-    });
+    for (const chunk of chunkRemoteResponse(formatRemoteAssistantText(text), 3500)) {
+      await this.client.chat.postMessage({
+        channel: to,
+        text: chunk,
+      });
+    }
   }
 
   async stop(): Promise<void> {

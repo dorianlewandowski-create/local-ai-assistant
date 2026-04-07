@@ -14,6 +14,8 @@ import { execSync } from 'child_process';
 import { TaskEnvelope } from '../types';
 import { cleanupTempFile, writeTempMediaFile } from '../media/files';
 import { transcribeAudioFile } from '../media/transcription';
+import { chunkRemoteResponse, formatRemoteAssistantText } from './responseFormatting';
+import { getGatewayStatusLines } from './status';
 
 type AdminCommandHandler = (task: TaskEnvelope, input: string) => Promise<string | null>;
 const TELEGRAM_IMAGE_EXTENSIONS: Record<string, string> = {
@@ -68,14 +70,10 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
     });
 
     const sendStatus = async (chatId: string) => {
-      const memoryCount = await vectorStore.count();
-      const uptime = this.getSystemUptime();
-      const battery = this.getBatteryLevel();
+      const lines = await getGatewayStatusLines(() => this.getSystemUptime(), () => this.getBatteryLevel());
       const text = [
         ' *OpenMac Status*',
-        `• Vector Memory Facts: *${memoryCount}*`,
-        `• System Uptime: *${uptime}*`,
-        `• Battery: *${battery}*`,
+        ...lines.slice(1).map((line) => `• *${escapeTelegramMarkdown(line.split(':')[0] || line)}*${line.includes(':') ? `: ${escapeTelegramMarkdown(line.split(':').slice(1).join(':').trim())}` : ''}`),
       ].join('\n');
       await this.bot!.telegram.sendMessage(chatId, text, { parse_mode: 'Markdown' });
     };
@@ -361,7 +359,9 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
       throw new Error('Telegram bot is not initialized.');
     }
 
-    await this.bot.telegram.sendMessage(to, escapeTelegramMarkdown(text), { parse_mode: 'MarkdownV2' });
+    for (const chunk of chunkRemoteResponse(formatRemoteAssistantText(text), 3500)) {
+      await this.bot.telegram.sendMessage(to, escapeTelegramMarkdown(chunk), { parse_mode: 'MarkdownV2' });
+    }
   }
 
   getPendingApprovalCount(): number {

@@ -4,6 +4,11 @@ import fs from 'fs';
 import { GatewayProvider, GatewayTaskSink } from './base';
 import { logger } from '../utils/logger';
 import { config } from '../config';
+import { TaskEnvelope } from '../types';
+import { chunkRemoteResponse, formatRemoteAssistantText } from './responseFormatting';
+import { getGatewayStatusLines } from './status';
+
+type AdminCommandHandler = (task: TaskEnvelope, input: string) => Promise<string | null>;
 
 const CHROME_CANDIDATES = [
   config.gateways.whatsapp.executablePath,
@@ -19,7 +24,7 @@ function getExecutablePath(): string | undefined {
 export class WhatsAppGateway extends GatewayProvider {
   private client: Client | null = null;
 
-  constructor(sink: GatewayTaskSink) {
+  constructor(sink: GatewayTaskSink, private readonly handleAdminCommand?: AdminCommandHandler) {
     super('whatsapp', sink);
   }
 
@@ -56,6 +61,42 @@ export class WhatsAppGateway extends GatewayProvider {
     });
 
     this.client.on('message', (message) => {
+      const text = message.body.trim();
+      if (text === '/status') {
+        void this.sendStatus(message.from);
+        return;
+      }
+
+      if (text === '/help' || text === '/start') {
+        void message.reply('OpenMac WhatsApp\nUse /status, /doctor, /queue, /sessions, /memory, /safe, /sandbox, /model, or send a task.');
+        return;
+      }
+
+      if (text.startsWith('/')) {
+        if (!this.handleAdminCommand) {
+          void message.reply('OpenMac admin commands are not available right now.');
+          return;
+        }
+
+        void this.handleAdminCommand({
+          id: `whatsapp-admin-${Date.now()}`,
+          source: 'whatsapp',
+          sourceId: message.from,
+          prompt: text,
+        }, text).then((response) => {
+          if (!response) {
+            void message.reply('Unknown command. Use /help.');
+            return;
+          }
+
+          void this.sendResponse(message.from, response);
+        }).catch((error: any) => {
+          logger.error(`WhatsApp admin command failed: ${error.message}`);
+          void message.reply('OpenMac could not process that command.');
+        });
+        return;
+      }
+
       void this.dispatch(message.body, message.from, {
         from: message.from,
         timestamp: message.timestamp,
@@ -70,7 +111,14 @@ export class WhatsAppGateway extends GatewayProvider {
       throw new Error('WhatsApp client is not initialized.');
     }
 
-    await this.client.sendMessage(to, text);
+    for (const chunk of chunkRemoteResponse(formatRemoteAssistantText(text), 3000)) {
+      await this.client.sendMessage(to, chunk);
+    }
+  }
+
+  private async sendStatus(to: string): Promise<void> {
+    const lines = await getGatewayStatusLines(() => 'Unavailable', () => 'Unavailable');
+    await this.sendResponse(to, lines.join('\n'));
   }
 
   async stop(): Promise<void> {
@@ -79,6 +127,6 @@ export class WhatsAppGateway extends GatewayProvider {
   }
 }
 
-export function createWhatsAppGateway(sink: GatewayTaskSink) {
-  return new WhatsAppGateway(sink);
+export function createWhatsAppGateway(sink: GatewayTaskSink, handleAdminCommand?: AdminCommandHandler) {
+  return new WhatsAppGateway(sink, handleAdminCommand);
 }

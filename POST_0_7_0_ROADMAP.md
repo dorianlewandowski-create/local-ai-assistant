@@ -23,8 +23,8 @@ Use this file to track the next round of improvements after `0.7.0`.
 - [ ] Bring Slack closer to Telegram feature parity
 - [ ] Bring WhatsApp closer to Telegram feature parity
 - [ ] Add channel-specific approval UX where supported
-- [ ] Add consistent reply formatting/chunking across channels
-- [ ] Add clearer unsupported-channel behavior
+- [x] Add consistent reply formatting/chunking across channels
+- [x] Add clearer unsupported-channel behavior
 
 ## Phase 12: Add Admin Command Surface
 
