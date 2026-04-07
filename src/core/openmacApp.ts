@@ -2,10 +2,31 @@ import { logger } from '../utils/logger';
 import { config } from '../config';
 import { validateStartup } from '../startupValidation';
 import { createLocalTuiClient } from '../clients/localTuiClient';
+import { createRemoteTuiClient } from '../clients/remoteTuiClient';
 import { sessionStore } from '../runtime/sessionStore';
 import { createRuntimeHost } from '../runtime/runtimeHost';
+import { createRuntimeServiceClient } from '../runtime/serviceClient';
 
 export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
+  const client = createRuntimeServiceClient();
+  let isRunning = false;
+  try {
+    await client.getStatusSnapshot();
+    isRunning = true;
+  } catch {
+    // Daemon not running
+  }
+
+  if (isRunning) {
+    const remoteClient = createRemoteTuiClient();
+    remoteClient.attach();
+    const prompt = argv.join(' ').trim();
+    if (prompt) {
+      await remoteClient.runInitialPrompt(prompt);
+    }
+    return;
+  }
+
   const startupWarnings = await validateStartup();
   for (const warning of startupWarnings) {
     logger.warn(warning);
@@ -42,7 +63,7 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
     await runtimeHost.stop();
   };
 
-  runtimeHost = createRuntimeHost({ requestAuthorization: async () => false }, updateStatus, () => {
+  runtimeHost = createRuntimeHost(updateStatus, () => {
     localClient.destroy();
     process.exit(0);
   });

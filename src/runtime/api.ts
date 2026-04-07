@@ -3,6 +3,7 @@ import { TaskQueue, TaskQueueSnapshot } from './taskQueue';
 import { RuntimeServices } from './services';
 import { PendingApprovalCounter } from './appContext';
 import { TaskEnvelope } from '../types';
+import { logger, LogListener } from '../utils/logger';
 
 export interface RuntimeStatusSnapshot {
   health: {
@@ -27,21 +28,27 @@ export interface RuntimePromptSubmission {
   source: TaskEnvelope['source'];
   sourceId: string;
   prompt: string;
+  metadata?: Record<string, any>;
 }
 
 export interface RuntimeApprovalSummary {
   id: string;
   source: string;
-  sourceId?: string;
+  sourceId: string;
   toolName: string;
   permissionClass: string;
+  command: string;
   reason: string;
-  expiresAt?: string;
+  expiresAt: string;
 }
+
 
 export interface RuntimeApi {
   getStatusSnapshot(): Promise<RuntimeStatusSnapshot>;
   submitPrompt(input: RuntimePromptSubmission): Promise<string>;
+  setAdminCommandHandler(handler: (task: TaskEnvelope, input: string) => Promise<string | null>): void;
+  onLog(listener: LogListener): void;
+  offLog(listener: LogListener): void;
   listSessions(limit?: number): ReturnType<RuntimeServices['listSessions']>;
   listPendingApprovals(): RuntimeApprovalSummary[];
   settleApproval(id: string, approved: boolean): boolean;
@@ -56,6 +63,8 @@ export interface RuntimeApi {
 }
 
 export function createRuntimeApi(taskQueue: TaskQueue, approvals: PendingApprovalCounter, services: RuntimeServices): RuntimeApi {
+  let adminCommandHandler: ((task: TaskEnvelope, input: string) => Promise<string | null>) | null = null;
+
   return {
     async getStatusSnapshot(): Promise<RuntimeStatusSnapshot> {
       return {
@@ -83,16 +92,44 @@ export function createRuntimeApi(taskQueue: TaskQueue, approvals: PendingApprova
         source: input.source,
         sourceId: input.sourceId,
         prompt: input.prompt,
+        metadata: input.metadata,
         timeoutMs: 120_000,
       };
+
+      if (adminCommandHandler) {
+        const adminResponse = await adminCommandHandler(task, input.prompt);
+        if (adminResponse) {
+          return adminResponse;
+        }
+      }
+
       const result = await taskQueue.enqueue(task);
       return result.response;
+    },
+    setAdminCommandHandler(handler) {
+      adminCommandHandler = handler;
+    },
+    onLog(listener) {
+      logger.addListener(listener);
+    },
+    offLog(listener) {
+      logger.removeListener(listener);
     },
     listSessions(limit = 10) {
       return services.listSessions(limit);
     },
     listPendingApprovals() {
-      return approvals.listPendingApprovals?.() ?? [];
+      const pending = approvals.listPendingApprovals?.() ?? [];
+      return pending.map(p => ({
+        id: p.id,
+        source: p.source,
+        sourceId: p.sourceId || 'unknown',
+        toolName: p.toolName,
+        permissionClass: p.permissionClass,
+        command: p.command || '',
+        reason: p.reason,
+        expiresAt: p.expiresAt ? new Date(p.expiresAt).toISOString() : new Date().toISOString(),
+      }));
     },
     settleApproval(id: string, approved: boolean) {
       return approvals.settleApproval?.(id, approved) ?? false;

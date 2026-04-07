@@ -1,23 +1,20 @@
 import { App } from '@slack/bolt';
-import { AuthorizationRequester, AuthorizationRequest, GatewayProvider, GatewayTaskSink } from './base';
+import { AuthorizationRequester, AuthorizationRequest, GatewayProvider, RuntimeSubmissionClient } from './base';
 import { logger } from '../utils/logger';
 import { config } from '../config';
 import { chunkRemoteResponse, formatRemoteAssistantText } from './responseFormatting';
-import { TaskEnvelope } from '../types';
 import { getOrCreatePairingCode, isChannelSubjectApproved } from '../security/channelPairingStore';
 import { NativeApprovalManager, PendingApprovalSummary } from './nativeApproval';
 import { captureScreenshot, cleanupScreenshot } from './screenshot';
 import fs from 'fs';
 import { buildSlackHelpText, buildSlackStatusText } from './slackDiagnostics';
 
-type AdminCommandHandler = (task: TaskEnvelope, input: string) => Promise<string | null>;
-
 export class SlackGateway extends GatewayProvider implements AuthorizationRequester {
   private app: App | null = null;
   private readonly approvals = new NativeApprovalManager();
 
-  constructor(sink: GatewayTaskSink, private readonly handleAdminCommand?: AdminCommandHandler) {
-    super('slack', sink);
+  constructor(client: RuntimeSubmissionClient) {
+    super('slack', client);
   }
 
   async start(): Promise<void> {
@@ -82,29 +79,28 @@ export class SlackGateway extends GatewayProvider implements AuthorizationReques
       }
 
       if (text.startsWith('/')) {
-        if (!this.handleAdminCommand) {
-          await this.sendResponse(message.channel, 'OpenMac admin commands are not available right now.');
-          return;
-        }
-
-        const response = await this.handleAdminCommand({
-          id: `slack-admin-${Date.now()}`,
-          source: 'slack',
-          sourceId: message.channel,
-          prompt: text,
-        }, text);
+        const response = await this.dispatch(text, message.channel, {
+          slackUserId: message.user,
+          slackChannelId: message.channel,
+        });
 
         await this.sendResponse(message.channel, response || 'Unknown command. Use /help.');
         return;
       }
 
-      void this.dispatch(text, message.channel, {
-        slackUserId: message.user,
-        slackChannelId: message.channel,
-      }).catch(async (error: any) => {
+      try {
+        const response = await this.dispatch(text, message.channel, {
+          slackUserId: message.user,
+          slackChannelId: message.channel,
+        });
+        if (response) {
+          await this.sendResponse(message.channel, response);
+          logger.chat('assistant', `[Slack] ${response}`);
+        }
+      } catch (error: any) {
         logger.error(`Slack dispatch failed: ${error.message}`);
         await this.sendResponse(message.channel, 'OpenMac could not queue that request right now.');
-      });
+      }
     });
 
     await this.app.start();
@@ -186,6 +182,6 @@ export class SlackGateway extends GatewayProvider implements AuthorizationReques
   }
 }
 
-export function createSlackGateway(sink: GatewayTaskSink, handleAdminCommand?: AdminCommandHandler) {
-  return new SlackGateway(sink, handleAdminCommand);
+export function createSlackGateway(client: RuntimeSubmissionClient) {
+  return new SlackGateway(client);
 }

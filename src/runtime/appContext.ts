@@ -8,7 +8,7 @@ import { createRuntimeApi, RuntimeApi } from './api';
 
 export interface PendingApprovalCounter {
   getPendingApprovalCount(): number;
-  listPendingApprovals?(): Array<{ id: string; source: string; sourceId?: string; toolName: string; permissionClass: string; reason: string; expiresAt?: string }>;
+  listPendingApprovals?(): Array<{ id: string; source: string; sourceId?: string; toolName: string; permissionClass: string; command: string; reason: string; expiresAt?: string }>;
   settleApproval?(id: string, approved: boolean): boolean;
 }
 
@@ -25,6 +25,7 @@ export interface AppContext {
 export function createAppContext(taskQueue: TaskQueue, approvals: PendingApprovalCounter = { getPendingApprovalCount: () => 0 }): AppContext {
   const api = createRuntimeApi(taskQueue, approvals, runtimeServices);
   const adminCommands = createAdminCommandHandler({ taskQueue, approvals, services: runtimeServices, api });
+  api.setAdminCommandHandler(adminCommands);
   const dashboard = createDashboardServer();
 
   return {

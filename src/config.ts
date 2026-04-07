@@ -20,6 +20,12 @@ interface RawConfig {
     vision?: string;
     transcription?: string;
     webSearch?: string;
+    tiers?: {
+      fast?: string;
+      reasoning?: string;
+      vision?: string;
+      coding?: string;
+    };
   };
   ollama?: {
     host?: string;
@@ -110,6 +116,12 @@ export interface OpenMacConfig {
     vision: string;
     transcription?: string;
     webSearch: string;
+    tiers: {
+      fast: string;
+      reasoning: string;
+      vision: string;
+      coding: string;
+    };
   };
   ollama: {
     host: string;
@@ -302,6 +314,12 @@ function buildEnvConfig(env: EnvSource): RawConfig {
       vision: readEnv(env, 'OLLAMA_VISION_MODEL'),
       transcription: readEnv(env, 'OLLAMA_TRANSCRIPTION_MODEL'),
       webSearch: readEnv(env, 'PERPLEXITY_WEB_SEARCH_MODEL'),
+      tiers: {
+        fast: readEnv(env, 'OPENMAC_MODEL_FAST'),
+        reasoning: readEnv(env, 'OPENMAC_MODEL_REASONING'),
+        vision: readEnv(env, 'OPENMAC_MODEL_VISION'),
+        coding: readEnv(env, 'OPENMAC_MODEL_CODING'),
+      },
     },
     ollama: {
       host: readEnv(env, 'OLLAMA_HOST'),
@@ -398,7 +416,7 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
 
   const defaults: Required<RawConfig> = {
     app: {
-      version: '0.7.0',
+      version: '0.7.4',
       statusAiLabel: 'GEMMA-4',
     },
     models: {
@@ -409,6 +427,12 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
       vision: 'llama3.2-vision',
       transcription: '',
       webSearch: 'llama-3.1-sonar-small-128k-online',
+      tiers: {
+        fast: 'llama3.2:3b',
+        reasoning: 'deepseek-r1:14b',
+        vision: 'llama3.2-vision',
+        coding: 'qwen2.5-coder:7b',
+      },
     },
     ollama: {
       host: 'http://127.0.0.1:11434',
@@ -550,7 +574,7 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
 
   return {
     app: {
-      version: merged.app?.version ?? '0.7.0',
+      version: merged.app?.version ?? '0.7.4',
       statusAiLabel: merged.app?.statusAiLabel ?? 'GEMMA-4',
     },
     models: {
@@ -561,6 +585,12 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
       vision: merged.models?.vision ?? 'llama3.2-vision',
       transcription: merged.models?.transcription || undefined,
       webSearch: merged.models?.webSearch ?? 'llama-3.1-sonar-small-128k-online',
+      tiers: {
+        fast: merged.models?.tiers?.fast ?? 'llama3.2:3b',
+        reasoning: merged.models?.tiers?.reasoning ?? 'deepseek-r1:14b',
+        vision: merged.models?.tiers?.vision ?? 'llama3.2-vision',
+        coding: merged.models?.tiers?.coding ?? 'qwen2.5-coder:7b',
+      },
     },
     ollama: {
       host: merged.ollama?.host ?? 'http://127.0.0.1:11434',

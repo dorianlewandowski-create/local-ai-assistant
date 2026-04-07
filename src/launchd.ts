@@ -17,6 +17,7 @@ export function buildLaunchdPlist(projectRoot: string): string {
   <array>
     <string>/bin/bash</string>
     <string>${projectRoot}/bin/run.sh</string>
+    <string>daemon</string>
   </array>
   <key>WorkingDirectory</key>
   <string>${projectRoot}</string>

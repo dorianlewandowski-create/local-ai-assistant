@@ -1,17 +1,13 @@
 import { Input, Markup, Telegraf } from 'telegraf';
-import { AuthorizationRequester, GatewayProvider, GatewayTaskSink } from './base';
+import { AuthorizationRequester, GatewayProvider, RuntimeSubmissionClient } from './base';
 import { logger } from '../utils/logger';
-import { vectorStore } from '../db/vectorStore';
 import { AuthorizationRequest } from '../types';
 import { config } from '../config';
 import { escapeTelegramMarkdown } from '../utils/telegramMarkdown';
 import { approveTelegramUser, isTelegramUserPaired } from '../security/pairingStore';
 import { writeSecurityAudit } from '../security/audit';
-import os from 'os';
 import path from 'path';
-import fs from 'fs/promises';
 import { execSync } from 'child_process';
-import { TaskEnvelope } from '../types';
 import { cleanupTempFile, writeTempMediaFile } from '../media/files';
 import { getTranscriptionSetupHint, transcribeAudioFile } from '../media/transcription';
 import { chunkRemoteResponse, formatRemoteAssistantText } from './responseFormatting';
@@ -19,11 +15,6 @@ import { getGatewayStatusLines } from './status';
 import { captureScreenshot, cleanupScreenshot } from './screenshot';
 import { PendingApprovalSummary } from './nativeApproval';
 
-type AdminCommandHandler = (task: TaskEnvelope, input: string) => Promise<string | null>;
-const TELEGRAM_IMAGE_EXTENSIONS: Record<string, string> = {
-  'image/jpeg': '.jpg',
-  'image/png': '.png',
-};
 const TELEGRAM_DOCUMENT_EXTENSIONS = new Set(['.pdf', '.txt', '.md', '.jpg', '.jpeg', '.png']);
 
 interface PendingAuthorization {
@@ -49,8 +40,8 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
   private readonly pendingPairingsByUser = new Map<string, PendingPairing>();
   private readonly pendingPairingsByCode = new Map<string, PendingPairing>();
 
-  constructor(sink: GatewayTaskSink, private readonly handleAdminCommand?: AdminCommandHandler) {
-    super('telegram', sink);
+  constructor(client: RuntimeSubmissionClient) {
+    super('telegram', client);
   }
 
   async start(): Promise<void> {
@@ -113,36 +104,18 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
       await sendStatus(String(ctx.chat.id));
     });
 
-    this.bot.command('doctor', async (ctx) => {
-      if (!(await this.ensureAuthorized(ctx)) || !this.handleAdminCommand) {
-        return;
-      }
-
-      const response = await this.handleAdminCommand({
-        id: `telegram-admin-${Date.now()}`,
-        source: 'telegram',
-        sourceId: String(ctx.chat.id),
-        prompt: '/doctor',
-      }, '/doctor');
-      if (response) {
-        await ctx.reply(response);
-      }
-    });
-
-    for (const name of ['queue', 'sessions', 'memory', 'safe', 'sandbox', 'model', 'approvals'] as const) {
+    for (const name of ['doctor', 'queue', 'sessions', 'memory', 'safe', 'sandbox', 'model', 'approvals'] as const) {
       this.bot.command(name, async (ctx) => {
-        if (!(await this.ensureAuthorized(ctx)) || !this.handleAdminCommand) {
+        if (!(await this.ensureAuthorized(ctx))) {
           return;
         }
 
-        const response = await this.handleAdminCommand({
-          id: `telegram-admin-${name}-${Date.now()}`,
-          source: 'telegram',
-          sourceId: String(ctx.chat.id),
-          prompt: ctx.message.text.trim(),
-        }, ctx.message.text.trim());
+        const chatId = String(ctx.chat.id);
+        const text = ctx.message.text.trim();
+        const response = await this.dispatch(text, chatId);
         if (response) {
-          await ctx.reply(response);
+          await this.sendResponse(chatId, response);
+          logger.chat('assistant', `[Telegram] ${response}`);
         }
       });
     }
@@ -246,14 +219,20 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
 
       const chatId = String(ctx.chat.id);
       logger.chat('user', `[Telegram] ${text}`);
-      void this.dispatch(text, chatId, {
-        username: ctx.from?.username,
-        firstName: ctx.from?.first_name,
-        telegramMessageId: ctx.message.message_id,
-      }).catch(async (error: any) => {
+      try {
+        const response = await this.dispatch(text, chatId, {
+          username: ctx.from?.username,
+          firstName: ctx.from?.first_name,
+          telegramMessageId: ctx.message.message_id,
+        });
+        if (response) {
+          await this.sendResponse(chatId, response);
+          logger.chat('assistant', `[Telegram] ${response}`);
+        }
+      } catch (error: any) {
         logger.error(`[Telegram] text dispatch failed: ${error.message}`);
         await ctx.reply(' I could not queue that request right now.');
-      });
+      }
     });
 
     this.bot.on('photo', async (ctx) => {
@@ -271,20 +250,24 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
         const { filePath } = await this.downloadTelegramFile(photo.file_id, 'openmac-telegram-photo', '.jpg');
         const imagePath = filePath;
         logger.chat('user', '[Telegram] Sent a photo');
-        void this.dispatch(
-          `Analyze this Telegram image immediately using analyze_image_content with path "${imagePath}". Describe what is important, extract any visible text if relevant, and recommend or take the next best action.`,
-          chatId,
-          {
-            username: ctx.from?.username,
-            firstName: ctx.from?.first_name,
-            telegramPhotoId: photo.file_id,
-            downloadedImagePath: imagePath,
-          },
-        ).catch(async (error: any) => {
+        try {
+          const response = await this.dispatch(
+            `Analyze this Telegram image immediately using analyze_image_content with path "${imagePath}". Describe what is important, extract any visible text if relevant, and recommend or take the next best action.`,
+            chatId,
+            {
+              username: ctx.from?.username,
+              firstName: ctx.from?.first_name,
+              telegramPhotoId: photo.file_id,
+              downloadedImagePath: imagePath,
+            },
+          );
+          if (response) {
+            await this.sendResponse(chatId, response);
+            logger.chat('assistant', `[Telegram] ${response}`);
+          }
+        } finally {
           await cleanupTempFile(imagePath);
-          logger.error(`[Telegram] photo dispatch failed: ${error.message}`);
-          await ctx.reply(' I could not queue that image for analysis.');
-        });
+        }
       } catch (error: any) {
         console.log(`[Telegram] photo handling failed: ${error.message}`);
         await ctx.reply(' I could not process that image.');
@@ -313,16 +296,20 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
             ? `Analyze this image immediately using analyze_image_content with path "${filePath}". Describe what is important, extract any visible text if relevant, and recommend the next best action.`
             : `Read this file immediately using read_text_file with path "${filePath}". Summarize the important contents and recommend the next best action.`;
 
-        void this.dispatch(prompt, String(ctx.chat.id), {
-          username: ctx.from?.username,
-          firstName: ctx.from?.first_name,
-          telegramDocumentId: document.file_id,
-          downloadedFilePath: filePath,
-        }).catch(async (error: any) => {
+        try {
+          const response = await this.dispatch(prompt, String(ctx.chat.id), {
+            username: ctx.from?.username,
+            firstName: ctx.from?.first_name,
+            telegramDocumentId: document.file_id,
+            downloadedFilePath: filePath,
+          });
+          if (response) {
+            await this.sendResponse(String(ctx.chat.id), response);
+            logger.chat('assistant', `[Telegram] ${response}`);
+          }
+        } finally {
           await cleanupTempFile(filePath);
-          logger.error(`[Telegram] document dispatch failed: ${error.message}`);
-          await ctx.reply(' I could not queue that document for analysis.');
-        });
+        }
       } catch (error: any) {
         await cleanupTempFile(filePath);
         logger.error(`[Telegram] document handling failed: ${error.message}`);
@@ -340,16 +327,19 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
         const download = await this.downloadTelegramFile(ctx.message.voice.file_id, 'openmac-telegram-voice', '.ogg');
         filePath = download.filePath;
         const transcript = await transcribeAudioFile(filePath);
-        void this.dispatch(`The user sent a voice note. Transcript: ${transcript}`, String(ctx.chat.id), {
-          username: ctx.from?.username,
-          firstName: ctx.from?.first_name,
-          telegramVoiceId: ctx.message.voice.file_id,
-        }).catch(async (error: any) => {
-          logger.error(`[Telegram] voice dispatch failed: ${error.message}`);
-          await ctx.reply(' I could not queue that voice note.');
-        }).finally(async () => {
+        try {
+          const response = await this.dispatch(`The user sent a voice note. Transcript: ${transcript}`, String(ctx.chat.id), {
+            username: ctx.from?.username,
+            firstName: ctx.from?.first_name,
+            telegramVoiceId: ctx.message.voice.file_id,
+          });
+          if (response) {
+            await this.sendResponse(String(ctx.chat.id), response);
+            logger.chat('assistant', `[Telegram] ${response}`);
+          }
+        } finally {
           await cleanupTempFile(filePath);
-        });
+        }
       } catch (error: any) {
         await cleanupTempFile(filePath);
         await ctx.reply(` Voice note received, but transcription is unavailable: ${error.message} ${getTranscriptionSetupHint()}`);
@@ -381,6 +371,7 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
       sourceId: request.sourceId,
       toolName: request.toolName,
       permissionClass: request.permissionClass,
+      command: request.command,
       reason: request.reason,
       expiresAt: request.expiresAt,
     }));
@@ -616,6 +607,6 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
   }
 }
 
-export function createTelegramGateway(sink: GatewayTaskSink, handleAdminCommand?: AdminCommandHandler) {
-  return new TelegramGateway(sink, handleAdminCommand);
+export function createTelegramGateway(client: RuntimeSubmissionClient) {
+  return new TelegramGateway(client);
 }

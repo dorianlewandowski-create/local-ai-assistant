@@ -1,11 +1,10 @@
 import { Client, LocalAuth } from 'whatsapp-web.js';
 import qrcode from 'qrcode-terminal';
 import fs from 'fs';
-import { GatewayProvider, GatewayTaskSink } from './base';
+import { GatewayProvider, RuntimeSubmissionClient } from './base';
 import { AuthorizationRequester, AuthorizationRequest } from './base';
 import { logger } from '../utils/logger';
 import { config } from '../config';
-import { TaskEnvelope } from '../types';
 import { chunkRemoteResponse, formatRemoteAssistantText } from './responseFormatting';
 import { getGatewayStatusLines } from './status';
 import { getOrCreatePairingCode } from '../security/channelPairingStore';
@@ -16,8 +15,6 @@ import { MessageMedia } from 'whatsapp-web.js';
 import { cleanupTempFile, writeTempMediaFile } from '../media/files';
 import { getTranscriptionSetupHint, transcribeAudioFile } from '../media/transcription';
 import path from 'path';
-
-type AdminCommandHandler = (task: TaskEnvelope, input: string) => Promise<string | null>;
 
 const CHROME_CANDIDATES = [
   config.gateways.whatsapp.executablePath,
@@ -31,11 +28,11 @@ function getExecutablePath(): string | undefined {
 }
 
 export class WhatsAppGateway extends GatewayProvider implements AuthorizationRequester {
-  private client: Client | null = null;
+  private waClient: Client | null = null;
   private readonly approvals = new NativeApprovalManager();
 
-  constructor(sink: GatewayTaskSink, private readonly handleAdminCommand?: AdminCommandHandler) {
-    super('whatsapp', sink);
+  constructor(client: RuntimeSubmissionClient) {
+    super('whatsapp', client);
   }
 
   async start(): Promise<void> {
@@ -52,7 +49,7 @@ export class WhatsAppGateway extends GatewayProvider implements AuthorizationReq
       logger.warn('WhatsApp enabled but no Chrome/Chromium executable was found; Puppeteer may fail to launch');
     }
 
-    this.client = new Client({
+    this.waClient = new Client({
       authStrategy: new LocalAuth(),
       puppeteer: {
         headless: true,
@@ -61,16 +58,16 @@ export class WhatsAppGateway extends GatewayProvider implements AuthorizationReq
       },
     });
 
-    this.client.on('qr', (qr) => {
+    this.waClient.on('qr', (qr) => {
       logger.system('WhatsApp QR code received. Scan it with WhatsApp.');
       qrcode.generate(qr, { small: true });
     });
 
-    this.client.on('ready', () => {
+    this.waClient.on('ready', () => {
       logger.system('WhatsApp client ready');
     });
 
-    this.client.on('message', (message) => {
+    this.waClient.on('message', async (message) => {
       const text = message.body.trim();
       const authorId = message.author || message.from;
       if (!this.isAuthorized(message.from, authorId)) {
@@ -114,27 +111,18 @@ export class WhatsAppGateway extends GatewayProvider implements AuthorizationReq
       }
 
       if (text.startsWith('/')) {
-        if (!this.handleAdminCommand) {
-          void message.reply('OpenMac admin commands are not available right now.');
-          return;
-        }
-
-        void this.handleAdminCommand({
-          id: `whatsapp-admin-${Date.now()}`,
-          source: 'whatsapp',
-          sourceId: message.from,
-          prompt: text,
-        }, text).then((response) => {
+        try {
+          const response = await this.dispatch(text, message.from);
           if (!response) {
             void message.reply('Unknown command. Use /help.');
             return;
           }
-
-          void this.sendResponse(message.from, response);
-        }).catch((error: any) => {
+          await this.sendResponse(message.from, response);
+          logger.chat('assistant', `[WhatsApp] ${response}`);
+        } catch (error: any) {
           logger.error(`WhatsApp admin command failed: ${error.message}`);
           void message.reply('OpenMac could not process that command.');
-        });
+        }
         return;
       }
 
@@ -143,25 +131,31 @@ export class WhatsAppGateway extends GatewayProvider implements AuthorizationReq
         return;
       }
 
-      void this.dispatch(message.body, message.from, {
-        from: message.from,
-        timestamp: message.timestamp,
-      }).catch(async (error: any) => {
+      try {
+        const response = await this.dispatch(message.body, message.from, {
+          from: message.from,
+          timestamp: message.timestamp,
+        });
+        if (response) {
+          await this.sendResponse(message.from, response);
+          logger.chat('assistant', `[WhatsApp] ${response}`);
+        }
+      } catch (error: any) {
         logger.error(`WhatsApp dispatch failed: ${error.message}`);
         void message.reply('OpenMac could not queue that request right now.');
-      });
+      }
     });
 
-    await this.client.initialize();
+    await this.waClient.initialize();
   }
 
   async sendResponse(to: string, text: string): Promise<void> {
-    if (!this.client) {
+    if (!this.waClient) {
       throw new Error('WhatsApp client is not initialized.');
     }
 
     for (const chunk of chunkRemoteResponse(formatRemoteAssistantText(text), 3000)) {
-      await this.client.sendMessage(to, chunk);
+      await this.waClient.sendMessage(to, chunk);
     }
   }
 
@@ -171,7 +165,7 @@ export class WhatsAppGateway extends GatewayProvider implements AuthorizationReq
   }
 
   private async sendScreen(to: string): Promise<void> {
-    if (!this.client) {
+    if (!this.waClient) {
       throw new Error('WhatsApp client is not initialized.');
     }
 
@@ -179,7 +173,7 @@ export class WhatsAppGateway extends GatewayProvider implements AuthorizationReq
     try {
       await captureScreenshot(imagePath);
       const media = MessageMedia.fromFilePath(imagePath);
-      await this.client.sendMessage(to, media, { caption: 'Current desktop snapshot' });
+      await this.waClient.sendMessage(to, media, { caption: 'Current desktop snapshot' });
     } finally {
       await cleanupScreenshot(imagePath);
     }
@@ -206,17 +200,20 @@ export class WhatsAppGateway extends GatewayProvider implements AuthorizationReq
       if (message.type === 'audio' || message.type === 'ptt') {
         try {
           const transcript = await transcribeAudioFile(filePath);
-          void this.dispatch(`The user sent a WhatsApp voice note. Transcript: ${transcript}`, message.from, {
-            from: message.from,
-            author: message.author,
-            timestamp: message.timestamp,
-            whatsappMediaType: message.type,
-          }).catch(async (error: any) => {
-            logger.error(`WhatsApp voice dispatch failed: ${error.message}`);
-            await message.reply('OpenMac could not queue that voice note right now.');
-          }).finally(async () => {
+          try {
+            const response = await this.dispatch(`The user sent a WhatsApp voice note. Transcript: ${transcript}`, message.from, {
+              from: message.from,
+              author: message.author,
+              timestamp: message.timestamp,
+              whatsappMediaType: message.type,
+            });
+            if (response) {
+              await this.sendResponse(message.from, response);
+              logger.chat('assistant', `[WhatsApp] ${response}`);
+            }
+          } finally {
             await cleanupTempFile(filePath);
-          });
+          }
           return;
         } catch (error: any) {
           await cleanupTempFile(filePath);
@@ -232,17 +229,21 @@ export class WhatsAppGateway extends GatewayProvider implements AuthorizationReq
         return;
       }
 
-      void this.dispatch(prompt, message.from, {
-        from: message.from,
-        author: message.author,
-        timestamp: message.timestamp,
-        whatsappMediaType: message.type,
-        downloadedFilePath: filePath,
-      }).catch(async (error: any) => {
-        logger.error(`WhatsApp media dispatch failed: ${error.message}`);
+      try {
+        const response = await this.dispatch(prompt, message.from, {
+          from: message.from,
+          author: message.author,
+          timestamp: message.timestamp,
+          whatsappMediaType: message.type,
+          downloadedFilePath: filePath,
+        });
+        if (response) {
+          await this.sendResponse(message.from, response);
+          logger.chat('assistant', `[WhatsApp] ${response}`);
+        }
+      } finally {
         await cleanupTempFile(filePath);
-        await message.reply('OpenMac could not queue that media for analysis right now.');
-      });
+      }
     } catch (error: any) {
       await cleanupTempFile(filePath);
       logger.error(`WhatsApp media handling failed: ${error.message}`);
@@ -300,8 +301,8 @@ export class WhatsAppGateway extends GatewayProvider implements AuthorizationReq
 
   async stop(): Promise<void> {
     this.approvals.stop();
-    await this.client?.destroy();
-    this.client = null;
+    await this.waClient?.destroy();
+    this.waClient = null;
   }
 
   getPendingApprovalCount(): number {
@@ -317,7 +318,7 @@ export class WhatsAppGateway extends GatewayProvider implements AuthorizationReq
   }
 
   async requestAuthorization(request: AuthorizationRequest): Promise<boolean> {
-    if (!this.client || !request.sourceId) {
+    if (!this.waClient || !request.sourceId) {
       throw new Error('WhatsApp authorization requested but client is not initialized or sourceId is missing.');
     }
 
@@ -336,6 +337,6 @@ export class WhatsAppGateway extends GatewayProvider implements AuthorizationReq
   }
 }
 
-export function createWhatsAppGateway(sink: GatewayTaskSink, handleAdminCommand?: AdminCommandHandler) {
-  return new WhatsAppGateway(sink, handleAdminCommand);
+export function createWhatsAppGateway(client: RuntimeSubmissionClient) {
+  return new WhatsAppGateway(client);
 }

@@ -19,6 +19,26 @@ export function createRuntimeServiceServer(api: RuntimeApi) {
   const server = http.createServer(async (req, res) => {
     const url = req.url || '/';
 
+    if (req.method === 'GET' && url === '/api/logs') {
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+      });
+
+      const listener = (entry: any) => {
+        res.write(`data: ${JSON.stringify(entry)}\n\n`);
+      };
+
+      api.onLog(listener);
+
+      req.on('close', () => {
+        api.offLog(listener);
+      });
+      return;
+    }
+
     if (req.method === 'GET' && url === '/api/status') {
       const body = await api.getStatusSnapshot();
       res.writeHead(200, {
@@ -49,6 +69,7 @@ export function createRuntimeServiceServer(api: RuntimeApi) {
         source: body.source,
         sourceId: body.sourceId,
         prompt: body.prompt,
+        metadata: body.metadata,
       });
       res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ ok: true, response: responseText }));

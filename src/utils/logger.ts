@@ -7,12 +7,16 @@ export interface LoggerSink {
   setStatus(text: string): void;
 }
 
+export type LogEntry = { channel: string; message: string; timestamp: string };
+export type LogListener = (entry: LogEntry) => void;
+
 export interface LoggerMirror {
   write(channel: string, message: string): void;
 }
 
 class Logger {
-  private sink: LoggerSink | null = null;
+  private sinks: LoggerSink[] = [];
+  private listeners: LogListener[] = [];
   private mirror: LoggerMirror | null = null;
   private consolePatched = false;
   private readonly originalConsole = {
@@ -21,12 +25,35 @@ class Logger {
     warn: console.warn.bind(console),
   };
 
+  addSink(sink: LoggerSink) {
+    this.sinks.push(sink);
+  }
+
+  removeSink(sink: LoggerSink) {
+    this.sinks = this.sinks.filter((s) => s !== sink);
+  }
+
+  addListener(listener: LogListener) {
+    this.listeners.push(listener);
+  }
+
+  removeListener(listener: LogListener) {
+    this.listeners = this.listeners.filter((l) => l !== listener);
+  }
+
   setSink(sink: LoggerSink | null) {
-    this.sink = sink;
+    this.sinks = sink ? [sink] : [];
   }
 
   setMirror(mirror: LoggerMirror | null) {
     this.mirror = mirror;
+  }
+
+  private notifyListeners(channel: string, message: string) {
+    const entry: LogEntry = { channel, message, timestamp: new Date().toISOString() };
+    for (const listener of this.listeners) {
+      listener(entry);
+    }
   }
 
   patchConsole() {
@@ -36,8 +63,11 @@ class Logger {
 
     console.log = (...args: unknown[]) => {
       const text = args.map((arg) => this.stringify(arg)).join(' ');
-      if (this.sink) {
-        this.sink.appendMonologue('info', text);
+      this.notifyListeners('INFO', text);
+      if (this.sinks.length > 0) {
+        for (const sink of this.sinks) {
+          sink.appendMonologue('info', text);
+        }
         return;
       }
       this.originalConsole.log(...args);
@@ -45,8 +75,11 @@ class Logger {
 
     console.warn = (...args: unknown[]) => {
       const text = args.map((arg) => this.stringify(arg)).join(' ');
-      if (this.sink) {
-        this.sink.appendMonologue('warn', text);
+      this.notifyListeners('WARN', text);
+      if (this.sinks.length > 0) {
+        for (const sink of this.sinks) {
+          sink.appendMonologue('warn', text);
+        }
         return;
       }
       this.originalConsole.warn(...args);
@@ -54,8 +87,11 @@ class Logger {
 
     console.error = (...args: unknown[]) => {
       const text = args.map((arg) => this.stringify(arg)).join(' ');
-      if (this.sink) {
-        this.sink.appendMonologue('error', text);
+      this.notifyListeners('ERROR', text);
+      if (this.sinks.length > 0) {
+        for (const sink of this.sinks) {
+          sink.appendMonologue('error', text);
+        }
         return;
       }
       this.originalConsole.error(...args);
@@ -77,8 +113,11 @@ class Logger {
 
   chat(role: ChatRole, text: string) {
     this.mirror?.write(role.toUpperCase(), text);
-    if (this.sink) {
-      this.sink.appendChat(role, text);
+    this.notifyListeners(role.toUpperCase(), text);
+    if (this.sinks.length > 0) {
+      for (const sink of this.sinks) {
+        sink.appendChat(role, text);
+      }
       return;
     }
 
@@ -123,8 +162,11 @@ class Logger {
 
   monologue(kind: MonologueKind, text: string) {
     this.mirror?.write(kind.toUpperCase(), text);
-    if (this.sink) {
-      this.sink.appendMonologue(kind, text);
+    this.notifyListeners(kind.toUpperCase(), text);
+    if (this.sinks.length > 0) {
+      for (const sink of this.sinks) {
+        sink.appendMonologue(kind, text);
+      }
       return;
     }
 
@@ -134,8 +176,11 @@ class Logger {
 
   status(text: string) {
     this.mirror?.write('STATUS', text);
-    if (this.sink) {
-      this.sink.setStatus(text);
+    this.notifyListeners('STATUS', text);
+    if (this.sinks.length > 0) {
+      for (const sink of this.sinks) {
+        sink.setStatus(text);
+      }
       return;
     }
 

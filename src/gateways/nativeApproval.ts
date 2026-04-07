@@ -6,6 +6,7 @@ export interface PendingApprovalSummary {
   sourceId?: string;
   toolName: string;
   permissionClass: AuthorizationRequest['permissionClass'];
+  command: string;
   reason: string;
   expiresAt?: string;
 }
@@ -30,6 +31,7 @@ export class NativeApprovalManager {
       sourceId: request.sourceId,
       toolName: request.toolName,
       permissionClass: request.permissionClass,
+      command: request.command,
       reason: request.reason,
       expiresAt: request.expiresAt,
     }));

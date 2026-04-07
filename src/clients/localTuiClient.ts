@@ -9,6 +9,8 @@ export function createLocalTuiClient(runtimeHost: LocalRuntimeHostView, updateSt
     tui,
     attach() {
       attachLocalConsole(runtimeHost.localConsole, tui, updateStatus, shutdown);
+      runtimeHost.attachLoggerSink(tui);
+      runtimeHost.registerLocalAuthorizer(tui);
       tui.onExit(() => {
         void shutdown();
       });
@@ -16,6 +18,10 @@ export function createLocalTuiClient(runtimeHost: LocalRuntimeHostView, updateSt
     async runInitialPrompt(prompt: string) {
       await runInitialConsolePrompt(runtimeHost.localConsole, prompt, updateStatus);
     },
-    destroy,
+    destroy() {
+      runtimeHost.detachLoggerSink(tui);
+      runtimeHost.unregisterLocalAuthorizer(tui);
+      destroy();
+    },
   };
 }

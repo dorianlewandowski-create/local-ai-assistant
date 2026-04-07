@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { Tool } from '../types';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { logger } from '../utils/logger';
@@ -31,6 +33,29 @@ export class ToolRegistry {
 
   getAllTools(): Tool[] {
     return Array.from(this.tools.values());
+  }
+
+  async discoverSkills() {
+    const skillsDir = path.join(process.cwd(), 'skills');
+    if (!fs.existsSync(skillsDir)) return;
+
+    const entries = fs.readdirSync(skillsDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const skillPath = path.join(skillsDir, entry.name);
+        const manifestPath = path.join(skillPath, 'skill.json');
+        if (fs.existsSync(manifestPath)) {
+          try {
+            const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+            // Simplified: for now, we just log discovery. 
+            // In Step 3, we'll implement the actual execution of these dynamic skills.
+            logger.system(`Discovered dynamic skill: ${manifest.name}`);
+          } catch (error: any) {
+            logger.error(`Failed to load skill ${entry.name}: ${error.message}`);
+          }
+        }
+      }
+    }
   }
 
   /**

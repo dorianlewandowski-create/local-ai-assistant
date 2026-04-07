@@ -1,4 +1,5 @@
 import { runDoctor } from './doctor';
+import { runDaemon } from './runtime/daemon';
 import { runOpenMac } from './index';
 import { runOnboard } from './onboard';
 import { installLaunchdPlist } from './launchd';
@@ -6,56 +7,7 @@ import { runUpdateHelp } from './update';
 import { runReleasePack, runReleaseVerify } from './release';
 import { runPairing } from './pairing';
 import { createRuntimeServiceClient } from './runtime/serviceClient';
-
-export function resolveCliCommand(argv: string[]) {
-  const [command, ...rest] = argv;
-
-  if (command === 'doctor') {
-    return { command: 'doctor' as const, argv: rest };
-  }
-
-  if (command === 'onboard') {
-    return { command: 'onboard' as const, argv: rest };
-  }
-
-  if (command === 'launchd-install') {
-    return { command: 'launchd-install' as const, argv: rest };
-  }
-
-  if (command === 'update') {
-    return { command: 'update' as const, argv: rest };
-  }
-
-  if (command === 'release-pack') {
-    return { command: 'release-pack' as const, argv: rest };
-  }
-
-  if (command === 'release-verify') {
-    return { command: 'release-verify' as const, argv: rest };
-  }
-
-  if (command === 'pairing') {
-    return { command: 'pairing' as const, argv: rest };
-  }
-
-  if (command === 'service-status') {
-    return { command: 'service-status' as const, argv: rest };
-  }
-
-  if (command === 'service-safe') {
-    return { command: 'service-safe' as const, argv: rest };
-  }
-
-  if (command === 'service-model') {
-    return { command: 'service-model' as const, argv: rest };
-  }
-
-  if (command === 'service-sandbox') {
-    return { command: 'service-sandbox' as const, argv: rest };
-  }
-
-  return { command: 'run' as const, argv: command ? [command, ...rest] : rest };
-}
+import { resolveCliCommand } from './index';
 
 async function main() {
   const resolved = resolveCliCommand(process.argv.slice(2));
@@ -73,6 +25,11 @@ async function main() {
   if (resolved.command === 'launchd-install') {
     const exitCode = await installLaunchdPlist();
     process.exit(exitCode);
+  }
+
+  if (resolved.command === 'daemon') {
+    await runDaemon();
+    return;
   }
 
   if (resolved.command === 'update') {
@@ -133,6 +90,42 @@ async function main() {
     const client = createRuntimeServiceClient();
     await client.setSessionSandboxMode(source as any, sourceId, mode as 'default' | 'strict' | 'off');
     console.log(`Runtime service sandbox updated for ${source}:${sourceId}.`);
+    process.exit(0);
+  }
+
+  if (resolved.command === 'service-approvals') {
+    const client = createRuntimeServiceClient();
+    const approvals = await client.listPendingApprovals();
+    console.log(JSON.stringify(approvals, null, 2));
+    process.exit(0);
+  }
+
+  if (resolved.command === 'service-approve') {
+    const [id] = resolved.argv;
+    if (!id) {
+      throw new Error('Usage: openmac service-approve <id>');
+    }
+    const client = createRuntimeServiceClient();
+    const ok = await client.settleApproval(id, true);
+    console.log(ok ? `Approved ${id}.` : `Approval ${id} was not found.`);
+    process.exit(ok ? 0 : 1);
+  }
+
+  if (resolved.command === 'service-deny') {
+    const [id] = resolved.argv;
+    if (!id) {
+      throw new Error('Usage: openmac service-deny <id>');
+    }
+    const client = createRuntimeServiceClient();
+    const ok = await client.settleApproval(id, false);
+    console.log(ok ? `Denied ${id}.` : `Approval ${id} was not found.`);
+    process.exit(ok ? 0 : 1);
+  }
+
+  if (resolved.command === 'service-sessions') {
+    const client = createRuntimeServiceClient();
+    const sessions = await client.listSessions();
+    console.log(JSON.stringify(sessions, null, 2));
     process.exit(0);
   }
 

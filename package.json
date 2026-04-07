@@ -1,6 +1,6 @@
 {
   "name": "openmac",
-  "version": "0.7.0",
+  "version": "0.7.4",
   "description": "OpenMac OS Agent",
   "main": "dist/index.js",
   "bin": {
@@ -16,6 +16,10 @@
     "service:safe": "ts-node src/cli.ts service-safe",
     "service:model": "ts-node src/cli.ts service-model",
     "service:sandbox": "ts-node src/cli.ts service-sandbox",
+    "service:approvals": "ts-node src/cli.ts service-approvals",
+    "service:approve": "ts-node src/cli.ts service-approve",
+    "service:deny": "ts-node src/cli.ts service-deny",
+    "service:sessions": "ts-node src/cli.ts service-sessions",
     "update:help": "ts-node src/cli.ts update",
     "release:pack": "npm run build && ts-node src/cli.ts release-pack",
     "release:verify": "ts-node src/cli.ts release-verify",

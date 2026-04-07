@@ -1,0 +1,6 @@
+{
+  "name": "garmin",
+  "description": "Fetch deep fitness metrics (sleep, body battery, recovery) from Garmin Connect.",
+  "version": "0.1.0",
+  "type": "skill"
+}

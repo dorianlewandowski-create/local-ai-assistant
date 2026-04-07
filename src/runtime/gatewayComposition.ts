@@ -3,22 +3,23 @@ import { createSlackGateway } from '../gateways/slack';
 import { createTelegramGateway } from '../gateways/telegram';
 import { createWhatsAppGateway } from '../gateways/whatsapp';
 import { AppContext } from './appContext';
-import { GatewayTaskSink, AuthorizationRequester } from '../gateways/base';
+import { AuthorizationRequester } from '../gateways/base';
+import { PendingApprovalSummary } from '../gateways/nativeApproval';
+import { createRuntimeServiceClient } from './serviceClient';
+import { config } from '../config';
 
-export function composeGateways(orchestrator: Orchestrator, sink: GatewayTaskSink, appContext: AppContext, localAuthorizer: AuthorizationRequester) {
+export function composeGateways(orchestrator: Orchestrator, appContext: AppContext, localAuthorizer: AuthorizationRequester) {
   let telegramGateway: ReturnType<typeof createTelegramGateway>;
+  const serviceClient = createRuntimeServiceClient(`http://127.0.0.1:${config.runtimeService.port}`);
 
   const approvalCounter = {
     getPendingApprovalCount: () => telegramGateway?.getPendingApprovalCount() ?? 0,
   };
 
-  const whatsappGateway = createWhatsAppGateway(sink, appContext.adminCommands);
-  telegramGateway = createTelegramGateway(sink, appContext.adminCommands);
-  const slackGateway = createSlackGateway(sink, appContext.adminCommands);
+  const whatsappGateway = createWhatsAppGateway(serviceClient);
+  telegramGateway = createTelegramGateway(serviceClient);
+  const slackGateway = createSlackGateway(serviceClient);
 
-  orchestrator.registerGateway('whatsapp', whatsappGateway);
-  orchestrator.registerGateway('telegram', telegramGateway);
-  orchestrator.registerGateway('slack', slackGateway);
   orchestrator.registerAuthorizer('telegram', telegramGateway);
   orchestrator.registerAuthorizer('whatsapp', whatsappGateway);
   orchestrator.registerAuthorizer('slack', slackGateway);
@@ -30,7 +31,7 @@ export function composeGateways(orchestrator: Orchestrator, sink: GatewayTaskSin
   return {
     approvalCounter: {
       getPendingApprovalCount: () => approvalCounter.getPendingApprovalCount(),
-      listPendingApprovals: () => [
+      listPendingApprovals: (): PendingApprovalSummary[] => [
         ...telegramGateway.listPendingApprovals(),
         ...whatsappGateway.listPendingApprovals(),
         ...slackGateway.listPendingApprovals(),

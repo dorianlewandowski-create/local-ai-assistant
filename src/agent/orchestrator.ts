@@ -12,6 +12,8 @@ import { findRelevantExperience, saveExperience, savePerformanceNote } from './m
 import { writeSecurityAudit } from '../security/audit';
 import { config } from '../config';
 import { sessionStore } from '../runtime/sessionStore';
+import { soulStore } from '../runtime/soulStore';
+import { modelRouter, ModelTier } from '../models/modelRouter';
 import { ollamaChatProvider } from '../models/ollama';
 import { chatWithFallback } from '../models/runtime';
 
@@ -38,7 +40,13 @@ After performing an autonomous action triggered by a file event, always use send
 
 If a tool fails, do not give up or ask the user to do it manually right away.
 Analyze the tool error, correct the parameters, and try again.
-Only ask the user for clarification if the missing information cannot be inferred.`;
+Only ask the user for clarification if the missing information cannot be inferred.
+
+### 🧠 SELF-IMPROVING RULES:
+1. **Learn from Corrections:** If the user says "No, do X instead" or "Actually...", you MUST call \`log_correction\` immediately.
+2. **Self-Reflection:** After every complex task, call \`log_reflection\` to capture what went well and what could be better.
+3. **Compound Knowledge:** Check your WARM memory for context-specific patterns before acting.
+4. **The 3x Rule:** If you use a pattern 3 times successfully, propose adding it to your HOT memory via \`update_soul\`.`;
 
 const MANAGER_SYSTEM_PROMPT = `You are the Manager agent.
 Your job is to inspect the task, choose the best sub-agent, and supervise execution.
@@ -54,6 +62,7 @@ Finished:
 State which sub-agent you selected and why.`;
 
 const TOOL_FAILURE_RECOVERY_PROMPT = 'The previous tool call failed. Analyze the error, correct your parameters, and try again.';
+const APPLESCRIPT_HEALING_PROMPT = 'The previous AppleScript call failed. This usually means the application dictionary or syntax has changed. Search the web for the latest AppleScript syntax for this application or use the dictionary tool if available, then fix the script and retry.';
 const CONTINUE_AUTONOMOUS_LOOP_PROMPT = 'Continue the Plan-Act-Observe loop. Provide Reflection: and either make another tool call or end with Finished:.';
 const TELEGRAM_RESPONSE_PROMPT = 'This task came from Telegram. Your final user-facing result must be optimized for a mobile screen: elite, short, clear, actionable, and easy to scan. Use light emojis for readability. End with a subtle  OpenMac signature. Put the user-facing message on the Finished: line using Markdown-friendly formatting.';
 const MAX_REASONING_STEPS = 24;
@@ -162,16 +171,11 @@ function matchFastPath(prompt: string): { toolName: string; args: Record<string,
 export class Orchestrator {
   private readonly activeAgent: AgentConfig;
   private readonly factory: AgentFactory;
-  private readonly gateways = new Map<string, GatewayResponder>();
   private readonly authorizers = new Map<string, AuthorizationRequester>();
 
   constructor(agent: AgentConfig) {
     this.activeAgent = agent;
     this.factory = new AgentFactory(agent.model, agent.tools);
-  }
-
-  registerGateway(source: 'whatsapp' | 'telegram' | 'slack', gateway: GatewayResponder) {
-    this.gateways.set(source, gateway);
   }
 
   registerAuthorizer(source: string, authorizer: AuthorizationRequester) {
@@ -211,16 +215,6 @@ export class Orchestrator {
         subAgent: subAgent.name,
       },
     });
-
-      if ((task.source === 'whatsapp' || task.source === 'telegram' || task.source === 'slack') && task.sourceId) {
-        const gateway = this.gateways.get(task.source);
-        if (gateway) {
-          await gateway.sendResponse(task.sourceId, deliveryResponse);
-          logger.chat('assistant', `[${task.source}] ${deliveryResponse}`);
-        } else {
-          logger.error(`No gateway registered for ${task.source}, unable to send response`);
-        }
-      }
 
     const downloadedImagePath = typeof task.metadata?.downloadedImagePath === 'string'
       ? task.metadata.downloadedImagePath
@@ -355,13 +349,6 @@ export class Orchestrator {
 
     sessionStore.appendInteraction(task, task.prompt, response);
 
-    if ((task.source === 'whatsapp' || task.source === 'telegram' || task.source === 'slack') && task.sourceId) {
-      const gateway = this.gateways.get(task.source);
-      if (gateway) {
-        await gateway.sendResponse(task.sourceId, response);
-      }
-    }
-
     logger.chat('assistant', response);
 
     await vectorStore.store({
@@ -387,6 +374,21 @@ export class Orchestrator {
     }
 
   private async runSubAgent(agent: AgentConfig, task: TaskEnvelope, managerNote: string): Promise<string> {
+    const soulContext = await soulStore.loadContextualMemory(task.prompt);
+
+    // Select model tier based on sub-agent name or tools
+    let tier: ModelTier = 'fast';
+    if (agent.name.toLowerCase().includes('research') || agent.name.toLowerCase().includes('reason')) {
+      tier = 'reasoning';
+    } else if (agent.tools.includes('vision_get_screen_snapshot') || agent.tools.includes('analyze_image_content')) {
+      tier = 'vision';
+    } else if (agent.tools.includes('create_new_skill')) {
+      tier = 'coding';
+    }
+
+    const route = modelRouter.getRoute(tier);
+    logger.debug(`[Router] Selected ${route.provider}:${route.model} for sub-agent ${agent.name}`);
+
     const sessionHistory = sessionStore.formatSessionHistory(task, 6);
     const sourceHistory = sessionStore.formatSourceHistory(task.source, 6);
     const memoryContext = memoryStore.formatContext(task.prompt, 5);
@@ -421,6 +423,10 @@ export class Orchestrator {
       {
         role: 'system',
         content: `${agent.systemPrompt.trim()}\n\n${AUTONOMOUS_AGENT_SYSTEM_PROMPT}`,
+      },
+      {
+        role: 'system',
+        content: `AGENT SOUL AND USER PREFERENCES:\n${soulContext}`,
       },
       {
         role: 'system',
@@ -480,7 +486,7 @@ export class Orchestrator {
 
     for (let step = 1; step <= MAX_REASONING_STEPS; step++) {
       const response = await chatWithFallback(ollamaChatProvider, {
-        model: agent.model,
+        model: route.model,
         messages: messages,
         tools: toolRegistry.getOllamaToolsDefinition(agent.tools) as any,
       }, config.models.chatFallback);
@@ -659,9 +665,13 @@ export class Orchestrator {
             : getErrorMessage(error);
           logger.error(`Tool ${tool.name} ${getErrorMessage(error)}`);
           await saveExperience(task.prompt, `Tool ${tool.name} failed with error: ${friendlyError}`, `Adjust ${tool.name} arguments based on the error and retry with a narrower, validated plan.`);
-          if (/applescript|spotify|music|finder|system events/i.test(tool.name) || /spotify|music|finder|system events/i.test(friendlyError)) {
-            logger.system(`🧠 Learning: Optimized AppleScript for ${tool.name}`);
+          
+          const isAppleScriptError = /applescript|spotify|music|finder|system events/i.test(tool.name) || /spotify|music|finder|system events/i.test(friendlyError);
+          
+          if (isAppleScriptError) {
+            logger.system(`🧠 Healing: Attempting AppleScript recovery for ${tool.name}`);
           }
+
           messages.push({
             role: 'tool',
             content: formatToolError(tool.name, toolCall.function.arguments, friendlyError),
@@ -669,7 +679,7 @@ export class Orchestrator {
           });
           messages.push({
             role: 'system',
-            content: TOOL_FAILURE_RECOVERY_PROMPT,
+            content: isAppleScriptError ? APPLESCRIPT_HEALING_PROMPT : TOOL_FAILURE_RECOVERY_PROMPT,
           });
         }
       }
