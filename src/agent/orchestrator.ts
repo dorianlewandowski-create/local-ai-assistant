@@ -186,6 +186,10 @@ export class Orchestrator {
 
     const subAgentKind = this.factory.choose(task.prompt, task.metadata);
     const subAgent = this.factory.create(subAgentKind);
+    const sessionModel = sessionStore.getSession(task).settings.model;
+    if (sessionModel) {
+      subAgent.model = sessionModel;
+    }
 
     logger.system(`Manager delegating ${task.id} from ${task.source} to ${subAgent.name}`);
     const managerNote = `Task source: ${task.source}. Selected sub-agent: ${subAgent.name}. Reason: ${subAgentKind} is the best fit for this task.`;

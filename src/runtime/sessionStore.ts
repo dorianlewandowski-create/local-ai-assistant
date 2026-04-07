@@ -27,6 +27,15 @@ export interface SessionRecord {
   updatedAt: string;
 }
 
+export interface SessionSummary {
+  key: string;
+  source: TaskSource;
+  sourceId: string;
+  updatedAt: string;
+  historyCount: number;
+  settings: SessionSettings;
+}
+
 interface PersistedSessionState {
   sessions: SessionRecord[];
   sourceHistory: Array<[string, SessionEntry[]]>;
@@ -165,6 +174,24 @@ export class SessionStore {
 
   getSourceKey(source: TaskSource): string {
     return `source:${source}`;
+  }
+
+  count(): number {
+    return this.sessions.size;
+  }
+
+  listSessions(limit = 10): SessionSummary[] {
+    return Array.from(this.sessions.values())
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+      .slice(0, limit)
+      .map((session) => ({
+        key: session.key,
+        source: session.source,
+        sourceId: session.sourceId,
+        updatedAt: session.updatedAt,
+        historyCount: session.history.length,
+        settings: session.settings,
+      }));
   }
 
   private evictBeforeCreate(): void {

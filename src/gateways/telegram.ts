@@ -11,6 +11,9 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs/promises';
 import { execSync } from 'child_process';
+import { TaskEnvelope } from '../types';
+
+type AdminCommandHandler = (task: TaskEnvelope, input: string) => Promise<string | null>;
 
 interface PendingAuthorization {
   resolve: (approved: boolean) => void;
@@ -34,7 +37,7 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
   private readonly pendingPairingsByUser = new Map<string, PendingPairing>();
   private readonly pendingPairingsByCode = new Map<string, PendingPairing>();
 
-  constructor(sink: GatewayTaskSink) {
+  constructor(sink: GatewayTaskSink, private readonly handleAdminCommand?: AdminCommandHandler) {
     super('telegram', sink);
   }
 
@@ -101,6 +104,40 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
 
       await sendStatus(String(ctx.chat.id));
     });
+
+    this.bot.command('doctor', async (ctx) => {
+      if (!(await this.ensureAuthorized(ctx)) || !this.handleAdminCommand) {
+        return;
+      }
+
+      const response = await this.handleAdminCommand({
+        id: `telegram-admin-${Date.now()}`,
+        source: 'telegram',
+        sourceId: String(ctx.chat.id),
+        prompt: '/doctor',
+      }, '/doctor');
+      if (response) {
+        await ctx.reply(response);
+      }
+    });
+
+    for (const name of ['queue', 'sessions', 'memory', 'safe', 'model', 'approvals'] as const) {
+      this.bot.command(name, async (ctx) => {
+        if (!(await this.ensureAuthorized(ctx)) || !this.handleAdminCommand) {
+          return;
+        }
+
+        const response = await this.handleAdminCommand({
+          id: `telegram-admin-${name}-${Date.now()}`,
+          source: 'telegram',
+          sourceId: String(ctx.chat.id),
+          prompt: ctx.message.text.trim(),
+        }, ctx.message.text.trim());
+        if (response) {
+          await ctx.reply(response);
+        }
+      });
+    }
 
     this.bot.command('screen', async (ctx) => {
       if (!(await this.ensureAuthorized(ctx))) {
@@ -191,7 +228,7 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
         return;
       }
 
-      if (text.startsWith('/start') || text.startsWith('/status') || text.startsWith('/screen') || text.startsWith('/approve') || text.startsWith('/deny')) {
+      if (text.startsWith('/start') || text.startsWith('/status') || text.startsWith('/screen') || text.startsWith('/approve') || text.startsWith('/deny') || text.startsWith('/doctor') || text.startsWith('/queue') || text.startsWith('/sessions') || text.startsWith('/memory') || text.startsWith('/safe') || text.startsWith('/model') || text.startsWith('/approvals')) {
         return;
       }
 
@@ -260,6 +297,10 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
     }
 
     await this.bot.telegram.sendMessage(to, escapeTelegramMarkdown(text), { parse_mode: 'MarkdownV2' });
+  }
+
+  getPendingApprovalCount(): number {
+    return this.pendingAuthorizations.size;
   }
 
   async stop(): Promise<void> {
@@ -457,6 +498,6 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
   }
 }
 
-export function createTelegramGateway(sink: GatewayTaskSink) {
-  return new TelegramGateway(sink);
+export function createTelegramGateway(sink: GatewayTaskSink, handleAdminCommand?: AdminCommandHandler) {
+  return new TelegramGateway(sink, handleAdminCommand);
 }

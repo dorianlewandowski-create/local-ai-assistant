@@ -1,6 +1,7 @@
 import path from 'path';
 import { PermissionClass, TaskSource } from '../types';
 import { config } from '../config';
+import { runtimeSecurityState } from './runtimeState';
 
 const DANGEROUS_KEYWORDS = ['rm', 'rf', 'sudo', 'chmod', 'delete', 'unlink', 'empty trash'];
 const PROTECTED_PATHS = ['/', '/System', '/Users/Shared'];
@@ -114,7 +115,7 @@ export function assessToolRisk(toolName: string, args: unknown, source: TaskSour
 
   const requiresAuthorization = permissionClass !== 'read';
   const remoteSafeAllowed = config.security.remoteAllowedPermissions.includes(permissionClass);
-  if (isRemoteSource(source) && config.security.remoteSafeMode && !remoteSafeAllowed) {
+  if (isRemoteSource(source) && runtimeSecurityState.isRemoteSafeModeEnabled() && !remoteSafeAllowed) {
     return {
       allowed: false,
       requiresAuthorization: false,

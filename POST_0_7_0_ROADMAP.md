@@ -28,13 +28,13 @@ Use this file to track the next round of improvements after `0.7.0`.
 
 ## Phase 12: Add Admin Command Surface
 
-- [ ] Add `/doctor`
-- [ ] Add `/queue`
-- [ ] Add `/approvals`
-- [ ] Add `/sessions`
-- [ ] Add `/memory`
-- [ ] Add `/safe on|off`
-- [ ] Add `/model`
+- [x] Add `/doctor`
+- [x] Add `/queue`
+- [x] Add `/approvals`
+- [x] Add `/sessions`
+- [x] Add `/memory`
+- [x] Add `/safe on|off`
+- [x] Add `/model`
 
 ## Phase 13: Build Web Control UI
 
@@ -73,5 +73,5 @@ Use this file to track the next round of improvements after `0.7.0`.
 - [x] Add fallback provider support
 - [x] Persist session settings
 - [ ] Improve Slack and WhatsApp behavior
-- [ ] Add basic admin commands
+- [x] Add basic admin commands
 - [ ] Design the web control UI surface

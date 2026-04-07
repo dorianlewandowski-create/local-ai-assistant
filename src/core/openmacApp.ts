@@ -13,6 +13,7 @@ import { createTuiClient } from '../clients/tuiClient';
 import { startResidentFileWatcher } from '../runtime/fileWatcher';
 import { AuthorizationRequest, TaskSource } from '../types';
 import { sessionStore } from '../runtime/sessionStore';
+import { createAdminCommandHandler } from '../runtime/adminCommands';
 
 function createFailClosedRemoteAuthorizer(source: TaskSource) {
   return {
@@ -38,7 +39,14 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   const orchestrator = new Orchestrator(openMacAssistantConfig);
   const taskQueue = new TaskQueue((task) => orchestrator.processTask(task));
   const whatsappGateway = createWhatsAppGateway(taskQueue);
-  const telegramGateway = createTelegramGateway(taskQueue);
+  let telegramGateway: ReturnType<typeof createTelegramGateway>;
+  const adminCommands = createAdminCommandHandler({
+    taskQueue,
+    approvals: {
+      getPendingApprovalCount: () => telegramGateway?.getPendingApprovalCount() ?? 0,
+    },
+  });
+  telegramGateway = createTelegramGateway(taskQueue, adminCommands);
   const slackGateway = createSlackGateway(taskQueue);
 
   orchestrator.registerGateway('whatsapp', whatsappGateway);
@@ -94,15 +102,30 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
       return;
     }
 
-    logger.chat('user', value);
-    void taskQueue.enqueue({
-      id: `terminal-${Date.now()}`,
+    void adminCommands({
+      id: `terminal-admin-${Date.now()}`,
       source: 'terminal',
       sourceId: 'local-console',
       prompt: value,
-      timeoutMs: 120_000,
-    }).then((result) => {
-      logger.chat('assistant', result.response);
+    }, value).then((response) => {
+      if (!response) {
+        logger.chat('user', value);
+        void taskQueue.enqueue({
+          id: `terminal-${Date.now()}`,
+          source: 'terminal',
+          sourceId: 'local-console',
+          prompt: value,
+          timeoutMs: 120_000,
+        }).then((result) => {
+          logger.chat('assistant', result.response);
+          updateStatus();
+        }).catch((error: any) => {
+          logger.error(`Terminal prompt failed: ${error.message}`);
+        });
+        return;
+      }
+
+      logger.chat('assistant', response);
       updateStatus();
     }).catch((error: any) => {
       logger.error(`Terminal prompt failed: ${error.message}`);
@@ -110,19 +133,30 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   });
 
   if (prompt) {
-    logger.chat('user', prompt);
-    void taskQueue.enqueue({
-      id: `terminal-${Date.now()}`,
+    const adminResponse = await adminCommands({
+      id: `terminal-admin-${Date.now()}`,
       source: 'terminal',
       sourceId: 'local-console',
       prompt,
-      timeoutMs: 120_000,
-    }).then((result) => {
-      logger.chat('assistant', result.response);
+    }, prompt);
+    if (adminResponse) {
+      logger.chat('assistant', adminResponse);
       updateStatus();
-    }).catch((error: any) => {
-      logger.error(`Terminal prompt failed: ${error.message}`);
-    });
+    } else {
+      logger.chat('user', prompt);
+      void taskQueue.enqueue({
+        id: `terminal-${Date.now()}`,
+        source: 'terminal',
+        sourceId: 'local-console',
+        prompt,
+        timeoutMs: 120_000,
+      }).then((result) => {
+        logger.chat('assistant', result.response);
+        updateStatus();
+      }).catch((error: any) => {
+        logger.error(`Terminal prompt failed: ${error.message}`);
+      });
+    }
   }
 
   logger.system('Resident mode active');
