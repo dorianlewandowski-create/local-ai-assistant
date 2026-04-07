@@ -53,7 +53,9 @@
     "whatsapp": {
       "enabled": false,
       "executablePath": "",
-      "allowFrom": []
+      "allowFrom": [],
+      "groupPolicy": "disabled",
+      "groupAllowFrom": []
     }
   },
   "security": {

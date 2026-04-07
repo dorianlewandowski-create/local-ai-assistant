@@ -54,6 +54,8 @@ interface RawConfig {
       enabled?: boolean;
       executablePath?: string;
       allowFrom?: string[];
+      groupPolicy?: 'disabled' | 'allowlist' | 'open';
+      groupAllowFrom?: string[];
     };
   };
   integrations?: {
@@ -132,6 +134,8 @@ export interface OpenMacConfig {
       enabled: boolean;
       executablePath?: string;
       allowFrom: string[];
+      groupPolicy: 'disabled' | 'allowlist' | 'open';
+      groupAllowFrom: string[];
     };
   };
   integrations: {
@@ -312,6 +316,8 @@ function buildEnvConfig(env: EnvSource): RawConfig {
         enabled: readBooleanEnv(env, 'WHATSAPP_ENABLED'),
         executablePath: readEnv(env, 'PUPPETEER_EXECUTABLE_PATH'),
         allowFrom: readCsvEnv(env, 'OPENMAC_WHATSAPP_ALLOW_FROM'),
+        groupPolicy: (readEnv(env, 'OPENMAC_WHATSAPP_GROUP_POLICY') as 'disabled' | 'allowlist' | 'open' | undefined),
+        groupAllowFrom: readCsvEnv(env, 'OPENMAC_WHATSAPP_GROUP_ALLOW_FROM'),
       },
     },
     integrations: {
@@ -407,6 +413,8 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
         enabled: false,
         executablePath: '',
         allowFrom: [],
+        groupPolicy: 'disabled',
+        groupAllowFrom: [],
       },
     },
     integrations: {
@@ -458,6 +466,8 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
     enabled: false,
     executablePath: '',
     allowFrom: [] as string[],
+    groupPolicy: 'disabled' as 'disabled' | 'allowlist' | 'open',
+    groupAllowFrom: [] as string[],
     ...(merged.gateways?.whatsapp ?? {}),
   };
   const spotifyConfig = {
@@ -534,6 +544,8 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
         enabled: whatsappConfig.enabled,
         executablePath: whatsappConfig.executablePath ? expandHomePath(whatsappConfig.executablePath) : undefined,
         allowFrom: whatsappConfig.allowFrom,
+        groupPolicy: whatsappConfig.groupPolicy,
+        groupAllowFrom: whatsappConfig.groupAllowFrom,
       },
     },
     integrations: {

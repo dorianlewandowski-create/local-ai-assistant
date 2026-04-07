@@ -146,6 +146,24 @@ OpenMac uses an owner-based Telegram model:
 - Sending plain text creates a task.
 - Sending a photo triggers image analysis through the agent pipeline.
 
+## Slack And WhatsApp Pairing
+
+Slack and WhatsApp now support local pairing/allowlist approval.
+
+- Slack inbound requires both `SLACK_BOT_TOKEN` and `SLACK_APP_TOKEN`
+- Trusted Slack DMs can also be pre-allowlisted with `OPENMAC_SLACK_ALLOW_FROM`
+- Trusted WhatsApp chats can be pre-allowlisted with `OPENMAC_WHATSAPP_ALLOW_FROM`
+- WhatsApp groups are controlled separately with:
+  - `OPENMAC_WHATSAPP_GROUP_POLICY`
+  - `OPENMAC_WHATSAPP_GROUP_ALLOW_FROM`
+
+Pairing commands:
+
+- `openmac pairing list slack`
+- `openmac pairing approve slack <CODE>`
+- `openmac pairing list whatsapp`
+- `openmac pairing approve whatsapp <CODE>`
+
 ## Security
 
 Your `.env` file contains tokens, identifiers, and runtime configuration. Keep it private.

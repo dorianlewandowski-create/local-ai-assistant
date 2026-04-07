@@ -7,7 +7,8 @@ import { config } from '../config';
 import { TaskEnvelope } from '../types';
 import { chunkRemoteResponse, formatRemoteAssistantText } from './responseFormatting';
 import { getGatewayStatusLines } from './status';
-import { getOrCreatePairingCode, isChannelSubjectApproved } from '../security/channelPairingStore';
+import { getOrCreatePairingCode } from '../security/channelPairingStore';
+import { isWhatsAppMessageAuthorized } from './whatsappPolicy';
 
 type AdminCommandHandler = (task: TaskEnvelope, input: string) => Promise<string | null>;
 
@@ -63,7 +64,13 @@ export class WhatsAppGateway extends GatewayProvider {
 
     this.client.on('message', (message) => {
       const text = message.body.trim();
-      if (!this.isAuthorized(message.from)) {
+      const authorId = message.author || message.from;
+      if (!this.isAuthorized(message.from, authorId)) {
+        if (message.from.endsWith('@g.us')) {
+          void message.reply('OpenMac is not enabled for this group sender yet. Add the sender to OPENMAC_WHATSAPP_GROUP_ALLOW_FROM or change OPENMAC_WHATSAPP_GROUP_POLICY.');
+          return;
+        }
+
         const { code } = getOrCreatePairingCode('whatsapp', message.from);
         void message.reply(`OpenMac WhatsApp is not paired for this chat yet. Pairing code: ${code}. Approve locally with: openmac pairing approve whatsapp ${code}`);
         return;
@@ -131,8 +138,8 @@ export class WhatsAppGateway extends GatewayProvider {
     await this.sendResponse(to, lines.join('\n'));
   }
 
-  private isAuthorized(subject: string): boolean {
-    return isChannelSubjectApproved('whatsapp', subject, config.gateways.whatsapp.allowFrom);
+  private isAuthorized(chatId: string, authorId: string): boolean {
+    return isWhatsAppMessageAuthorized(chatId, authorId, config.gateways.whatsapp);
   }
 
   async stop(): Promise<void> {
