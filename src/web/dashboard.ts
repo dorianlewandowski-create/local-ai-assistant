@@ -1,11 +1,6 @@
 import http from 'http';
-import { TaskQueue } from '../runtime/taskQueue';
 import { config } from '../config';
-import { RuntimeServices } from '../runtime/services';
-
-export interface DashboardStatusProvider {
-  getPendingApprovalCount(): number;
-}
+import { RuntimeApi } from '../runtime/api';
 
 function renderHtml() {
   return `<!doctype html>
@@ -47,7 +42,7 @@ function renderHtml() {
 </html>`;
 }
 
-export function createDashboardServer(taskQueue: TaskQueue, approvals: DashboardStatusProvider, services: RuntimeServices) {
+export function createDashboardServer(api: RuntimeApi) {
   const server = http.createServer(async (req, res) => {
     const url = req.url || '/';
 
@@ -58,24 +53,7 @@ export function createDashboardServer(taskQueue: TaskQueue, approvals: Dashboard
     }
 
     if (url === '/api/status') {
-      const body = {
-        health: {
-          version: config.app.version,
-          ollamaHost: config.ollama.host,
-          remoteSafeMode: services.isRemoteSafeModeEnabled(),
-          pendingApprovals: approvals.getPendingApprovalCount(),
-        },
-        queue: taskQueue.getSnapshot(),
-        sessions: {
-          count: services.getSessionCount(),
-          recent: services.listSessions(10),
-        },
-        memory: {
-          facts: services.countFacts(),
-          vectors: await services.countVectors(),
-        },
-        audit: services.readRecentAudit(20),
-      };
+      const body = await api.getStatusSnapshot();
 
       res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify(body));
