@@ -1,10 +1,6 @@
-import { Orchestrator } from '../agent/orchestrator';
-import { toolRegistry } from '../tools/registry';
-import { TaskQueue } from '../runtime/taskQueue';
 import { logger } from '../utils/logger';
 import { config } from '../config';
 import { validateStartup } from '../startupValidation';
-import { openMacAssistantConfig } from './assistantConfig';
 import { createTuiClient } from '../clients/tuiClient';
 import { attachLocalConsole, runInitialConsolePrompt } from '../clients/localConsole';
 import { sessionStore } from '../runtime/sessionStore';
@@ -12,6 +8,7 @@ import { createAppContext } from '../runtime/appContext';
 import { createRuntimeRunner } from '../runtime/runtimeRunner';
 import { composeGateways } from '../runtime/gatewayComposition';
 import { attachProcessLifecycle } from '../runtime/lifecycle';
+import { createRuntimeCore } from '../runtime/runtimeCore';
 
 export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   const startupWarnings = await validateStartup();
@@ -22,10 +19,7 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   await sessionStore.loadFromDisk();
 
   const { tui, destroy } = createTuiClient();
-
-  openMacAssistantConfig.tools = toolRegistry.getAllTools().map((tool) => tool.name);
-  const orchestrator = new Orchestrator(openMacAssistantConfig);
-  const taskQueue = new TaskQueue((task) => orchestrator.processTask(task));
+  const { orchestrator, taskQueue } = createRuntimeCore();
   const appContext = createAppContext(taskQueue);
   const gateways = composeGateways(orchestrator, taskQueue, appContext, tui);
   const appContextWithApprovals = createAppContext(taskQueue, gateways.approvalCounter);
