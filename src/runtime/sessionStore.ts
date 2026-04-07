@@ -1,4 +1,7 @@
+import fs from 'fs';
+import path from 'path';
 import { Message, TaskEnvelope, TaskSource } from '../types';
+import { config } from '../config';
 
 type SessionRole = Extract<Message['role'], 'user' | 'assistant'>;
 
@@ -24,23 +27,57 @@ export interface SessionRecord {
   updatedAt: string;
 }
 
+interface PersistedSessionState {
+  sessions: SessionRecord[];
+  sourceHistory: Array<[string, SessionEntry[]]>;
+}
+
 const MAX_SESSION_HISTORY = 12;
 const MAX_SOURCE_HISTORY = 20;
-const MAX_SESSIONS = 100;
 
 export class SessionStore {
   private readonly sessions = new Map<string, SessionRecord>();
   private readonly sourceHistory = new Map<string, SessionEntry[]>();
+  constructor(
+    private readonly filePath = config.storage.sessionStorePath,
+    private readonly maxSessions = config.sessions.maxPersistedSessions,
+  ) {}
+
+  async loadFromDisk(): Promise<void> {
+    try {
+      const raw = await fs.promises.readFile(this.filePath, 'utf8');
+      const parsed = JSON.parse(raw) as PersistedSessionState;
+
+      this.sessions.clear();
+      for (const session of parsed.sessions ?? []) {
+        this.sessions.set(session.key, {
+          ...session,
+          history: Array.isArray(session.history) ? session.history.slice(-MAX_SESSION_HISTORY) : [],
+          settings: session.settings ?? {},
+        });
+      }
+
+      this.sourceHistory.clear();
+      for (const [key, entries] of parsed.sourceHistory ?? []) {
+      this.sourceHistory.set(key, Array.isArray(entries) ? entries.slice(-MAX_SOURCE_HISTORY) : []);
+      }
+
+      this.pruneToLimit();
+    } catch (error: any) {
+      if (error?.code !== 'ENOENT') {
+        throw error;
+      }
+    }
+  }
 
   getSession(task: TaskEnvelope): SessionRecord {
-    this.evictIfNeeded();
-
     const key = this.getSessionKey(task);
     const sourceId = task.sourceId || 'default';
     const sourceKey = this.getSourceKey(task.source);
     let session = this.sessions.get(key);
 
     if (!session) {
+      this.evictBeforeCreate();
       session = {
         key,
         source: task.source,
@@ -73,10 +110,15 @@ export class SessionStore {
       sourceEntries.splice(0, sourceEntries.length - MAX_SOURCE_HISTORY);
     }
     this.sourceHistory.set(session.sourceKey, sourceEntries);
+    this.persistToDisk();
   }
 
   getRecentSessionHistory(task: TaskEnvelope, limit = 6): SessionEntry[] {
     return this.getSession(task).history.slice(-limit);
+  }
+
+  hasSession(task: TaskEnvelope): boolean {
+    return this.sessions.has(this.getSessionKey(task));
   }
 
   getRecentSourceHistory(source: TaskSource, limit = 6): SessionEntry[] {
@@ -85,6 +127,10 @@ export class SessionStore {
   }
 
   formatSessionHistory(task: TaskEnvelope, limit = 6): string {
+    if (!this.hasSession(task)) {
+      return 'No prior session history.';
+    }
+
     const entries = this.getRecentSessionHistory(task, limit);
     if (entries.length === 0) {
       return 'No prior session history.';
@@ -109,6 +155,7 @@ export class SessionStore {
       ...partial,
     };
     session.updatedAt = new Date().toISOString();
+    this.persistToDisk();
     return session.settings;
   }
 
@@ -120,17 +167,42 @@ export class SessionStore {
     return `source:${source}`;
   }
 
-  private evictIfNeeded(): void {
-    if (this.sessions.size < MAX_SESSIONS) {
-      return;
-    }
+  private evictBeforeCreate(): void {
+    while (this.sessions.size >= this.maxSessions) {
+      const oldest = Array.from(this.sessions.values())
+        .sort((left, right) => left.updatedAt.localeCompare(right.updatedAt))[0];
 
-    const oldest = Array.from(this.sessions.values())
-      .sort((left, right) => left.updatedAt.localeCompare(right.updatedAt))[0];
+      if (!oldest) {
+        break;
+      }
 
-    if (oldest) {
       this.sessions.delete(oldest.key);
     }
+  }
+
+  private pruneToLimit(): void {
+    while (this.sessions.size > this.maxSessions) {
+      const oldest = Array.from(this.sessions.values())
+        .sort((left, right) => left.updatedAt.localeCompare(right.updatedAt))[0];
+
+      if (!oldest) {
+        break;
+      }
+
+      this.sessions.delete(oldest.key);
+    }
+  }
+
+  private persistToDisk(): void {
+    const payload: PersistedSessionState = {
+      sessions: Array.from(this.sessions.values())
+        .sort((left, right) => left.updatedAt.localeCompare(right.updatedAt))
+        .slice(-this.maxSessions),
+      sourceHistory: Array.from(this.sourceHistory.entries()).map(([key, entries]) => [key, entries.slice(-MAX_SOURCE_HISTORY)]),
+    };
+
+    fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
+    fs.writeFileSync(this.filePath, JSON.stringify(payload, null, 2));
   }
 }
 

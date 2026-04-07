@@ -25,7 +25,11 @@
     "morningReviewHour": 8
   },
   "storage": {
-    "vectorStorePath": "./data/lancedb"
+    "vectorStorePath": "./data/lancedb",
+    "sessionStorePath": "./data/sessions.json"
+  },
+  "sessions": {
+    "maxPersistedSessions": 100
   },
   "gateways": {
     "telegram": {

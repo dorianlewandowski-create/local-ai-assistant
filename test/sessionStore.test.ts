@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sessionStore } from '../src/runtime/sessionStore';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { SessionStore, sessionStore } from '../src/runtime/sessionStore';
 import { TaskEnvelope } from '../src/types';
 
 function createTask(overrides: Partial<TaskEnvelope> = {}): TaskEnvelope {
@@ -51,4 +54,41 @@ test('session store supports per-session settings', () => {
   assert.equal(settings.verbosity, 'high');
   assert.equal(settings.approvalMode, 'strict');
   assert.equal(sessionStore.getSession(task).settings.verbosity, 'high');
+});
+
+test('session store persists and restores session snapshots', async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openmac-sessions-'));
+  const filePath = path.join(tempDir, 'sessions.json');
+  const store = new SessionStore(filePath, 10);
+  const task = createTask({ source: 'telegram', sourceId: 'persisted-chat' });
+
+  store.appendInteraction(task, 'persist me', 'restored');
+  store.updateSessionSettings(task, { verbosity: 'medium' });
+
+  const restored = new SessionStore(filePath, 10);
+  await restored.loadFromDisk();
+
+  assert.match(restored.formatSessionHistory(task), /persist me/);
+  assert.equal(restored.getSession(task).settings.verbosity, 'medium');
+});
+
+test('session store prunes persisted sessions by retention limit', async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openmac-sessions-prune-'));
+  const filePath = path.join(tempDir, 'sessions.json');
+  const store = new SessionStore(filePath, 2);
+
+  store.appendInteraction(createTask({ sourceId: 'one' }), 'a', 'a');
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  store.appendInteraction(createTask({ sourceId: 'two' }), 'b', 'b');
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  store.appendInteraction(createTask({ sourceId: 'three' }), 'c', 'c');
+
+  const restored = new SessionStore(filePath, 2);
+  await restored.loadFromDisk();
+
+  assert.equal(restored.hasSession(createTask({ sourceId: 'one' })), false);
+  assert.equal(restored.hasSession(createTask({ sourceId: 'two' })), true);
+  assert.equal(restored.hasSession(createTask({ sourceId: 'three' })), true);
+  assert.match(restored.formatSessionHistory(createTask({ sourceId: 'two' })), /b/);
+  assert.match(restored.formatSessionHistory(createTask({ sourceId: 'three' })), /c/);
 });

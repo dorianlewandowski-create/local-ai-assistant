@@ -33,6 +33,10 @@ interface RawConfig {
   };
   storage?: {
     vectorStorePath?: string;
+    sessionStorePath?: string;
+  };
+  sessions?: {
+    maxPersistedSessions?: number;
   };
   gateways?: {
     telegram?: {
@@ -93,6 +97,10 @@ export interface OpenMacConfig {
   };
   storage: {
     vectorStorePath: string;
+    sessionStorePath: string;
+  };
+  sessions: {
+    maxPersistedSessions: number;
   };
   gateways: {
     telegram: {
@@ -255,6 +263,10 @@ function buildEnvConfig(env: EnvSource): RawConfig {
     },
     storage: {
       vectorStorePath: readEnv(env, 'VECTOR_STORE_PATH'),
+      sessionStorePath: readEnv(env, 'SESSION_STORE_PATH'),
+    },
+    sessions: {
+      maxPersistedSessions: readNumberEnv(env, 'OPENMAC_MAX_PERSISTED_SESSIONS'),
     },
     gateways: {
       telegram: {
@@ -328,6 +340,10 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
     },
     storage: {
       vectorStorePath: path.join(cwd, 'data', 'lancedb'),
+      sessionStorePath: path.join(cwd, 'data', 'sessions.json'),
+    },
+    sessions: {
+      maxPersistedSessions: 100,
     },
     gateways: {
       telegram: {
@@ -393,6 +409,7 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
     ...(merged.security ?? {}),
   };
   const vectorStorePath = merged.storage?.vectorStorePath ?? path.join(cwd, 'data', 'lancedb');
+  const sessionStorePath = merged.storage?.sessionStorePath ?? path.join(cwd, 'data', 'sessions.json');
 
   return {
     app: {
@@ -420,6 +437,10 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
     },
     storage: {
       vectorStorePath: expandHomePath(vectorStorePath),
+      sessionStorePath: expandHomePath(sessionStorePath),
+    },
+    sessions: {
+      maxPersistedSessions: merged.sessions?.maxPersistedSessions ?? 100,
     },
     gateways: {
       telegram: {

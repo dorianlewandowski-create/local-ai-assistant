@@ -12,6 +12,7 @@ import { createProactiveScheduler } from '../runtime/proactiveScheduler';
 import { createTuiClient } from '../clients/tuiClient';
 import { startResidentFileWatcher } from '../runtime/fileWatcher';
 import { AuthorizationRequest, TaskSource } from '../types';
+import { sessionStore } from '../runtime/sessionStore';
 
 function createFailClosedRemoteAuthorizer(source: TaskSource) {
   return {
@@ -28,6 +29,8 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   for (const warning of startupWarnings) {
     logger.warn(warning);
   }
+
+  await sessionStore.loadFromDisk();
 
   const { tui, destroy } = createTuiClient();
 

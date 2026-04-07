@@ -12,11 +12,11 @@ Use this file to track the next round of improvements after `0.7.0`.
 
 ## Phase 10: Persist Sessions
 
-- [ ] Persist session settings across restarts
-- [ ] Persist recent session summaries or history snapshots
-- [ ] Restore session state on startup
-- [ ] Add session pruning/retention policy
-- [ ] Add tests for session persistence
+- [x] Persist session settings across restarts
+- [x] Persist recent session summaries or history snapshots
+- [x] Restore session state on startup
+- [x] Add session pruning/retention policy
+- [x] Add tests for session persistence
 
 ## Phase 11: Improve Channel Parity
 
@@ -71,7 +71,7 @@ Use this file to track the next round of improvements after `0.7.0`.
 ## Recommended Next Milestone
 
 - [x] Add fallback provider support
-- [ ] Persist session settings
+- [x] Persist session settings
 - [ ] Improve Slack and WhatsApp behavior
 - [ ] Add basic admin commands
 - [ ] Design the web control UI surface
