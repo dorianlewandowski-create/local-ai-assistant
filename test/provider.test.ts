@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ollamaChatProvider, ollamaEmbeddingProvider, ollamaVisionProvider } from '../src/models/ollama';
+import { ollamaAudioTranscriptionProvider, ollamaChatProvider, ollamaEmbeddingProvider, ollamaVisionProvider } from '../src/models/ollama';
 import { chatWithFallback, embedWithFallback } from '../src/models/runtime';
 
 test('ollama provider modules expose expected methods', () => {
   assert.equal(typeof ollamaChatProvider.chat, 'function');
   assert.equal(typeof ollamaEmbeddingProvider.embed, 'function');
   assert.equal(typeof ollamaVisionProvider.analyzeImage, 'function');
+  assert.equal(typeof ollamaAudioTranscriptionProvider.transcribe, 'function');
 });
 
 test('chat fallback uses secondary model when primary fails', async () => {

@@ -18,6 +18,7 @@ interface RawConfig {
     embedding?: string;
     embeddingFallback?: string;
     vision?: string;
+    transcription?: string;
     webSearch?: string;
   };
   ollama?: {
@@ -98,6 +99,7 @@ export interface OpenMacConfig {
     embedding: string;
     embeddingFallback?: string;
     vision: string;
+    transcription?: string;
     webSearch: string;
   };
   ollama: {
@@ -280,6 +282,7 @@ function buildEnvConfig(env: EnvSource): RawConfig {
       embedding: readEnv(env, 'OLLAMA_EMBEDDING_MODEL'),
       embeddingFallback: readEnv(env, 'OLLAMA_FALLBACK_EMBEDDING_MODEL'),
       vision: readEnv(env, 'OLLAMA_VISION_MODEL'),
+      transcription: readEnv(env, 'OLLAMA_TRANSCRIPTION_MODEL'),
       webSearch: readEnv(env, 'PERPLEXITY_WEB_SEARCH_MODEL'),
     },
     ollama: {
@@ -377,6 +380,7 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
       embedding: 'nomic-embed-text',
       embeddingFallback: '',
       vision: 'llama3.2-vision',
+      transcription: '',
       webSearch: 'llama-3.1-sonar-small-128k-online',
     },
     ollama: {
@@ -508,6 +512,7 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
       embedding: merged.models?.embedding ?? 'nomic-embed-text',
       embeddingFallback: merged.models?.embeddingFallback || undefined,
       vision: merged.models?.vision ?? 'llama3.2-vision',
+      transcription: merged.models?.transcription || undefined,
       webSearch: merged.models?.webSearch ?? 'llama-3.1-sonar-small-128k-online',
     },
     ollama: {

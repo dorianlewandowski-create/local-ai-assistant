@@ -1,5 +1,5 @@
 import ollama from 'ollama';
-import { ChatCompletionRequest, ChatCompletionResponse, ChatModelProvider, EmbeddingModelProvider, VisionModelProvider } from './provider';
+import { AudioTranscriptionProvider, ChatCompletionRequest, ChatCompletionResponse, ChatModelProvider, EmbeddingModelProvider, VisionModelProvider } from './provider';
 
 export class OllamaChatProvider implements ChatModelProvider {
   async chat(request: ChatCompletionRequest): Promise<ChatCompletionResponse> {
@@ -41,6 +41,22 @@ export class OllamaVisionProvider implements VisionModelProvider {
   }
 }
 
+export class OllamaAudioTranscriptionProvider implements AudioTranscriptionProvider {
+  async transcribe(model: string, audioPath: string, prompt: string): Promise<string> {
+    const response = await ollama.chat({
+      model,
+      messages: [{
+        role: 'user',
+        content: prompt,
+        images: [audioPath],
+      }] as any,
+    });
+
+    return response.message.content.trim();
+  }
+}
+
 export const ollamaChatProvider = new OllamaChatProvider();
 export const ollamaEmbeddingProvider = new OllamaEmbeddingProvider();
 export const ollamaVisionProvider = new OllamaVisionProvider();
+export const ollamaAudioTranscriptionProvider = new OllamaAudioTranscriptionProvider();

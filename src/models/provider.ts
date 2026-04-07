@@ -38,3 +38,7 @@ export interface EmbeddingModelProvider {
 export interface VisionModelProvider {
   analyzeImage(model: string, imagePath: string, prompt: string): Promise<string>;
 }
+
+export interface AudioTranscriptionProvider {
+  transcribe(model: string, audioPath: string, prompt: string): Promise<string>;
+}

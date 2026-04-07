@@ -4,7 +4,8 @@
     "chatFallback": "llama3.1:8b",
     "embedding": "nomic-embed-text",
     "embeddingFallback": "mxbai-embed-large",
-    "vision": "llama3.2-vision"
+    "vision": "llama3.2-vision",
+    "transcription": ""
   },
   "watcher": {
     "directories": [
