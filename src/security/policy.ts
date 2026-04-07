@@ -70,6 +70,23 @@ function isSessionToolAllowed(toolName: string, sessionSettings?: SessionSetting
   return true;
 }
 
+function isSandboxActive(source: TaskSource, sessionSettings?: SessionSettings): boolean {
+  if (!isRemoteSource(source)) {
+    return false;
+  }
+
+  const mode = sessionSettings?.sandboxMode ?? 'default';
+  if (mode === 'off') {
+    return false;
+  }
+
+  if (mode === 'strict') {
+    return true;
+  }
+
+  return config.security.remoteSandboxMode;
+}
+
 export function assessToolRisk(tool: Tool, args: unknown, source: TaskSource, sessionSettings?: SessionSettings): GuardianDecision {
   const serialized = JSON.stringify(args ?? {});
   const strings = collectStrings(args);
@@ -119,6 +136,16 @@ export function assessToolRisk(tool: Tool, args: unknown, source: TaskSource, se
   }
 
   const requiresAuthorization = permissionClass !== 'read';
+  if (isSandboxActive(source, sessionSettings) && !config.security.remoteSandboxAllowedPermissions.includes(permissionClass)) {
+    return {
+      allowed: false,
+      requiresAuthorization: false,
+      permissionClass,
+      command: `${tool.name} ${serialized}`,
+      reason: `Remote sandbox blocks ${permissionClass} tools from ${source}.`,
+    };
+  }
+
   const remoteSafeAllowed = config.security.remoteAllowedPermissions.includes(permissionClass);
   if (isRemoteSource(source) && runtimeSecurityState.isRemoteSafeModeEnabled() && !remoteSafeAllowed) {
     return {

@@ -46,7 +46,7 @@ Use this file to track the next round of improvements after `0.7.0`.
 
 ## Phase 14: Improve Remote Safety Further
 
-- [ ] Add stronger sandboxing for remote sessions
+- [x] Add stronger sandboxing for remote sessions
 - [x] Add per-channel tool allowlists
 - [x] Add per-session tool policy overrides
 - [x] Add explicit tool manifests instead of mostly inferred metadata
@@ -65,7 +65,7 @@ Use this file to track the next round of improvements after `0.7.0`.
 - [x] Add `openmac onboard`
 - [x] Add launchd install/support
 - [x] Add `openmac update`
-- [ ] Improve release packaging
+- [x] Improve release packaging
 - [x] Expand `doctor` checks and recovery hints
 
 ## Recommended Next Milestone

@@ -69,6 +69,8 @@ interface RawConfig {
     authorizationTimeoutMs?: number;
     pairingCodeTtlMs?: number;
     channelToolAllowlists?: Partial<Record<'telegram' | 'slack' | 'whatsapp', string[]>>;
+    remoteSandboxMode?: boolean;
+    remoteSandboxAllowedPermissions?: Array<'read' | 'write' | 'automation' | 'destructive'>;
   };
   dashboard?: {
     enabled?: boolean;
@@ -141,6 +143,8 @@ export interface OpenMacConfig {
     authorizationTimeoutMs: number;
     pairingCodeTtlMs: number;
     channelToolAllowlists: Partial<Record<'telegram' | 'slack' | 'whatsapp', string[]>>;
+    remoteSandboxMode: boolean;
+    remoteSandboxAllowedPermissions: Array<'read' | 'write' | 'automation' | 'destructive'>;
   };
   dashboard: {
     enabled: boolean;
@@ -319,6 +323,8 @@ function buildEnvConfig(env: EnvSource): RawConfig {
         slack: readCsvEnv(env, 'OPENMAC_SLACK_ALLOWED_TOOLS'),
         whatsapp: readCsvEnv(env, 'OPENMAC_WHATSAPP_ALLOWED_TOOLS'),
       },
+      remoteSandboxMode: readBooleanEnv(env, 'OPENMAC_REMOTE_SANDBOX_MODE'),
+      remoteSandboxAllowedPermissions: readCsvEnv(env, 'OPENMAC_REMOTE_SANDBOX_ALLOWED_PERMISSIONS') as Array<'read' | 'write' | 'automation' | 'destructive'> | undefined,
     },
     dashboard: {
       enabled: readBooleanEnv(env, 'OPENMAC_DASHBOARD_ENABLED'),
@@ -404,6 +410,8 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
       authorizationTimeoutMs: 5 * 60 * 1000,
       pairingCodeTtlMs: 10 * 60 * 1000,
       channelToolAllowlists: {},
+      remoteSandboxMode: true,
+      remoteSandboxAllowedPermissions: ['read'],
     },
     dashboard: {
       enabled: false,
@@ -443,6 +451,8 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
     authorizationTimeoutMs: 5 * 60 * 1000,
     pairingCodeTtlMs: 10 * 60 * 1000,
     channelToolAllowlists: {},
+    remoteSandboxMode: true,
+    remoteSandboxAllowedPermissions: ['read'] as Array<'read' | 'write' | 'automation' | 'destructive'>,
     ...(merged.security ?? {}),
   };
   const dashboardConfig = {
@@ -519,6 +529,8 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
       authorizationTimeoutMs: securityConfig.authorizationTimeoutMs,
       pairingCodeTtlMs: securityConfig.pairingCodeTtlMs,
       channelToolAllowlists: securityConfig.channelToolAllowlists,
+      remoteSandboxMode: securityConfig.remoteSandboxMode,
+      remoteSandboxAllowedPermissions: securityConfig.remoteSandboxAllowedPermissions,
     },
     dashboard: {
       enabled: dashboardConfig.enabled,

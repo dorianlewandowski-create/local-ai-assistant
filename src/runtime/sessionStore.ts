@@ -17,6 +17,7 @@ export interface SessionSettings {
   approvalMode?: 'standard' | 'strict';
   allowedTools?: string[];
   blockedTools?: string[];
+  sandboxMode?: 'default' | 'strict' | 'off';
 }
 
 export interface SessionRecord {

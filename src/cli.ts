@@ -3,6 +3,7 @@ import { runOpenMac } from './index';
 import { runOnboard } from './onboard';
 import { installLaunchdPlist } from './launchd';
 import { runUpdateHelp } from './update';
+import { runReleasePack } from './release';
 
 export function resolveCliCommand(argv: string[]) {
   const [command, ...rest] = argv;
@@ -21,6 +22,10 @@ export function resolveCliCommand(argv: string[]) {
 
   if (command === 'update') {
     return { command: 'update' as const, argv: rest };
+  }
+
+  if (command === 'release-pack') {
+    return { command: 'release-pack' as const, argv: rest };
   }
 
   return { command: 'run' as const, argv: command ? [command, ...rest] : rest };
@@ -46,6 +51,11 @@ async function main() {
 
   if (resolved.command === 'update') {
     const exitCode = await runUpdateHelp();
+    process.exit(exitCode);
+  }
+
+  if (resolved.command === 'release-pack') {
+    const exitCode = await runReleasePack();
     process.exit(exitCode);
   }
 

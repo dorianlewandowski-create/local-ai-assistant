@@ -128,7 +128,7 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
       }
     });
 
-    for (const name of ['queue', 'sessions', 'memory', 'safe', 'model', 'approvals'] as const) {
+    for (const name of ['queue', 'sessions', 'memory', 'safe', 'sandbox', 'model', 'approvals'] as const) {
       this.bot.command(name, async (ctx) => {
         if (!(await this.ensureAuthorized(ctx)) || !this.handleAdminCommand) {
           return;
@@ -235,7 +235,7 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
         return;
       }
 
-      if (text.startsWith('/start') || text.startsWith('/status') || text.startsWith('/screen') || text.startsWith('/approve') || text.startsWith('/deny') || text.startsWith('/doctor') || text.startsWith('/queue') || text.startsWith('/sessions') || text.startsWith('/memory') || text.startsWith('/safe') || text.startsWith('/model') || text.startsWith('/approvals')) {
+      if (text.startsWith('/start') || text.startsWith('/status') || text.startsWith('/screen') || text.startsWith('/approve') || text.startsWith('/deny') || text.startsWith('/doctor') || text.startsWith('/queue') || text.startsWith('/sessions') || text.startsWith('/memory') || text.startsWith('/safe') || text.startsWith('/sandbox') || text.startsWith('/model') || text.startsWith('/approvals')) {
         return;
       }
 

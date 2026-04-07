@@ -77,6 +77,23 @@ export function createAdminCommandHandler(dependencies: AdminCommandDependencies
         }
         return `Remote-safe mode is ${runtimeSecurityState.isRemoteSafeModeEnabled() ? 'on' : 'off'}. Use /safe on or /safe off.`;
       }
+      case 'sandbox': {
+        const mode = command.args[0]?.toLowerCase();
+        if (mode === 'strict') {
+          sessionStore.updateSessionSettings(task, { sandboxMode: 'strict' });
+          return 'Session sandbox mode set to strict.';
+        }
+        if (mode === 'off') {
+          sessionStore.updateSessionSettings(task, { sandboxMode: 'off' });
+          return 'Session sandbox mode disabled.';
+        }
+        if (mode === 'default') {
+          sessionStore.updateSessionSettings(task, { sandboxMode: 'default' });
+          return 'Session sandbox mode reset to default.';
+        }
+
+        return `Session sandbox mode is ${sessionStore.getSession(task).settings.sandboxMode || 'default'}. Use /sandbox strict, /sandbox off, or /sandbox default.`;
+      }
       case 'model': {
         const selectedModel = command.args.join(' ').trim();
         if (selectedModel) {

@@ -7,6 +7,7 @@ test('cli resolves onboarding and packaging commands', () => {
   assert.deepEqual(resolveCliCommand(['onboard']), { command: 'onboard', argv: [] });
   assert.deepEqual(resolveCliCommand(['launchd-install']), { command: 'launchd-install', argv: [] });
   assert.deepEqual(resolveCliCommand(['update']), { command: 'update', argv: [] });
+  assert.deepEqual(resolveCliCommand(['release-pack']), { command: 'release-pack', argv: [] });
 });
 
 test('launchd plist contains expected openmac label', () => {

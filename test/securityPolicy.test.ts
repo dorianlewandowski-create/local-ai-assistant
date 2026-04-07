@@ -41,3 +41,17 @@ test('tool manifests enforce source restrictions', () => {
   assert.equal(decision.allowed, false);
   assert.match(decision.reason, /not allowed from slack/);
 });
+
+test('remote sandbox blocks non-read permissions by default', () => {
+  const tool = makeTool('open_app');
+  const decision = assessToolRisk(tool, {}, 'telegram');
+  assert.equal(decision.allowed, false);
+  assert.match(decision.reason, /Remote sandbox blocks automation tools/);
+});
+
+test('session sandbox off can disable sandbox restriction for remote sessions', () => {
+  const tool = makeTool('open_app');
+  const decision = assessToolRisk(tool, {}, 'telegram', { sandboxMode: 'off' });
+  assert.equal(decision.allowed, true);
+  assert.equal(decision.requiresAuthorization, true);
+});

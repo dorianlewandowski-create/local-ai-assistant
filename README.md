@@ -108,10 +108,24 @@ npm run doctor
 npm run onboard
 npm run launchd:install
 npm run update:help
+npm run release:pack
 npm run typecheck
 npm run test
 npm run build
 ```
+
+Release packaging:
+
+```bash
+npm run release:pack
+```
+
+This creates:
+
+- `releases/openmac-<version>/`
+- `releases/openmac-<version>.tar.gz`
+
+The release bundle includes compiled `dist/`, a production `bin/openmac` launcher, `README.md`, and example config files.
 
 Additional optional keys are included in `.env.example` and `openmac.json.example`.
 
