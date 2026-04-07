@@ -1,0 +1,414 @@
+import 'dotenv/config';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+
+export const DEFAULT_CONFIG_FILE_NAME = 'openmac.json';
+
+type EnvSource = Record<string, string | undefined>;
+
+interface RawConfig {
+  app?: {
+    version?: string;
+    statusAiLabel?: string;
+  };
+  models?: {
+    chat?: string;
+    embedding?: string;
+    vision?: string;
+    webSearch?: string;
+  };
+  ollama?: {
+    host?: string;
+  };
+  watcher?: {
+    directories?: string[];
+    extensions?: string[];
+  };
+  scheduler?: {
+    proactiveReviewIntervalMs?: number;
+    morningReviewHour?: number;
+  };
+  storage?: {
+    vectorStorePath?: string;
+  };
+  gateways?: {
+    telegram?: {
+      enabled?: boolean;
+      botToken?: string;
+      chatId?: string;
+    };
+    slack?: {
+      botToken?: string;
+    };
+    whatsapp?: {
+      enabled?: boolean;
+      executablePath?: string;
+    };
+  };
+  integrations?: {
+    spotify?: {
+      clientId?: string;
+      clientSecret?: string;
+    };
+    jinaApiKey?: string;
+    wolframAppId?: string;
+    perplexityApiKey?: string;
+    tavilyApiKey?: string;
+    arxivMaxResults?: string;
+  };
+}
+
+export interface OpenMacConfig {
+  app: {
+    version: string;
+    statusAiLabel: string;
+  };
+  models: {
+    chat: string;
+    embedding: string;
+    vision: string;
+    webSearch: string;
+  };
+  ollama: {
+    host: string;
+  };
+  watcher: {
+    directories: string[];
+    extensions: Set<string>;
+  };
+  scheduler: {
+    proactiveReviewIntervalMs: number;
+    morningReviewHour: number;
+  };
+  storage: {
+    vectorStorePath: string;
+  };
+  gateways: {
+    telegram: {
+      enabled: boolean;
+      botToken?: string;
+      chatId?: string;
+    };
+    slack: {
+      botToken?: string;
+    };
+    whatsapp: {
+      enabled: boolean;
+      executablePath?: string;
+    };
+  };
+  integrations: {
+    spotify: {
+      clientId?: string;
+      clientSecret?: string;
+    };
+    jinaApiKey?: string;
+    wolframAppId?: string;
+    perplexityApiKey?: string;
+    tavilyApiKey?: string;
+    arxivMaxResults: string;
+  };
+  meta: {
+    configPath: string | null;
+  };
+}
+
+function readEnv(env: EnvSource, name: string): string | undefined {
+  const value = env[name]?.trim();
+  return value ? value : undefined;
+}
+
+function readBooleanEnv(env: EnvSource, name: string): boolean | undefined {
+  const value = readEnv(env, name);
+  if (!value) {
+    return undefined;
+  }
+
+  return value === '1' || value.toLowerCase() === 'true';
+}
+
+function readNumberEnv(env: EnvSource, name: string): number | undefined {
+  const value = readEnv(env, name);
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function readCsvEnv(env: EnvSource, name: string): string[] | undefined {
+  const value = readEnv(env, name);
+  if (!value) {
+    return undefined;
+  }
+
+  const items = value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  return items.length > 0 ? items : undefined;
+}
+
+function expandHomePath(value: string): string {
+  if (value === '~') {
+    return os.homedir();
+  }
+
+  if (value.startsWith('~/')) {
+    return path.join(os.homedir(), value.slice(2));
+  }
+
+  return value;
+}
+
+function normalizeStringArray(values: string[] | undefined, fallback: string[]): string[] {
+  const items = (values ?? fallback)
+    .map((value) => expandHomePath(value.trim()))
+    .filter(Boolean);
+
+  return items.length > 0 ? items : fallback;
+}
+
+function deepMerge<T>(base: T, override: Partial<T>): T {
+  if (Array.isArray(base) || Array.isArray(override)) {
+    return (override ?? base) as T;
+  }
+
+  if (!base || typeof base !== 'object' || !override || typeof override !== 'object') {
+    return (override ?? base) as T;
+  }
+
+  const result: Record<string, unknown> = { ...(base as Record<string, unknown>) };
+  for (const [key, value] of Object.entries(override)) {
+    if (value === undefined) {
+      continue;
+    }
+
+    const existing = result[key];
+    result[key] = existing && typeof existing === 'object' && !Array.isArray(existing) && typeof value === 'object' && !Array.isArray(value)
+      ? deepMerge(existing as Record<string, unknown>, value as Record<string, unknown>)
+      : value;
+  }
+
+  return result as T;
+}
+
+function loadConfigFile(configPath: string | null): RawConfig {
+  if (!configPath) {
+    return {};
+  }
+
+  const raw = fs.readFileSync(configPath, 'utf-8');
+  const parsed = JSON.parse(raw) as RawConfig;
+  return parsed;
+}
+
+export function resolveConfigPath(cwd = process.cwd(), env: EnvSource = process.env): string | null {
+  const explicitPath = readEnv(env, 'OPENMAC_CONFIG');
+  if (explicitPath) {
+    return path.resolve(cwd, expandHomePath(explicitPath));
+  }
+
+  const defaultPath = path.join(cwd, DEFAULT_CONFIG_FILE_NAME);
+  return fs.existsSync(defaultPath) ? defaultPath : null;
+}
+
+function buildEnvConfig(env: EnvSource): RawConfig {
+  return {
+    models: {
+      chat: readEnv(env, 'OLLAMA_MODEL'),
+      embedding: readEnv(env, 'OLLAMA_EMBEDDING_MODEL'),
+      vision: readEnv(env, 'OLLAMA_VISION_MODEL'),
+      webSearch: readEnv(env, 'PERPLEXITY_WEB_SEARCH_MODEL'),
+    },
+    ollama: {
+      host: readEnv(env, 'OLLAMA_HOST'),
+    },
+    watcher: {
+      directories: readCsvEnv(env, 'OPENMAC_WATCH_DIRECTORIES'),
+      extensions: readCsvEnv(env, 'OPENMAC_WATCH_EXTENSIONS'),
+    },
+    scheduler: {
+      proactiveReviewIntervalMs: readNumberEnv(env, 'OPENMAC_PROACTIVE_REVIEW_INTERVAL_MS'),
+      morningReviewHour: readNumberEnv(env, 'OPENMAC_MORNING_REVIEW_HOUR'),
+    },
+    storage: {
+      vectorStorePath: readEnv(env, 'VECTOR_STORE_PATH'),
+    },
+    gateways: {
+      telegram: {
+        enabled: readBooleanEnv(env, 'TELEGRAM_ENABLED'),
+        botToken: readEnv(env, 'TELEGRAM_BOT_TOKEN'),
+        chatId: readEnv(env, 'TELEGRAM_CHAT_ID'),
+      },
+      slack: {
+        botToken: readEnv(env, 'SLACK_BOT_TOKEN'),
+      },
+      whatsapp: {
+        enabled: readBooleanEnv(env, 'WHATSAPP_ENABLED'),
+        executablePath: readEnv(env, 'PUPPETEER_EXECUTABLE_PATH'),
+      },
+    },
+    integrations: {
+      spotify: {
+        clientId: readEnv(env, 'SPOTIFY_CLIENT_ID'),
+        clientSecret: readEnv(env, 'SPOTIFY_CLIENT_SECRET'),
+      },
+      jinaApiKey: readEnv(env, 'JINA_API_KEY'),
+      wolframAppId: readEnv(env, 'WOLFRAM_API_ID'),
+      perplexityApiKey: readEnv(env, 'PERPLEXITY_API_KEY'),
+      tavilyApiKey: readEnv(env, 'TAVILY_API_KEY'),
+      arxivMaxResults: readEnv(env, 'ARXIV_MAX_RESULTS'),
+    },
+  };
+}
+
+const DEFAULT_WATCH_DIRECTORIES = [
+  path.join(os.homedir(), 'Desktop'),
+  path.join(os.homedir(), 'Downloads'),
+];
+
+const DEFAULT_WATCHED_EXTENSIONS = ['.pdf', '.txt', '.md', '.jpg', '.jpeg', '.png'];
+
+export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): OpenMacConfig {
+  const cwd = options.cwd ?? process.cwd();
+  const env = options.env ?? process.env;
+  const configPath = resolveConfigPath(cwd, env);
+
+  const defaults: Required<RawConfig> = {
+    app: {
+      version: '0.6.0',
+      statusAiLabel: 'GEMMA-4',
+    },
+    models: {
+      chat: 'gemma4:e4b',
+      embedding: 'nomic-embed-text',
+      vision: 'llama3.2-vision',
+      webSearch: 'llama-3.1-sonar-small-128k-online',
+    },
+    ollama: {
+      host: 'http://127.0.0.1:11434',
+    },
+    watcher: {
+      directories: DEFAULT_WATCH_DIRECTORIES,
+      extensions: DEFAULT_WATCHED_EXTENSIONS,
+    },
+    scheduler: {
+      proactiveReviewIntervalMs: 4 * 60 * 60 * 1000,
+      morningReviewHour: 8,
+    },
+    storage: {
+      vectorStorePath: path.join(cwd, 'data', 'lancedb'),
+    },
+    gateways: {
+      telegram: {
+        enabled: false,
+        botToken: '',
+        chatId: '',
+      },
+      slack: {
+        botToken: '',
+      },
+      whatsapp: {
+        enabled: false,
+        executablePath: '',
+      },
+    },
+    integrations: {
+      spotify: {
+        clientId: '',
+        clientSecret: '',
+      },
+      jinaApiKey: '',
+      wolframAppId: '',
+      perplexityApiKey: '',
+      tavilyApiKey: '',
+      arxivMaxResults: '3',
+    },
+  };
+
+  const fileConfig = loadConfigFile(configPath);
+  const envConfig = buildEnvConfig(env);
+  const merged = deepMerge(deepMerge(defaults, fileConfig), envConfig);
+  const telegramConfig = {
+    enabled: false,
+    botToken: '',
+    chatId: '',
+    ...(merged.gateways?.telegram ?? {}),
+  };
+  const slackConfig = {
+    botToken: '',
+    ...(merged.gateways?.slack ?? {}),
+  };
+  const whatsappConfig = {
+    enabled: false,
+    executablePath: '',
+    ...(merged.gateways?.whatsapp ?? {}),
+  };
+  const spotifyConfig = {
+    clientId: '',
+    clientSecret: '',
+    ...(merged.integrations?.spotify ?? {}),
+  };
+  const vectorStorePath = merged.storage?.vectorStorePath ?? path.join(cwd, 'data', 'lancedb');
+
+  return {
+    app: {
+      version: merged.app?.version ?? '0.6.0',
+      statusAiLabel: merged.app?.statusAiLabel ?? 'GEMMA-4',
+    },
+    models: {
+      chat: merged.models?.chat ?? 'gemma4:e4b',
+      embedding: merged.models?.embedding ?? 'nomic-embed-text',
+      vision: merged.models?.vision ?? 'llama3.2-vision',
+      webSearch: merged.models?.webSearch ?? 'llama-3.1-sonar-small-128k-online',
+    },
+    ollama: {
+      host: merged.ollama?.host ?? 'http://127.0.0.1:11434',
+    },
+    watcher: {
+      directories: normalizeStringArray(merged.watcher.directories, DEFAULT_WATCH_DIRECTORIES),
+      extensions: new Set(normalizeStringArray(merged.watcher.extensions, DEFAULT_WATCHED_EXTENSIONS).map((item) => item.toLowerCase())),
+    },
+    scheduler: {
+      proactiveReviewIntervalMs: merged.scheduler?.proactiveReviewIntervalMs ?? 4 * 60 * 60 * 1000,
+      morningReviewHour: merged.scheduler?.morningReviewHour ?? 8,
+    },
+    storage: {
+      vectorStorePath: expandHomePath(vectorStorePath),
+    },
+    gateways: {
+      telegram: {
+        enabled: telegramConfig.enabled,
+        botToken: telegramConfig.botToken || undefined,
+        chatId: telegramConfig.chatId || undefined,
+      },
+      slack: {
+        botToken: slackConfig.botToken || undefined,
+      },
+      whatsapp: {
+        enabled: whatsappConfig.enabled,
+        executablePath: whatsappConfig.executablePath ? expandHomePath(whatsappConfig.executablePath) : undefined,
+      },
+    },
+    integrations: {
+      spotify: {
+        clientId: spotifyConfig.clientId || undefined,
+        clientSecret: spotifyConfig.clientSecret || undefined,
+      },
+      jinaApiKey: merged.integrations?.jinaApiKey || undefined,
+      wolframAppId: merged.integrations?.wolframAppId || undefined,
+      perplexityApiKey: merged.integrations?.perplexityApiKey || undefined,
+      tavilyApiKey: merged.integrations?.tavilyApiKey || undefined,
+      arxivMaxResults: merged.integrations?.arxivMaxResults ?? '3',
+    },
+    meta: {
+      configPath,
+    },
+  };
+}
+
+export const config = loadConfig();

@@ -5,14 +5,11 @@ import { toolRegistry } from './tools/registry';
 import { TaskQueue } from './runtime/taskQueue';
 import { OpenMacTui } from './ui/tui';
 import { logger } from './utils/logger';
-import { memoryStore } from './db/memory';
+import { vectorStore } from './db/vectorStore';
 import { sessionLogger } from './runtime/sessionLogger';
-import { execSync } from 'child_process';
 import chokidar from 'chokidar';
-import os from 'os';
 import path from 'path';
 import fs from 'fs/promises';
-import { existsSync } from 'fs';
 import './tools/macControl';
 import './tools/fileSystem';
 import './tools/reminders';
@@ -26,22 +23,15 @@ import './tools/fileContent';
 import { createWhatsAppGateway } from './gateways/whatsapp';
 import { createTelegramGateway } from './gateways/telegram';
 import { createSlackGateway } from './gateways/slack';
+import { config } from './config';
+import { validateStartup } from './startupValidation';
 
-const WATCH_DIRECTORIES = [
-  path.join(os.homedir(), 'Desktop'),
-  path.join(os.homedir(), 'Downloads'),
-];
-
-const WATCHED_EXTENSIONS = new Set(['.pdf', '.txt', '.md', '.jpg', '.jpeg', '.png']);
-const PROACTIVE_REVIEW_INTERVAL_MS = 4 * 60 * 60 * 1000;
-const MORNING_REVIEW_HOUR = 8;
 const INTERNAL_REVIEW_PROMPT = 'Internal Review: Access the calendar for today, fetch the current weather forecast, and recall relevant facts from Memory. Identify any potential issues, such as bad weather conflicting with outdoor plans or stress factors involving pets. Only notify the user if you find a meaningful Contextual Correlation that supports a useful proactive suggestion. If nothing meaningful is found, do not send a notification and finish quietly.';
 const INTERNAL_REVIEW_SYSTEM_PROMPT = 'Hidden system instruction for proactive planning. This is an internal review, not a user request. Check today\'s calendar, current weather, and relevant memory together. Avoid spam. Only call send_system_notification when there is a meaningful contextual correlation that is specific, actionable, and not a duplicate of a recent proactive alert. Otherwise finish without notifying.';
-const DEFAULT_OLLAMA_MODEL = process.env.OLLAMA_MODEL?.trim() || 'gemma4:e4b';
 
 const MacOSAssistant: AgentConfig = {
   name: 'OpenMac',
-  model: DEFAULT_OLLAMA_MODEL,
+  model: config.models.chat,
    systemPrompt: `You are OpenMac, a high-end macOS autonomous agent.
    You can monitor the system, react to file events, remember durable user facts, and take careful autonomous actions.
    When a new event appears, analyze it, decide whether to use tools, and either take the next best action or produce a concise recommendation.
@@ -54,7 +44,7 @@ const MacOSAssistant: AgentConfig = {
 
 function shouldHandleFile(filePath: string): boolean {
   const ext = path.extname(filePath).toLowerCase();
-  return WATCHED_EXTENSIONS.has(ext);
+  return config.watcher.extensions.has(ext);
 }
 
 async function buildFileEventPrompt(eventType: 'add' | 'change', filePath: string): Promise<string> {
@@ -96,12 +86,12 @@ function createProactiveScheduler(taskQueue: TaskQueue, onReviewComplete?: () =>
 
   const intervalHandle = setInterval(() => {
     runReview('interval');
-  }, PROACTIVE_REVIEW_INTERVAL_MS);
+  }, config.scheduler.proactiveReviewIntervalMs);
 
   const morningHandle = setInterval(() => {
     const now = new Date();
     const currentKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
-    if (now.getHours() === MORNING_REVIEW_HOUR && lastMorningReviewKey !== currentKey) {
+    if (now.getHours() === config.scheduler.morningReviewHour && lastMorningReviewKey !== currentKey) {
       lastMorningReviewKey = currentKey;
       runReview('morning');
     }
@@ -111,7 +101,7 @@ function createProactiveScheduler(taskQueue: TaskQueue, onReviewComplete?: () =>
     start() {
       const now = new Date();
       const currentKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
-      if (now.getHours() === MORNING_REVIEW_HOUR) {
+      if (now.getHours() === config.scheduler.morningReviewHour) {
         lastMorningReviewKey = currentKey;
         runReview('morning');
       }
@@ -123,15 +113,10 @@ function createProactiveScheduler(taskQueue: TaskQueue, onReviewComplete?: () =>
   };
 }
 
-async function main() {
-  const vectorStorePath = process.env.VECTOR_STORE_PATH?.trim();
-  if (vectorStorePath?.startsWith('/Volumes/') && !existsSync(vectorStorePath)) {
-    throw new Error('🚨 VAULT NOT FOUND: Please mount your encrypted OpenMacData volume to continue.');
-  }
-
-  const ollamaHost = process.env.OLLAMA_HOST?.trim();
-  if (ollamaHost && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(ollamaHost)) {
-    throw new Error(`Ollama must be local-only. Invalid OLLAMA_HOST: ${ollamaHost}`);
+export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
+  const startupWarnings = await validateStartup();
+  for (const warning of startupWarnings) {
+    logger.warn(warning);
   }
 
   const tui = new OpenMacTui();
@@ -141,6 +126,10 @@ async function main() {
   logger.patchConsole();
   logger.system('🔒 Security: Encrypted Vault Linked & Local AI Isolated.');
   logger.system(`📝 Session log: ${sessionLogger.getPath()}`);
+  logger.system(`🗂️ Vector store: ${vectorStore.getPath()}`);
+  if (vectorStore.isUsingFallbackPath()) {
+    logger.warn('Configured VECTOR_STORE_PATH is not writable. Using local fallback vector store.');
+  }
 
   MacOSAssistant.tools = toolRegistry.getAllTools().map(t => t.name);
   const orchestrator = new Orchestrator(MacOSAssistant);
@@ -156,7 +145,7 @@ async function main() {
   orchestrator.registerAuthorizer('file_watcher', tui);
   orchestrator.registerAuthorizer('scheduler', tui);
   orchestrator.registerAuthorizer('default', tui);
-  const prompt = process.argv.slice(2).join(' ').trim();
+  const prompt = argv.join(' ').trim();
   let pulseIndex = 0;
   const pulseFrames = ['·', '•', '◦', '•'];
   let shuttingDown = false;
@@ -167,7 +156,7 @@ async function main() {
     const activeTasks = taskQueue.getActiveTaskCount();
     const pulse = activeTasks > 0 ? pulseFrames[pulseIndex++ % pulseFrames.length] : '●';
     const mode = activeTasks > 0 ? 'FAST-PATH ○' : 'FAST-PATH ⚡';
-    logger.status(`${pulse}  OPENMAC 0.6.0 | VAULT: LOCKED | AI: GEMMA-4 | MODE: ${mode}`);
+    logger.status(`${pulse}  OPENMAC ${config.app.version} | VAULT: LOCKED | AI: ${config.app.statusAiLabel} | MODE: ${mode}`);
   };
 
   const proactiveScheduler = createProactiveScheduler(taskQueue, updateStatus);
@@ -229,11 +218,11 @@ async function main() {
   }
 
   logger.system('Resident mode active');
-  logger.system(`Watching: ${WATCH_DIRECTORIES.join(', ')}`);
+  logger.system(`Watching: ${config.watcher.directories.join(', ')}`);
   proactiveScheduler.start();
   await Promise.all([
     whatsappGateway.start(),
-    process.env.TELEGRAM_ENABLED === '1' || process.env.TELEGRAM_ENABLED === 'true'
+    config.gateways.telegram.enabled
       ? telegramGateway.start()
       : Promise.resolve().then(() => logger.system('Telegram disabled')),
     slackGateway.start(),
@@ -241,7 +230,7 @@ async function main() {
   updateStatus();
   statusInterval = setInterval(updateStatus, 5000);
 
-  watcher = chokidar.watch(WATCH_DIRECTORIES, {
+  watcher = chokidar.watch(config.watcher.directories, {
     ignoreInitial: true,
     awaitWriteFinish: {
       stabilityThreshold: 1000,
@@ -297,7 +286,9 @@ async function main() {
   process.stdin.resume();
 }
 
-main().catch((error: any) => {
-  logger.error(`Error during processing: ${error.message}`);
-  process.exit(1);
-});
+if (require.main === module) {
+  runOpenMac().catch((error: any) => {
+    logger.error(`Error during processing: ${error.message}`);
+    process.exit(1);
+  });
+}

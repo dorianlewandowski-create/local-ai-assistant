@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { Tool } from '../types';
 import { toolRegistry } from './registry';
+import { config } from '../config';
 
 function htmlToText(html: string): string {
   return html
@@ -58,8 +59,8 @@ export const fetchUrlViaJina: Tool<typeof FetchUrlViaJinaParams> = {
   execute: async ({ url }) => {
     try {
       const headers: Record<string, string> = {};
-      if (process.env.JINA_API_KEY) {
-        headers['Authorization'] = `Bearer ${process.env.JINA_API_KEY}`;
+      if (config.integrations.jinaApiKey) {
+        headers['Authorization'] = `Bearer ${config.integrations.jinaApiKey}`;
       }
       const response = await fetch(`https://r.jina.ai/${url}`, { headers });
       if (!response.ok) {
@@ -100,7 +101,7 @@ export const searchArxiv: Tool<typeof SearchArxivParams> = {
   parameters: SearchArxivParams,
   execute: async ({ query }) => {
     try {
-      const maxResults = process.env.ARXIV_MAX_RESULTS || '3';
+      const maxResults = config.integrations.arxivMaxResults;
       const url = `http://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(query)}&max_results=${maxResults}`;
       const response = await fetch(url);
       if (!response.ok) {
@@ -162,7 +163,7 @@ export const searchWolframAlpha: Tool<typeof SearchWolframAlphaParams> = {
   parameters: SearchWolframAlphaParams,
   execute: async ({ query }) => {
     try {
-      const appId = process.env.WOLFRAM_API_ID;
+      const appId = config.integrations.wolframAppId;
       if (!appId) {
         return { success: false, error: 'WOLFRAM_API_ID is not set' };
       }
@@ -209,11 +210,11 @@ export const webSearchPerplexity: Tool<typeof WebSearchPerplexityParams> = {
   parameters: WebSearchPerplexityParams,
   execute: async ({ query }) => {
     try {
-      const apiKey = process.env.PERPLEXITY_API_KEY;
+      const apiKey = config.integrations.perplexityApiKey;
       if (!apiKey) {
         return { success: false, error: 'PERPLEXITY_API_KEY is not set' };
       }
-      const model = process.env.PERPLEXITY_WEB_SEARCH_MODEL || 'llama-3.1-sonar-small-128k-online';
+      const model = config.models.webSearch;
       
       const response = await fetch('https://api.perplexity.ai/chat/completions', {
         method: 'POST',
@@ -249,7 +250,7 @@ export const webSearchTavily: Tool<typeof WebSearchTavilyParams> = {
   parameters: WebSearchTavilyParams,
   execute: async ({ query }) => {
     try {
-      const apiKey = process.env.TAVILY_API_KEY;
+      const apiKey = config.integrations.tavilyApiKey;
       if (!apiKey) {
         return { success: false, error: 'TAVILY_API_KEY is not set' };
       }

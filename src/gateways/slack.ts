@@ -1,6 +1,7 @@
 import { WebClient } from '@slack/web-api';
 import { GatewayProvider, GatewayTaskSink } from './base';
 import { logger } from '../utils/logger';
+import { config } from '../config';
 
 export class SlackGateway extends GatewayProvider {
   private client: WebClient | null = null;
@@ -10,12 +11,12 @@ export class SlackGateway extends GatewayProvider {
   }
 
   async start(): Promise<void> {
-    if (!process.env.SLACK_BOT_TOKEN) {
+    if (!config.gateways.slack.botToken) {
       logger.debug('Slack disabled: missing SLACK_BOT_TOKEN');
       return;
     }
 
-    this.client = new WebClient(process.env.SLACK_BOT_TOKEN);
+    this.client = new WebClient(config.gateways.slack.botToken);
     logger.system('Slack skeleton initialized; event subscription wiring is pending');
   }
 

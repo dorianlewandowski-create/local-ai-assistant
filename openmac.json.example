@@ -1,0 +1,39 @@
+{
+  "models": {
+    "chat": "gemma4:e4b",
+    "embedding": "nomic-embed-text",
+    "vision": "llama3.2-vision"
+  },
+  "watcher": {
+    "directories": [
+      "~/Desktop",
+      "~/Downloads"
+    ],
+    "extensions": [
+      ".pdf",
+      ".txt",
+      ".md",
+      ".jpg",
+      ".jpeg",
+      ".png"
+    ]
+  },
+  "scheduler": {
+    "proactiveReviewIntervalMs": 14400000,
+    "morningReviewHour": 8
+  },
+  "storage": {
+    "vectorStorePath": "./data/lancedb"
+  },
+  "gateways": {
+    "telegram": {
+      "enabled": false,
+      "botToken": "",
+      "chatId": ""
+    },
+    "whatsapp": {
+      "enabled": false,
+      "executablePath": ""
+    }
+  }
+}

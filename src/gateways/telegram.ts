@@ -3,6 +3,8 @@ import { AuthorizationRequester, GatewayProvider, GatewayTaskSink } from './base
 import { logger } from '../utils/logger';
 import { vectorStore } from '../db/vectorStore';
 import { AuthorizationRequest } from '../types';
+import { config } from '../config';
+import { escapeTelegramMarkdown } from '../utils/telegramMarkdown';
 import os from 'os';
 import path from 'path';
 import fs from 'fs/promises';
@@ -10,9 +12,9 @@ import { execSync } from 'child_process';
 
 export class TelegramGateway extends GatewayProvider implements AuthorizationRequester {
   private bot: Telegraf | null = null;
-  private readonly isEnabled = process.env.TELEGRAM_ENABLED === '1' || process.env.TELEGRAM_ENABLED === 'true';
-  private readonly botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
-  private readonly allowedChatId = process.env.TELEGRAM_CHAT_ID?.trim();
+  private readonly isEnabled = config.gateways.telegram.enabled;
+  private readonly botToken = config.gateways.telegram.botToken;
+  private readonly allowedChatId = config.gateways.telegram.chatId;
   private readonly pendingAuthorizations = new Map<string, (approved: boolean) => void>();
 
   constructor(sink: GatewayTaskSink) {
@@ -197,7 +199,7 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
       throw new Error('Telegram bot is not initialized.');
     }
 
-    await this.bot.telegram.sendMessage(to, text, { parse_mode: 'Markdown' });
+    await this.bot.telegram.sendMessage(to, escapeTelegramMarkdown(text), { parse_mode: 'MarkdownV2' });
   }
 
   async stop(): Promise<void> {
@@ -212,9 +214,9 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
 
     await this.bot.telegram.sendMessage(
       this.allowedChatId,
-      `⚠️ OpenMac wants to execute: \`${request.command}\`. Authorize?`,
+      `⚠️ OpenMac wants to execute: \`${escapeTelegramMarkdown(request.command)}\`. Authorize?`,
       {
-        parse_mode: 'Markdown',
+        parse_mode: 'MarkdownV2',
         ...Markup.inlineKeyboard([
           Markup.button.callback('YES', `openmac_auth_yes:${request.id}`),
           Markup.button.callback('NO', `openmac_auth_no:${request.id}`),

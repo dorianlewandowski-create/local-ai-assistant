@@ -6,10 +6,11 @@ import { z } from 'zod';
 import { Tool } from '../types';
 import { toolRegistry } from './registry';
 import { vectorStore } from '../db/vectorStore';
+import { config } from '../config';
 
 const TEXT_FILE_EXTENSIONS = new Set(['.txt', '.md', '.js', '.ts', '.json']);
 const IMAGE_FILE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png']);
-const VISION_MODEL = process.env.OLLAMA_VISION_MODEL || 'llama3.2-vision';
+const VISION_MODEL = config.models.vision;
 const MAX_TEXT_PREVIEW_LENGTH = 12000;
 
 function summariseExtractedText(filePath: string, text: string): string {

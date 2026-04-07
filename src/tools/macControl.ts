@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { Tool } from '../types';
 import { toolRegistry } from './registry';
 import { logger } from '../utils/logger';
+import { config } from '../config';
 
 const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
@@ -24,8 +25,8 @@ async function runAppleScript(script: string) {
 }
 
 async function getSpotifyAccessToken() {
-  const clientId = process.env.SPOTIFY_CLIENT_ID?.trim();
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET?.trim();
+  const clientId = config.integrations.spotify.clientId;
+  const clientSecret = config.integrations.spotify.clientSecret;
 
   if (!clientId || !clientSecret) {
     throw new Error('Spotify API is not configured. Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in .env.');

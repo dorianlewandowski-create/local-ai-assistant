@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import ollama from 'ollama';
 import { connect, Connection, Table } from '@lancedb/lancedb';
+import { config } from '../config';
 
 export interface VectorRecordInput {
   source: string;
@@ -20,18 +21,51 @@ interface VectorRow {
   createdAt: string;
 }
 
-const DEFAULT_DB_PATH = process.env.VECTOR_STORE_PATH?.trim() || path.join(process.cwd(), 'data', 'lancedb');
+const DEFAULT_DB_PATH = config.storage.vectorStorePath;
+const FALLBACK_DB_PATH = path.join(process.cwd(), 'data', 'lancedb');
 const VECTOR_TABLE_NAME = 'knowledge_chunks';
-const EMBEDDING_MODEL = process.env.OLLAMA_EMBEDDING_MODEL || 'nomic-embed-text';
+const EMBEDDING_MODEL = config.models.embedding;
 const MAX_CONTENT_LENGTH = 12000;
+
+function resolveDbPath(preferredPath: string): string {
+  try {
+    fs.mkdirSync(preferredPath, { recursive: true });
+    fs.accessSync(preferredPath, fs.constants.R_OK | fs.constants.W_OK);
+    return preferredPath;
+  } catch {
+    if (preferredPath === FALLBACK_DB_PATH) {
+      throw new Error(`Vector store path is not writable: ${preferredPath}`);
+    }
+
+    fs.mkdirSync(FALLBACK_DB_PATH, { recursive: true });
+    fs.accessSync(FALLBACK_DB_PATH, fs.constants.R_OK | fs.constants.W_OK);
+    console.warn(`Vector store path '${preferredPath}' is not writable. Falling back to '${FALLBACK_DB_PATH}'.`);
+    return FALLBACK_DB_PATH;
+  }
+}
+
+function preferredUsesFallback(preferredPath: string, resolvedPath: string): boolean {
+  return preferredPath !== resolvedPath;
+}
 
 export class VectorStore {
   private connectionPromise: Promise<Connection> | null = null;
   private tablePromise: Promise<Table> | null = null;
   private writeCount = 0;
+  private readonly dbPath: string;
+  private readonly preferredPath: string;
 
-  constructor(private readonly dbPath = DEFAULT_DB_PATH) {
-    fs.mkdirSync(this.dbPath, { recursive: true });
+  constructor(dbPath = DEFAULT_DB_PATH) {
+    this.preferredPath = dbPath;
+    this.dbPath = resolveDbPath(dbPath);
+  }
+
+  getPath(): string {
+    return this.dbPath;
+  }
+
+  isUsingFallbackPath(): boolean {
+    return preferredUsesFallback(this.preferredPath, this.dbPath);
   }
 
   async store(input: VectorRecordInput): Promise<void> {

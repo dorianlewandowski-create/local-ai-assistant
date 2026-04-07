@@ -8,7 +8,11 @@
   },
   "scripts": {
     "build": "tsc",
-    "start": "ts-node src/index.ts"
+    "start": "ts-node src/cli.ts",
+    "doctor": "ts-node src/cli.ts doctor",
+    "lint": "tsc --noEmit --pretty false",
+    "typecheck": "tsc --noEmit",
+    "test": "node --require ts-node/register --test test/**/*.test.ts"
   },
   "dependencies": {
     "@lancedb/lancedb": "^0.27.2",

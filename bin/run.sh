@@ -13,4 +13,4 @@ PROJECT_ROOT="$( cd -P "$( dirname "$SOURCE" )/.." >/dev/null 2>&1 && pwd )"
 cd "$PROJECT_ROOT"
 
 # Uruchom za pomocą ts-node z lokalnego node_modules
-exec npx ts-node src/index.ts "$@"
+exec npx ts-node src/cli.ts "$@"

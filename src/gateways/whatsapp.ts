@@ -3,9 +3,10 @@ import qrcode from 'qrcode-terminal';
 import fs from 'fs';
 import { GatewayProvider, GatewayTaskSink } from './base';
 import { logger } from '../utils/logger';
+import { config } from '../config';
 
 const CHROME_CANDIDATES = [
-  process.env.PUPPETEER_EXECUTABLE_PATH,
+  config.gateways.whatsapp.executablePath,
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   '/Applications/Google Chrome Dev.app/Contents/MacOS/Google Chrome Dev',
   '/Applications/Chromium.app/Contents/MacOS/Chromium',
@@ -23,7 +24,7 @@ export class WhatsAppGateway extends GatewayProvider {
   }
 
   async start(): Promise<void> {
-    if (!process.env.WHATSAPP_ENABLED) {
+    if (!config.gateways.whatsapp.enabled) {
       logger.debug('WhatsApp disabled');
       return;
     }
