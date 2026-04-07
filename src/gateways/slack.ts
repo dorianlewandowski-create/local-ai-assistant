@@ -8,6 +8,7 @@ import { getOrCreatePairingCode, isChannelSubjectApproved } from '../security/ch
 import { NativeApprovalManager } from './nativeApproval';
 import { captureScreenshot, cleanupScreenshot } from './screenshot';
 import fs from 'fs';
+import { buildSlackHelpText, buildSlackStatusText } from './slackDiagnostics';
 
 type AdminCommandHandler = (task: TaskEnvelope, input: string) => Promise<string | null>;
 
@@ -54,7 +55,7 @@ export class SlackGateway extends GatewayProvider implements AuthorizationReques
       }
 
       if (text === '/status') {
-        await this.sendResponse(message.channel, 'OpenMac Slack DM is connected. Use /doctor, /queue, /sessions, /memory, /safe, /sandbox, /model, or send a task.');
+        await this.sendResponse(message.channel, buildSlackStatusText(config));
         return;
       }
 
@@ -76,7 +77,7 @@ export class SlackGateway extends GatewayProvider implements AuthorizationReques
       }
 
       if (text === '/help' || text === '/start') {
-        await this.sendResponse(message.channel, 'OpenMac Slack\nUse /status, /screen, /doctor, /queue, /sessions, /memory, /safe, /sandbox, /model, or send a task.');
+        await this.sendResponse(message.channel, buildSlackHelpText());
         return;
       }
 

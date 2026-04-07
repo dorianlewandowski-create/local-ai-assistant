@@ -13,6 +13,9 @@ import { isWhatsAppMessageAuthorized } from './whatsappPolicy';
 import { NativeApprovalManager } from './nativeApproval';
 import { captureScreenshot, cleanupScreenshot } from './screenshot';
 import { MessageMedia } from 'whatsapp-web.js';
+import { cleanupTempFile, writeTempMediaFile } from '../media/files';
+import { transcribeAudioFile } from '../media/transcription';
+import path from 'path';
 
 type AdminCommandHandler = (task: TaskEnvelope, input: string) => Promise<string | null>;
 
@@ -135,6 +138,11 @@ export class WhatsAppGateway extends GatewayProvider implements AuthorizationReq
         return;
       }
 
+      if (message.hasMedia) {
+        void this.handleMediaMessage(message);
+        return;
+      }
+
       void this.dispatch(message.body, message.from, {
         from: message.from,
         timestamp: message.timestamp,
@@ -174,6 +182,115 @@ export class WhatsAppGateway extends GatewayProvider implements AuthorizationReq
       await this.client.sendMessage(to, media, { caption: 'Current desktop snapshot' });
     } finally {
       await cleanupScreenshot(imagePath);
+    }
+  }
+
+  private async handleMediaMessage(message: any): Promise<void> {
+    let filePath: string | undefined;
+    try {
+      const media = await message.downloadMedia();
+      if (!media?.data) {
+        await message.reply('OpenMac could not download that media.');
+        return;
+      }
+
+      const buffer = Buffer.from(media.data, 'base64');
+      if (buffer.byteLength > config.media.maxTelegramFileBytes) {
+        await message.reply(`OpenMac media limit exceeded. Max size is ${config.media.maxTelegramFileBytes} bytes.`);
+        return;
+      }
+
+      const extension = this.getMediaExtension(media.mimetype, media.filename, message.type);
+      filePath = await writeTempMediaFile('openmac-whatsapp-media', extension, buffer);
+
+      if (message.type === 'audio' || message.type === 'ptt') {
+        try {
+          const transcript = await transcribeAudioFile(filePath);
+          void this.dispatch(`The user sent a WhatsApp voice note. Transcript: ${transcript}`, message.from, {
+            from: message.from,
+            author: message.author,
+            timestamp: message.timestamp,
+            whatsappMediaType: message.type,
+          }).catch(async (error: any) => {
+            logger.error(`WhatsApp voice dispatch failed: ${error.message}`);
+            await message.reply('OpenMac could not queue that voice note right now.');
+          }).finally(async () => {
+            await cleanupTempFile(filePath);
+          });
+          return;
+        } catch (error: any) {
+          await cleanupTempFile(filePath);
+          await message.reply(`OpenMac received the voice note, but transcription is unavailable: ${error.message}`);
+          return;
+        }
+      }
+
+      const prompt = this.buildMediaPrompt(message.type, filePath);
+      if (!prompt) {
+        await cleanupTempFile(filePath);
+        await message.reply('OpenMac does not support that WhatsApp media type yet.');
+        return;
+      }
+
+      void this.dispatch(prompt, message.from, {
+        from: message.from,
+        author: message.author,
+        timestamp: message.timestamp,
+        whatsappMediaType: message.type,
+        downloadedFilePath: filePath,
+      }).catch(async (error: any) => {
+        logger.error(`WhatsApp media dispatch failed: ${error.message}`);
+        await cleanupTempFile(filePath);
+        await message.reply('OpenMac could not queue that media for analysis right now.');
+      });
+    } catch (error: any) {
+      await cleanupTempFile(filePath);
+      logger.error(`WhatsApp media handling failed: ${error.message}`);
+      await message.reply(`OpenMac could not process that media: ${error.message}`);
+    }
+  }
+
+  private buildMediaPrompt(messageType: string, filePath: string): string | null {
+    if (messageType === 'image') {
+      return `Analyze this WhatsApp image immediately using analyze_image_content with path "${filePath}". Describe what is important, extract any visible text if relevant, and recommend the next best action.`;
+    }
+
+    if (messageType === 'document') {
+      const extension = path.extname(filePath).toLowerCase();
+      if (extension === '.pdf') {
+        return `Read this WhatsApp PDF immediately using read_pdf_content with path "${filePath}". Summarize the important contents and recommend the next best action.`;
+      }
+
+      if (['.jpg', '.jpeg', '.png'].includes(extension)) {
+        return `Analyze this WhatsApp image immediately using analyze_image_content with path "${filePath}". Describe what is important, extract any visible text if relevant, and recommend the next best action.`;
+      }
+
+      return `Read this WhatsApp file immediately using read_text_file with path "${filePath}". Summarize the important contents and recommend the next best action.`;
+    }
+
+    return null;
+  }
+
+  private getMediaExtension(mimeType: string | undefined, filename: string | undefined, messageType: string): string {
+    const byFilename = filename ? path.extname(filename).toLowerCase() : '';
+    if (byFilename) {
+      return byFilename;
+    }
+
+    switch (mimeType) {
+      case 'image/jpeg':
+        return '.jpg';
+      case 'image/png':
+        return '.png';
+      case 'application/pdf':
+        return '.pdf';
+      case 'audio/ogg; codecs=opus':
+      case 'audio/ogg':
+        return '.ogg';
+      case 'audio/mpeg':
+        return '.mp3';
+      default:
+        return messageType === 'audio' || messageType === 'ptt' ? '.ogg' : '.bin';
     }
   }
 
