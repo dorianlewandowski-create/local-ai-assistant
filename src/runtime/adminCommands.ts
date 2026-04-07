@@ -25,6 +25,10 @@ function parseSlashCommand(input: string): { name: string; args: string[] } | nu
   return name ? { name: name.toLowerCase(), args } : null;
 }
 
+function isRemoteSource(source: TaskEnvelope['source']): boolean {
+  return source === 'telegram' || source === 'slack' || source === 'whatsapp';
+}
+
 export function createAdminCommandHandler(dependencies: AdminCommandDependencies) {
   return async function handleAdminCommand(task: TaskEnvelope, input: string): Promise<string | null> {
     const command = parseSlashCommand(input);
@@ -67,6 +71,9 @@ export function createAdminCommandHandler(dependencies: AdminCommandDependencies
       }
       case 'safe': {
         const mode = command.args[0]?.toLowerCase();
+        if (isRemoteSource(task.source)) {
+          return 'Remote-safe mode can only be changed from the local terminal.';
+        }
         if (mode === 'on') {
           runtimeSecurityState.setRemoteSafeMode(true);
           return 'Remote-safe mode enabled.';
@@ -79,6 +86,9 @@ export function createAdminCommandHandler(dependencies: AdminCommandDependencies
       }
       case 'sandbox': {
         const mode = command.args[0]?.toLowerCase();
+        if (isRemoteSource(task.source) && mode === 'off') {
+          return 'Remote sessions cannot disable sandbox mode remotely. Use /sandbox default or /sandbox strict.';
+        }
         if (mode === 'strict') {
           sessionStore.updateSessionSettings(task, { sandboxMode: 'strict' });
           return 'Session sandbox mode set to strict.';

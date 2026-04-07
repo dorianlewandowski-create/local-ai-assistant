@@ -100,6 +100,9 @@ export class WhatsAppGateway extends GatewayProvider {
       void this.dispatch(message.body, message.from, {
         from: message.from,
         timestamp: message.timestamp,
+      }).catch(async (error: any) => {
+        logger.error(`WhatsApp dispatch failed: ${error.message}`);
+        void message.reply('OpenMac could not queue that request right now.');
       });
     });
 

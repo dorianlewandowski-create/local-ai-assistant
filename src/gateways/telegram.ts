@@ -247,6 +247,9 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
         username: ctx.from?.username,
         firstName: ctx.from?.first_name,
         telegramMessageId: ctx.message.message_id,
+      }).catch(async (error: any) => {
+        logger.error(`[Telegram] text dispatch failed: ${error.message}`);
+        await ctx.reply(' I could not queue that request right now.');
       });
     });
 
@@ -262,7 +265,7 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
       }
 
       try {
-        const { buffer, filePath } = await this.downloadTelegramFile(photo.file_id, 'openmac-telegram-photo', '.jpg');
+        const { filePath } = await this.downloadTelegramFile(photo.file_id, 'openmac-telegram-photo', '.jpg');
         const imagePath = filePath;
         logger.chat('user', '[Telegram] Sent a photo');
         void this.dispatch(

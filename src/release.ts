@@ -61,6 +61,7 @@ export async function runReleasePack(write: (line: string) => void = console.log
   copyRecursive(path.join(root, '.env.example'), path.join(stagingDir, '.env.example'));
   copyRecursive(path.join(root, 'openmac.json.example'), path.join(stagingDir, 'openmac.json.example'));
   copyRecursive(path.join(root, 'README.md'), path.join(stagingDir, 'README.md'));
+  copyRecursive(path.join(root, 'package-lock.json'), path.join(stagingDir, 'package-lock.json'));
   fs.writeFileSync(
     path.join(stagingDir, 'package.json'),
     JSON.stringify(buildReleasePackageJson(root), null, 2),
@@ -72,6 +73,6 @@ export async function runReleasePack(write: (line: string) => void = console.log
 
   write(`Release staging directory: ${stagingDir}`);
   write(`Release archive: ${archivePath}`);
-  write('Install flow: tar -xzf <archive> && cd openmac-<version> && npm install --omit=dev');
+  write('Install flow: tar -xzf <archive> && cd openmac-<version> && npm ci --omit=dev');
   return 0;
 }
