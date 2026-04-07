@@ -91,6 +91,10 @@ interface RawConfig {
     enabled?: boolean;
     directory?: string;
   };
+  runtimeService?: {
+    enabled?: boolean;
+    port?: number;
+  };
 }
 
 export interface OpenMacConfig {
@@ -176,6 +180,10 @@ export interface OpenMacConfig {
   plugins: {
     enabled: boolean;
     directory: string;
+  };
+  runtimeService: {
+    enabled: boolean;
+    port: number;
   };
   meta: {
     configPath: string | null;
@@ -369,6 +377,10 @@ function buildEnvConfig(env: EnvSource): RawConfig {
       enabled: readBooleanEnv(env, 'OPENMAC_PLUGINS_ENABLED'),
       directory: readEnv(env, 'OPENMAC_PLUGINS_DIRECTORY'),
     },
+    runtimeService: {
+      enabled: readBooleanEnv(env, 'OPENMAC_RUNTIME_SERVICE_ENABLED'),
+      port: readNumberEnv(env, 'OPENMAC_RUNTIME_SERVICE_PORT'),
+    },
   };
 }
 
@@ -468,6 +480,10 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
       enabled: true,
       directory: path.join(cwd, 'plugins'),
     },
+    runtimeService: {
+      enabled: true,
+      port: 18787,
+    },
   };
 
   const fileConfig = loadConfigFile(configPath);
@@ -523,6 +539,11 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
     enabled: true,
     directory: path.join(cwd, 'plugins'),
     ...(merged.plugins ?? {}),
+  };
+  const runtimeServiceConfig = {
+    enabled: true,
+    port: 18787,
+    ...(merged.runtimeService ?? {}),
   };
   const vectorStorePath = merged.storage?.vectorStorePath ?? path.join(cwd, 'data', 'lancedb');
   const sessionStorePath = merged.storage?.sessionStorePath ?? path.join(cwd, 'data', 'sessions.json');
@@ -610,6 +631,10 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
     plugins: {
       enabled: pluginConfig.enabled,
       directory: expandHomePath(pluginConfig.directory),
+    },
+    runtimeService: {
+      enabled: runtimeServiceConfig.enabled,
+      port: runtimeServiceConfig.port,
     },
     meta: {
       configPath,

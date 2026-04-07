@@ -6,6 +6,10 @@ import { buildLaunchdPlist } from '../src/launchd';
 test('cli resolves onboarding and packaging commands', () => {
   assert.deepEqual(resolveCliCommand(['onboard']), { command: 'onboard', argv: [] });
   assert.deepEqual(resolveCliCommand(['launchd-install']), { command: 'launchd-install', argv: [] });
+  assert.deepEqual(resolveCliCommand(['service-status']), { command: 'service-status', argv: [] });
+  assert.deepEqual(resolveCliCommand(['service-safe', 'on']), { command: 'service-safe', argv: ['on'] });
+  assert.deepEqual(resolveCliCommand(['service-model', 'telegram', 'chat-1', 'foo']), { command: 'service-model', argv: ['telegram', 'chat-1', 'foo'] });
+  assert.deepEqual(resolveCliCommand(['service-sandbox', 'telegram', 'chat-1', 'strict']), { command: 'service-sandbox', argv: ['telegram', 'chat-1', 'strict'] });
   assert.deepEqual(resolveCliCommand(['update']), { command: 'update', argv: [] });
   assert.deepEqual(resolveCliCommand(['release-pack']), { command: 'release-pack', argv: [] });
   assert.deepEqual(resolveCliCommand(['release-verify']), { command: 'release-verify', argv: [] });

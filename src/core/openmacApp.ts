@@ -26,7 +26,7 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
     const activeTasks = snapshot.active;
     const pulse = activeTasks > 0 ? pulseFrames[pulseIndex++ % pulseFrames.length] : '●';
     const mode = activeTasks > 0 ? 'FAST-PATH ○' : 'FAST-PATH ⚡';
-    logger.status(`${pulse}  OPENMAC ${config.app.version} | VAULT: LOCKED | AI: ${config.app.statusAiLabel} | Q:${snapshot.active}/${snapshot.pending} | MODE: ${mode}`);
+    logger.status(runtimeHost.getStatusLine(pulse, mode));
   };
 
   const shutdown = async () => {
@@ -57,7 +57,7 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
 
   logger.system('Resident mode active');
   logger.system(`Watching: ${config.watcher.directories.join(', ')}`);
-  if (config.dashboard.enabled) {
+  if (runtimeHost.isDashboardEnabled()) {
     logger.system(`Dashboard: http://127.0.0.1:${runtimeHost.getDashboardPort()}`);
   }
   await runtimeHost.start();

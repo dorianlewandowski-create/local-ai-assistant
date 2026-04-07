@@ -8,11 +8,15 @@ import { config } from '../config';
 import { LocalConsoleRuntime } from '../clients/localConsole';
 import { logger } from '../utils/logger';
 import { TaskQueueSnapshot } from './taskQueue';
+import { createRuntimeServiceServer } from './serviceServer';
 
 export interface RuntimeHost {
   appContext: ReturnType<typeof createAppContext>;
   localConsole: LocalConsoleRuntime;
   getQueueSnapshot(): TaskQueueSnapshot;
+  getStatusLine(pulse: string, mode: string): string;
+  isDashboardEnabled(): boolean;
+  getRuntimeServicePort(): number;
   getDashboardPort(): number;
   startLifecycle(shutdown: () => Promise<void>): void;
   start(): Promise<void>;
@@ -29,6 +33,7 @@ export function createRuntimeHost(localAuthorizer: AuthorizationRequester, onSta
   const gateways = composeGateways(orchestrator, taskQueue, appContext, localAuthorizer);
   const appContextWithApprovals = createAppContext(taskQueue, gateways.approvalCounter);
   const runtimeRunner = createRuntimeRunner(appContextWithApprovals.taskQueue, onStatusChange);
+  const runtimeService = createRuntimeServiceServer(appContextWithApprovals.api);
   let lifecycle: ReturnType<typeof attachProcessLifecycle> | null = null;
 
   return {
@@ -59,6 +64,16 @@ export function createRuntimeHost(localAuthorizer: AuthorizationRequester, onSta
     getQueueSnapshot() {
       return appContextWithApprovals.taskQueue.getSnapshot();
     },
+    getStatusLine(pulse: string, mode: string) {
+      const snapshot = appContextWithApprovals.taskQueue.getSnapshot();
+      return `${pulse}  OPENMAC ${config.app.version} | VAULT: LOCKED | AI: ${config.app.statusAiLabel} | Q:${snapshot.active}/${snapshot.pending} | MODE: ${mode}`;
+    },
+    isDashboardEnabled() {
+      return config.dashboard.enabled;
+    },
+    getRuntimeServicePort() {
+      return runtimeService.getPort();
+    },
     getDashboardPort() {
       return appContextWithApprovals.dashboard.getPort();
     },
@@ -68,6 +83,7 @@ export function createRuntimeHost(localAuthorizer: AuthorizationRequester, onSta
     async start() {
       runtimeRunner.start();
       await Promise.all([
+        runtimeService.start(),
         gateways.startAll(config.gateways.telegram.enabled),
         appContextWithApprovals.dashboard.start(),
       ]);
@@ -75,6 +91,7 @@ export function createRuntimeHost(localAuthorizer: AuthorizationRequester, onSta
     async stop() {
       await runtimeRunner.stop();
       await gateways.stopAll();
+      await runtimeService.stop();
       await appContextWithApprovals.dashboard.stop();
       lifecycle?.detach();
       onShutdown();

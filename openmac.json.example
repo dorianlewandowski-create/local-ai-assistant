@@ -44,6 +44,10 @@
     "enabled": true,
     "directory": "./plugins"
   },
+  "runtimeService": {
+    "enabled": true,
+    "port": 18787
+  },
   "gateways": {
     "telegram": {
       "enabled": false,

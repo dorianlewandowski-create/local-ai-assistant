@@ -1,6 +1,6 @@
 import http from 'http';
 import { config } from '../config';
-import { RuntimeApi } from '../runtime/api';
+import { createRuntimeServiceClient } from '../runtime/serviceClient';
 
 function renderHtml() {
   return `<!doctype html>
@@ -42,7 +42,8 @@ function renderHtml() {
 </html>`;
 }
 
-export function createDashboardServer(api: RuntimeApi) {
+export function createDashboardServer() {
+  const serviceClient = createRuntimeServiceClient();
   const server = http.createServer(async (req, res) => {
     const url = req.url || '/';
 
@@ -53,7 +54,7 @@ export function createDashboardServer(api: RuntimeApi) {
     }
 
     if (url === '/api/status') {
-      const body = await api.getStatusSnapshot();
+      const body = await serviceClient.getStatusSnapshot();
 
       res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify(body));

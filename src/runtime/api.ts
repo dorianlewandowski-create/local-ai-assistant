@@ -31,6 +31,8 @@ export interface RuntimeApi {
   setSessionSandboxMode(task: TaskEnvelope, mode: 'default' | 'strict' | 'off'): void;
   isRemoteSafeModeEnabled(): boolean;
   setRemoteSafeMode(enabled: boolean): void;
+  setSessionModelByKey(source: TaskEnvelope['source'], sourceId: string, model: string): void;
+  setSessionSandboxModeByKey(source: TaskEnvelope['source'], sourceId: string, mode: 'default' | 'strict' | 'off'): void;
 }
 
 export function createRuntimeApi(taskQueue: TaskQueue, approvals: PendingApprovalCounter, services: RuntimeServices): RuntimeApi {
@@ -61,11 +63,17 @@ export function createRuntimeApi(taskQueue: TaskQueue, approvals: PendingApprova
     setSessionModel(task: TaskEnvelope, model: string) {
       services.setSessionModel(task, model);
     },
+    setSessionModelByKey(source: TaskEnvelope['source'], sourceId: string, model: string) {
+      services.setSessionModel({ id: `service-${Date.now()}`, source, sourceId, prompt: '' }, model);
+    },
     getSessionSandboxMode(task: TaskEnvelope) {
       return services.getSessionSandboxMode(task);
     },
     setSessionSandboxMode(task: TaskEnvelope, mode: 'default' | 'strict' | 'off') {
       services.setSessionSandboxMode(task, mode);
+    },
+    setSessionSandboxModeByKey(source: TaskEnvelope['source'], sourceId: string, mode: 'default' | 'strict' | 'off') {
+      services.setSessionSandboxMode({ id: `service-${Date.now()}`, source, sourceId, prompt: '' }, mode);
     },
     isRemoteSafeModeEnabled() {
       return services.isRemoteSafeModeEnabled();
