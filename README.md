@@ -55,22 +55,34 @@ cp openmac.json.example openmac.json
 
 5. Fill in the required values inside `.env` and/or `openmac.json`.
 
-6. Run a startup health check.
+6. Run onboarding if you want the repo to create local config files for you.
+
+```bash
+npm run onboard
+```
+
+7. Run a startup health check.
 
 ```bash
 npm run doctor
 ```
 
-7. Link the global command.
+8. Link the global command.
 
 ```bash
 npm link
 ```
 
-8. Run OpenMac from anywhere.
+9. Run OpenMac from anywhere.
 
 ```bash
 openmac
+```
+
+10. Optional: install a `launchd` agent for resident startup.
+
+```bash
+npm run launchd:install
 ```
 
 ## Required Environment
@@ -93,6 +105,9 @@ Useful commands:
 
 ```bash
 npm run doctor
+npm run onboard
+npm run launchd:install
+npm run update:help
 npm run typecheck
 npm run test
 npm run build

@@ -62,11 +62,11 @@ Use this file to track the next round of improvements after `0.7.0`.
 
 ## Phase 16: Improve Packaging And Onboarding
 
-- [ ] Add `openmac onboard`
-- [ ] Add launchd install/support
-- [ ] Add `openmac update`
+- [x] Add `openmac onboard`
+- [x] Add launchd install/support
+- [x] Add `openmac update`
 - [ ] Improve release packaging
-- [ ] Expand `doctor` checks and recovery hints
+- [x] Expand `doctor` checks and recovery hints
 
 ## Recommended Next Milestone
 

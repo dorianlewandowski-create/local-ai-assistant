@@ -1,11 +1,26 @@
 import { runDoctor } from './doctor';
 import { runOpenMac } from './index';
+import { runOnboard } from './onboard';
+import { installLaunchdPlist } from './launchd';
+import { runUpdateHelp } from './update';
 
 export function resolveCliCommand(argv: string[]) {
   const [command, ...rest] = argv;
 
   if (command === 'doctor') {
     return { command: 'doctor' as const, argv: rest };
+  }
+
+  if (command === 'onboard') {
+    return { command: 'onboard' as const, argv: rest };
+  }
+
+  if (command === 'launchd-install') {
+    return { command: 'launchd-install' as const, argv: rest };
+  }
+
+  if (command === 'update') {
+    return { command: 'update' as const, argv: rest };
   }
 
   return { command: 'run' as const, argv: command ? [command, ...rest] : rest };
@@ -16,6 +31,21 @@ async function main() {
 
   if (resolved.command === 'doctor') {
     const exitCode = await runDoctor();
+    process.exit(exitCode);
+  }
+
+  if (resolved.command === 'onboard') {
+    const exitCode = await runOnboard();
+    process.exit(exitCode);
+  }
+
+  if (resolved.command === 'launchd-install') {
+    const exitCode = await installLaunchdPlist();
+    process.exit(exitCode);
+  }
+
+  if (resolved.command === 'update') {
+    const exitCode = await runUpdateHelp();
     process.exit(exitCode);
   }
 
