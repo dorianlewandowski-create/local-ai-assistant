@@ -13,8 +13,7 @@ import { createTuiClient } from '../clients/tuiClient';
 import { startResidentFileWatcher } from '../runtime/fileWatcher';
 import { AuthorizationRequest, TaskSource } from '../types';
 import { sessionStore } from '../runtime/sessionStore';
-import { createAdminCommandHandler } from '../runtime/adminCommands';
-import { createDashboardServer } from '../web/dashboard';
+import { createAppContext } from '../runtime/appContext';
 
 function createFailClosedRemoteAuthorizer(source: TaskSource) {
   return {
@@ -40,18 +39,12 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   const orchestrator = new Orchestrator(openMacAssistantConfig);
   const taskQueue = new TaskQueue((task) => orchestrator.processTask(task));
   let telegramGateway: ReturnType<typeof createTelegramGateway>;
-  const adminCommands = createAdminCommandHandler({
-    taskQueue,
-    approvals: {
-      getPendingApprovalCount: () => telegramGateway?.getPendingApprovalCount() ?? 0,
-    },
-  });
-  const whatsappGateway = createWhatsAppGateway(taskQueue, adminCommands);
-  telegramGateway = createTelegramGateway(taskQueue, adminCommands);
-  const slackGateway = createSlackGateway(taskQueue, adminCommands);
-  const dashboard = createDashboardServer(taskQueue, {
+  const appContext = createAppContext(taskQueue, {
     getPendingApprovalCount: () => telegramGateway?.getPendingApprovalCount() ?? 0,
   });
+  const whatsappGateway = createWhatsAppGateway(taskQueue, appContext.adminCommands);
+  telegramGateway = createTelegramGateway(taskQueue, appContext.adminCommands);
+  const slackGateway = createSlackGateway(taskQueue, appContext.adminCommands);
 
   orchestrator.registerGateway('whatsapp', whatsappGateway);
   orchestrator.registerGateway('telegram', telegramGateway);
@@ -72,7 +65,7 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   let watcher: ReturnType<typeof startResidentFileWatcher> | null = null;
 
   const updateStatus = () => {
-    const snapshot = taskQueue.getSnapshot();
+    const snapshot = appContext.taskQueue.getSnapshot();
     const activeTasks = snapshot.active;
     const pulse = activeTasks > 0 ? pulseFrames[pulseIndex++ % pulseFrames.length] : '●';
     const mode = activeTasks > 0 ? 'FAST-PATH ○' : 'FAST-PATH ⚡';
@@ -95,7 +88,7 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
     await whatsappGateway.stop();
     await telegramGateway.stop();
     await slackGateway.stop();
-    await dashboard.stop();
+    await appContext.dashboard.stop();
     await watcher?.close();
     destroy();
     process.exit(0);
@@ -107,7 +100,7 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
       return;
     }
 
-    void adminCommands({
+    void appContext.adminCommands({
       id: `terminal-admin-${Date.now()}`,
       source: 'terminal',
       sourceId: 'local-console',
@@ -115,7 +108,7 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
     }, value).then((response) => {
       if (!response) {
         logger.chat('user', value);
-        void taskQueue.enqueue({
+        void appContext.taskQueue.enqueue({
           id: `terminal-${Date.now()}`,
           source: 'terminal',
           sourceId: 'local-console',
@@ -138,7 +131,7 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   });
 
   if (prompt) {
-    const adminResponse = await adminCommands({
+    const adminResponse = await appContext.adminCommands({
       id: `terminal-admin-${Date.now()}`,
       source: 'terminal',
       sourceId: 'local-console',
@@ -149,7 +142,7 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
       updateStatus();
     } else {
       logger.chat('user', prompt);
-      void taskQueue.enqueue({
+      void appContext.taskQueue.enqueue({
         id: `terminal-${Date.now()}`,
         source: 'terminal',
         sourceId: 'local-console',
@@ -167,7 +160,7 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   logger.system('Resident mode active');
   logger.system(`Watching: ${config.watcher.directories.join(', ')}`);
   if (config.dashboard.enabled) {
-    logger.system(`Dashboard: http://127.0.0.1:${dashboard.getPort()}`);
+    logger.system(`Dashboard: http://127.0.0.1:${appContext.dashboard.getPort()}`);
   }
   proactiveScheduler.start();
   await Promise.all([
@@ -176,11 +169,11 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
       ? telegramGateway.start()
       : Promise.resolve().then(() => logger.system('Telegram disabled')),
     slackGateway.start(),
-    dashboard.start(),
+    appContext.dashboard.start(),
   ]);
   updateStatus();
   statusInterval = setInterval(updateStatus, 5000);
-  watcher = startResidentFileWatcher(taskQueue, updateStatus);
+  watcher = startResidentFileWatcher(appContext.taskQueue, updateStatus);
 
   tui.onExit(() => {
     void shutdown();
