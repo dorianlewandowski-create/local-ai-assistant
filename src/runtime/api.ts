@@ -23,8 +23,28 @@ export interface RuntimeStatusSnapshot {
   audit: ReturnType<RuntimeServices['readRecentAudit']>;
 }
 
+export interface RuntimePromptSubmission {
+  source: TaskEnvelope['source'];
+  sourceId: string;
+  prompt: string;
+}
+
+export interface RuntimeApprovalSummary {
+  id: string;
+  source: string;
+  sourceId?: string;
+  toolName: string;
+  permissionClass: string;
+  reason: string;
+  expiresAt?: string;
+}
+
 export interface RuntimeApi {
   getStatusSnapshot(): Promise<RuntimeStatusSnapshot>;
+  submitPrompt(input: RuntimePromptSubmission): Promise<string>;
+  listSessions(limit?: number): ReturnType<RuntimeServices['listSessions']>;
+  listPendingApprovals(): RuntimeApprovalSummary[];
+  settleApproval(id: string, approved: boolean): boolean;
   getSessionModel(task: TaskEnvelope): string | undefined;
   setSessionModel(task: TaskEnvelope, model: string): void;
   getSessionSandboxMode(task: TaskEnvelope): 'default' | 'strict' | 'off' | undefined;
@@ -56,6 +76,26 @@ export function createRuntimeApi(taskQueue: TaskQueue, approvals: PendingApprova
         },
         audit: services.readRecentAudit(20),
       };
+    },
+    async submitPrompt(input: RuntimePromptSubmission): Promise<string> {
+      const task: TaskEnvelope = {
+        id: `service-prompt-${Date.now()}`,
+        source: input.source,
+        sourceId: input.sourceId,
+        prompt: input.prompt,
+        timeoutMs: 120_000,
+      };
+      const result = await taskQueue.enqueue(task);
+      return result.response;
+    },
+    listSessions(limit = 10) {
+      return services.listSessions(limit);
+    },
+    listPendingApprovals() {
+      return approvals.listPendingApprovals?.() ?? [];
+    },
+    settleApproval(id: string, approved: boolean) {
+      return approvals.settleApproval?.(id, approved) ?? false;
     },
     getSessionModel(task: TaskEnvelope) {
       return services.getSessionModel(task);

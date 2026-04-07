@@ -17,6 +17,7 @@ import { getTranscriptionSetupHint, transcribeAudioFile } from '../media/transcr
 import { chunkRemoteResponse, formatRemoteAssistantText } from './responseFormatting';
 import { getGatewayStatusLines } from './status';
 import { captureScreenshot, cleanupScreenshot } from './screenshot';
+import { PendingApprovalSummary } from './nativeApproval';
 
 type AdminCommandHandler = (task: TaskEnvelope, input: string) => Promise<string | null>;
 const TELEGRAM_IMAGE_EXTENSIONS: Record<string, string> = {
@@ -26,6 +27,7 @@ const TELEGRAM_IMAGE_EXTENSIONS: Record<string, string> = {
 const TELEGRAM_DOCUMENT_EXTENSIONS = new Set(['.pdf', '.txt', '.md', '.jpg', '.jpeg', '.png']);
 
 interface PendingAuthorization {
+  request: AuthorizationRequest;
   resolve: (approved: boolean) => void;
   expiresAt: number;
   timeout: NodeJS.Timeout;
@@ -372,6 +374,30 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
     return this.pendingAuthorizations.size;
   }
 
+  listPendingApprovals(): PendingApprovalSummary[] {
+    return Array.from(this.pendingAuthorizations.values()).map(({ request }) => ({
+      id: request.id,
+      source: request.source,
+      sourceId: request.sourceId,
+      toolName: request.toolName,
+      permissionClass: request.permissionClass,
+      reason: request.reason,
+      expiresAt: request.expiresAt,
+    }));
+  }
+
+  settleApproval(id: string, approved: boolean): boolean {
+    const pending = this.pendingAuthorizations.get(id);
+    if (!pending) {
+      return false;
+    }
+
+    clearTimeout(pending.timeout);
+    this.pendingAuthorizations.delete(id);
+    pending.resolve(approved);
+    return true;
+  }
+
   async stop(): Promise<void> {
     for (const pending of this.pendingAuthorizations.values()) {
       clearTimeout(pending.timeout);
@@ -422,6 +448,7 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
       }, Math.max(1, expiresAt - Date.now()));
 
       this.pendingAuthorizations.set(request.id, {
+        request,
         resolve,
         expiresAt,
         timeout,

@@ -1,5 +1,5 @@
 import { config } from '../config';
-import { RuntimeStatusSnapshot } from './api';
+import { RuntimeApprovalSummary, RuntimeStatusSnapshot } from './api';
 import { TaskEnvelope } from '../types';
 
 async function postJson(baseUrl: string, path: string, body: unknown): Promise<any> {
@@ -29,6 +29,28 @@ export function createRuntimeServiceClient(baseUrl = `http://127.0.0.1:${config.
     },
     getBaseUrl(): string {
       return baseUrl;
+    },
+    async submitPrompt(source: TaskEnvelope['source'], sourceId: string, prompt: string): Promise<string> {
+      const result = await postJson(baseUrl, '/api/prompt', { source, sourceId, prompt });
+      return String(result.response || '');
+    },
+    async listSessions(): Promise<any[]> {
+      const response = await fetch(`${baseUrl}/api/sessions`);
+      if (!response.ok) {
+        throw new Error(`Runtime service request failed with status ${response.status}`);
+      }
+      return await response.json() as any[];
+    },
+    async listPendingApprovals(): Promise<RuntimeApprovalSummary[]> {
+      const response = await fetch(`${baseUrl}/api/approvals`);
+      if (!response.ok) {
+        throw new Error(`Runtime service request failed with status ${response.status}`);
+      }
+      return await response.json() as RuntimeApprovalSummary[];
+    },
+    async settleApproval(id: string, approved: boolean): Promise<boolean> {
+      const result = await postJson(baseUrl, '/api/approvals/settle', { id, approved });
+      return Boolean(result.ok);
     },
     async setRemoteSafeMode(enabled: boolean): Promise<void> {
       await postJson(baseUrl, '/api/control/remote-safe', { enabled });

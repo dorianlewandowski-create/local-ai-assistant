@@ -29,6 +29,40 @@ export function createRuntimeServiceServer(api: RuntimeApi) {
       return;
     }
 
+    if (req.method === 'GET' && url === '/api/sessions') {
+      const body = api.listSessions(20);
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify(body));
+      return;
+    }
+
+    if (req.method === 'GET' && url === '/api/approvals') {
+      const body = api.listPendingApprovals();
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify(body));
+      return;
+    }
+
+    if (req.method === 'POST' && url === '/api/prompt') {
+      const body = await readJsonBody(req);
+      const responseText = await api.submitPrompt({
+        source: body.source,
+        sourceId: body.sourceId,
+        prompt: body.prompt,
+      });
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: true, response: responseText }));
+      return;
+    }
+
+    if (req.method === 'POST' && url === '/api/approvals/settle') {
+      const body = await readJsonBody(req);
+      const settled = api.settleApproval(body.id, Boolean(body.approved));
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: settled }));
+      return;
+    }
+
     if (req.method === 'POST' && url === '/api/control/remote-safe') {
       const body = await readJsonBody(req);
       api.setRemoteSafeMode(Boolean(body.enabled));

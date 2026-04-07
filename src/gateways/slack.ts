@@ -5,7 +5,7 @@ import { config } from '../config';
 import { chunkRemoteResponse, formatRemoteAssistantText } from './responseFormatting';
 import { TaskEnvelope } from '../types';
 import { getOrCreatePairingCode, isChannelSubjectApproved } from '../security/channelPairingStore';
-import { NativeApprovalManager } from './nativeApproval';
+import { NativeApprovalManager, PendingApprovalSummary } from './nativeApproval';
 import { captureScreenshot, cleanupScreenshot } from './screenshot';
 import fs from 'fs';
 import { buildSlackHelpText, buildSlackStatusText } from './slackDiagnostics';
@@ -128,6 +128,18 @@ export class SlackGateway extends GatewayProvider implements AuthorizationReques
     this.approvals.stop();
     await this.app?.stop();
     this.app = null;
+  }
+
+  getPendingApprovalCount(): number {
+    return this.approvals.getPendingCount();
+  }
+
+  listPendingApprovals(): PendingApprovalSummary[] {
+    return this.approvals.listPending();
+  }
+
+  settleApproval(id: string, approved: boolean): boolean {
+    return this.approvals.settle(id, approved);
   }
 
   async requestAuthorization(request: AuthorizationRequest): Promise<boolean> {

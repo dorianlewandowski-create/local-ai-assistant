@@ -28,7 +28,19 @@ export function composeGateways(orchestrator: Orchestrator, sink: GatewayTaskSin
   orchestrator.registerAuthorizer('default', localAuthorizer);
 
   return {
-    approvalCounter,
+    approvalCounter: {
+      getPendingApprovalCount: () => approvalCounter.getPendingApprovalCount(),
+      listPendingApprovals: () => [
+        ...telegramGateway.listPendingApprovals(),
+        ...whatsappGateway.listPendingApprovals(),
+        ...slackGateway.listPendingApprovals(),
+      ],
+      settleApproval: (id: string, approved: boolean) => {
+        return telegramGateway.settleApproval(id, approved)
+          || whatsappGateway.settleApproval(id, approved)
+          || slackGateway.settleApproval(id, approved);
+      },
+    },
     async startAll(startTelegram: boolean) {
       await Promise.all([
         whatsappGateway.start(),

@@ -10,7 +10,7 @@ import { chunkRemoteResponse, formatRemoteAssistantText } from './responseFormat
 import { getGatewayStatusLines } from './status';
 import { getOrCreatePairingCode } from '../security/channelPairingStore';
 import { isWhatsAppMessageAuthorized } from './whatsappPolicy';
-import { NativeApprovalManager } from './nativeApproval';
+import { NativeApprovalManager, PendingApprovalSummary } from './nativeApproval';
 import { captureScreenshot, cleanupScreenshot } from './screenshot';
 import { MessageMedia } from 'whatsapp-web.js';
 import { cleanupTempFile, writeTempMediaFile } from '../media/files';
@@ -302,6 +302,18 @@ export class WhatsAppGateway extends GatewayProvider implements AuthorizationReq
     this.approvals.stop();
     await this.client?.destroy();
     this.client = null;
+  }
+
+  getPendingApprovalCount(): number {
+    return this.approvals.getPendingCount();
+  }
+
+  listPendingApprovals(): PendingApprovalSummary[] {
+    return this.approvals.listPending();
+  }
+
+  settleApproval(id: string, approved: boolean): boolean {
+    return this.approvals.settle(id, approved);
   }
 
   async requestAuthorization(request: AuthorizationRequest): Promise<boolean> {

@@ -8,6 +8,8 @@ import { createRuntimeApi, RuntimeApi } from './api';
 
 export interface PendingApprovalCounter {
   getPendingApprovalCount(): number;
+  listPendingApprovals?(): Array<{ id: string; source: string; sourceId?: string; toolName: string; permissionClass: string; reason: string; expiresAt?: string }>;
+  settleApproval?(id: string, approved: boolean): boolean;
 }
 
 export interface AppContext {
