@@ -5,6 +5,7 @@ import { attachProcessLifecycle } from './lifecycle';
 import { createRuntimeCore } from './runtimeCore';
 import { createRuntimeRunner } from './runtimeRunner';
 import { config } from '../config';
+import { LocalConsoleRuntime } from '../clients/localConsole';
 
 export function createRuntimeHost(localAuthorizer: AuthorizationRequester, onStatusChange: () => void, onShutdown: () => void) {
   const { orchestrator, taskQueue } = createRuntimeCore();
@@ -16,6 +17,10 @@ export function createRuntimeHost(localAuthorizer: AuthorizationRequester, onSta
 
   return {
     appContext: appContextWithApprovals,
+    localConsole: {
+      taskQueue,
+      adminCommands: appContextWithApprovals.adminCommands,
+    } satisfies LocalConsoleRuntime,
     startLifecycle(shutdown: () => Promise<void>) {
       lifecycle = attachProcessLifecycle(shutdown);
     },

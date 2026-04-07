@@ -50,10 +50,10 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
 
   runtimeHost.startLifecycle(shutdown);
 
-  attachLocalConsole(runtimeHost.appContext, tui, updateStatus, shutdown);
+  attachLocalConsole(runtimeHost.localConsole, tui, updateStatus, shutdown);
 
   if (prompt) {
-    await runInitialConsolePrompt(runtimeHost.appContext, prompt, updateStatus);
+    await runInitialConsolePrompt(runtimeHost.localConsole, prompt, updateStatus);
   }
 
   logger.system('Resident mode active');

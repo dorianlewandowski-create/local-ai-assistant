@@ -1,15 +1,21 @@
 import { logger } from '../utils/logger';
-import { AppContext } from '../runtime/appContext';
 import { OpenMacTui } from '../ui/tui';
+import { TaskQueue } from '../runtime/taskQueue';
+import { TaskEnvelope } from '../types';
 
-export function attachLocalConsole(appContext: AppContext, tui: OpenMacTui, updateStatus: () => void, shutdown: () => void) {
+export interface LocalConsoleRuntime {
+  taskQueue: TaskQueue;
+  adminCommands: (task: TaskEnvelope, input: string) => Promise<string | null>;
+}
+
+export function attachLocalConsole(runtime: LocalConsoleRuntime, tui: OpenMacTui, updateStatus: () => void, shutdown: () => void) {
   tui.onSubmit((value) => {
     if (value.trim() === '/exit') {
       void shutdown();
       return;
     }
 
-    void appContext.adminCommands({
+    void runtime.adminCommands({
       id: `terminal-admin-${Date.now()}`,
       source: 'terminal',
       sourceId: 'local-console',
@@ -17,7 +23,7 @@ export function attachLocalConsole(appContext: AppContext, tui: OpenMacTui, upda
     }, value).then((response) => {
       if (!response) {
         logger.chat('user', value);
-        void appContext.taskQueue.enqueue({
+        void runtime.taskQueue.enqueue({
           id: `terminal-${Date.now()}`,
           source: 'terminal',
           sourceId: 'local-console',
@@ -40,8 +46,8 @@ export function attachLocalConsole(appContext: AppContext, tui: OpenMacTui, upda
   });
 }
 
-export async function runInitialConsolePrompt(appContext: AppContext, prompt: string, updateStatus: () => void): Promise<void> {
-  const adminResponse = await appContext.adminCommands({
+export async function runInitialConsolePrompt(runtime: LocalConsoleRuntime, prompt: string, updateStatus: () => void): Promise<void> {
+  const adminResponse = await runtime.adminCommands({
     id: `terminal-admin-${Date.now()}`,
     source: 'terminal',
     sourceId: 'local-console',
@@ -54,7 +60,7 @@ export async function runInitialConsolePrompt(appContext: AppContext, prompt: st
   }
 
   logger.chat('user', prompt);
-  void appContext.taskQueue.enqueue({
+  void runtime.taskQueue.enqueue({
     id: `terminal-${Date.now()}`,
     source: 'terminal',
     sourceId: 'local-console',
