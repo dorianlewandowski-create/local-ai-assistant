@@ -7,7 +7,15 @@ import { createRuntimeRunner } from './runtimeRunner';
 import { config } from '../config';
 import { LocalConsoleRuntime } from '../clients/localConsole';
 
-export function createRuntimeHost(localAuthorizer: AuthorizationRequester, onStatusChange: () => void, onShutdown: () => void) {
+export interface RuntimeHost {
+  appContext: ReturnType<typeof createAppContext>;
+  localConsole: LocalConsoleRuntime;
+  startLifecycle(shutdown: () => Promise<void>): void;
+  start(): Promise<void>;
+  stop(): Promise<void>;
+}
+
+export function createRuntimeHost(localAuthorizer: AuthorizationRequester, onStatusChange: () => void, onShutdown: () => void): RuntimeHost {
   const { orchestrator, taskQueue } = createRuntimeCore();
   const appContext = createAppContext(taskQueue);
   const gateways = composeGateways(orchestrator, taskQueue, appContext, localAuthorizer);

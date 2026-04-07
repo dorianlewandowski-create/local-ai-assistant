@@ -1,8 +1,7 @@
 import { logger } from '../utils/logger';
 import { config } from '../config';
 import { validateStartup } from '../startupValidation';
-import { createTuiClient } from '../clients/tuiClient';
-import { attachLocalConsole, runInitialConsolePrompt } from '../clients/localConsole';
+import { createLocalTuiClient } from '../clients/localTuiClient';
 import { sessionStore } from '../runtime/sessionStore';
 import { createRuntimeHost } from '../runtime/runtimeHost';
 
@@ -14,13 +13,13 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
 
   await sessionStore.loadFromDisk();
 
-  const { tui, destroy } = createTuiClient();
-
   const prompt = argv.join(' ').trim();
   let pulseIndex = 0;
   const pulseFrames = ['·', '•', '◦', '•'];
   let shuttingDown = false;
   let statusInterval: NodeJS.Timeout | null = null;
+  let runtimeHost: ReturnType<typeof createRuntimeHost>;
+  let localClient: ReturnType<typeof createLocalTuiClient>;
 
   const updateStatus = () => {
     const snapshot = runtimeHost.appContext.taskQueue.getSnapshot();
@@ -29,11 +28,6 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
     const mode = activeTasks > 0 ? 'FAST-PATH ○' : 'FAST-PATH ⚡';
     logger.status(`${pulse}  OPENMAC ${config.app.version} | VAULT: LOCKED | AI: ${config.app.statusAiLabel} | Q:${snapshot.active}/${snapshot.pending} | MODE: ${mode}`);
   };
-
-  const runtimeHost = createRuntimeHost(tui, updateStatus, () => {
-    destroy();
-    process.exit(0);
-  });
 
   const shutdown = async () => {
     if (shuttingDown) {
@@ -48,12 +42,17 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
     await runtimeHost.stop();
   };
 
-  runtimeHost.startLifecycle(shutdown);
+  runtimeHost = createRuntimeHost({ requestAuthorization: async () => false }, updateStatus, () => {
+    localClient.destroy();
+    process.exit(0);
+  });
+  localClient = createLocalTuiClient(runtimeHost, updateStatus, shutdown);
 
-  attachLocalConsole(runtimeHost.localConsole, tui, updateStatus, shutdown);
+  runtimeHost.startLifecycle(shutdown);
+  localClient.attach();
 
   if (prompt) {
-    await runInitialConsolePrompt(runtimeHost.localConsole, prompt, updateStatus);
+    await localClient.runInitialPrompt(prompt);
   }
 
   logger.system('Resident mode active');
@@ -64,8 +63,4 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   await runtimeHost.start();
   updateStatus();
   statusInterval = setInterval(updateStatus, 5000);
-
-  tui.onExit(() => {
-    void shutdown();
-  });
 }
