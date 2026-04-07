@@ -14,6 +14,15 @@ function createTask(prompt: string): TaskEnvelope {
   };
 }
 
+function createRemoteTask(prompt: string): TaskEnvelope {
+  return {
+    id: `admin-remote-${Math.random().toString(36).slice(2, 8)}`,
+    source: 'telegram',
+    sourceId: 'remote-chat',
+    prompt,
+  };
+}
+
 test('admin commands return queue status', async () => {
   const handler = createAdminCommandHandler({
     taskQueue: new TaskQueue(async (task) => ({ taskId: task.id, source: task.source, agent: 'test', response: 'ok' })),
@@ -41,4 +50,24 @@ test('non-command input passes through admin handler', async () => {
 
   const response = await handler(createTask('hello'), 'hello');
   assert.equal(response, null);
+});
+
+test('remote sessions cannot change model via admin command', async () => {
+  const handler = createAdminCommandHandler({
+    taskQueue: new TaskQueue(async (task) => ({ taskId: task.id, source: task.source, agent: 'test', response: 'ok' })),
+  });
+
+  const task = createRemoteTask('/model llama3.1:8b');
+  const response = await handler(task, '/model llama3.1:8b');
+  assert.match(response || '', /cannot change the model remotely/);
+});
+
+test('remote sessions cannot change sandbox mode via admin command', async () => {
+  const handler = createAdminCommandHandler({
+    taskQueue: new TaskQueue(async (task) => ({ taskId: task.id, source: task.source, agent: 'test', response: 'ok' })),
+  });
+
+  const task = createRemoteTask('/sandbox strict');
+  const response = await handler(task, '/sandbox strict');
+  assert.match(response || '', /cannot change sandbox mode remotely/);
 });

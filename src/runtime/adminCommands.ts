@@ -86,8 +86,8 @@ export function createAdminCommandHandler(dependencies: AdminCommandDependencies
       }
       case 'sandbox': {
         const mode = command.args[0]?.toLowerCase();
-        if (isRemoteSource(task.source) && mode === 'off') {
-          return 'Remote sessions cannot disable sandbox mode remotely. Use /sandbox default or /sandbox strict.';
+        if (isRemoteSource(task.source) && mode) {
+          return 'Remote sessions cannot change sandbox mode remotely. View-only access is allowed.';
         }
         if (mode === 'strict') {
           sessionStore.updateSessionSettings(task, { sandboxMode: 'strict' });
@@ -106,6 +106,9 @@ export function createAdminCommandHandler(dependencies: AdminCommandDependencies
       }
       case 'model': {
         const selectedModel = command.args.join(' ').trim();
+        if (isRemoteSource(task.source) && selectedModel) {
+          return 'Remote sessions cannot change the model remotely. View-only access is allowed.';
+        }
         if (selectedModel) {
           sessionStore.updateSessionSettings(task, { model: selectedModel });
           return `Session model set to ${selectedModel}.`;
