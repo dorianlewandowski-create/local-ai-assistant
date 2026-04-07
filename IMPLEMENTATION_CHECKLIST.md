@@ -35,10 +35,10 @@ Use this file to track progress against the roadmap.
 
 ## Phase 5: Split The Monolith
 
-- [ ] Separate core runtime from gateways
-- [ ] Separate tools from clients
-- [ ] Move TUI into a client layer
-- [ ] Reduce cross-module coupling in `src/index.ts`
+- [x] Separate core runtime from gateways
+- [x] Separate tools from clients
+- [x] Move TUI into a client layer
+- [x] Reduce cross-module coupling in `src/index.ts`
 
 ## Phase 6: Introduce Real Session State
 
