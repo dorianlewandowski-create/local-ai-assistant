@@ -6,6 +6,8 @@ import { chunkRemoteResponse, formatRemoteAssistantText } from './responseFormat
 import { TaskEnvelope } from '../types';
 import { getOrCreatePairingCode, isChannelSubjectApproved } from '../security/channelPairingStore';
 import { NativeApprovalManager } from './nativeApproval';
+import { captureScreenshot, cleanupScreenshot } from './screenshot';
+import fs from 'fs';
 
 type AdminCommandHandler = (task: TaskEnvelope, input: string) => Promise<string | null>;
 
@@ -56,6 +58,11 @@ export class SlackGateway extends GatewayProvider implements AuthorizationReques
         return;
       }
 
+      if (text === '/screen') {
+        await this.sendScreen(message.channel);
+        return;
+      }
+
       if (text.startsWith('/approve ')) {
         const approvalId = text.split(/\s+/, 2)[1];
         await this.sendResponse(message.channel, this.approvals.settle(approvalId, true) ? `Approved ${approvalId}.` : `Approval ${approvalId} was not found.`);
@@ -69,7 +76,7 @@ export class SlackGateway extends GatewayProvider implements AuthorizationReques
       }
 
       if (text === '/help' || text === '/start') {
-        await this.sendResponse(message.channel, 'OpenMac Slack\nUse /status, /doctor, /queue, /sessions, /memory, /safe, /sandbox, /model, or send a task.');
+        await this.sendResponse(message.channel, 'OpenMac Slack\nUse /status, /screen, /doctor, /queue, /sessions, /memory, /safe, /sandbox, /model, or send a task.');
         return;
       }
 
@@ -143,6 +150,26 @@ export class SlackGateway extends GatewayProvider implements AuthorizationReques
 
   private isAuthorized(userId: string): boolean {
     return isChannelSubjectApproved('slack', userId, config.gateways.slack.allowFrom);
+  }
+
+  private async sendScreen(channel: string): Promise<void> {
+    if (!this.app) {
+      throw new Error('Slack app is not initialized.');
+    }
+
+    const imagePath = '/tmp/openmac-slack-screen.png';
+    try {
+      await captureScreenshot(imagePath);
+      const fileContent = fs.readFileSync(imagePath);
+      await this.app.client.files.uploadV2({
+        channel_id: channel,
+        filename: 'openmac-screen.png',
+        title: 'Current desktop snapshot',
+        file: fileContent,
+      });
+    } finally {
+      await cleanupScreenshot(imagePath);
+    }
   }
 }
 

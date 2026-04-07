@@ -11,6 +11,8 @@ import { getGatewayStatusLines } from './status';
 import { getOrCreatePairingCode } from '../security/channelPairingStore';
 import { isWhatsAppMessageAuthorized } from './whatsappPolicy';
 import { NativeApprovalManager } from './nativeApproval';
+import { captureScreenshot, cleanupScreenshot } from './screenshot';
+import { MessageMedia } from 'whatsapp-web.js';
 
 type AdminCommandHandler = (task: TaskEnvelope, input: string) => Promise<string | null>;
 
@@ -84,6 +86,11 @@ export class WhatsAppGateway extends GatewayProvider implements AuthorizationReq
         return;
       }
 
+      if (text === '/screen') {
+        void this.sendScreen(message.from);
+        return;
+      }
+
       if (text.startsWith('/approve ')) {
         const approvalId = text.split(/\s+/, 2)[1];
         const settled = this.approvals.settle(approvalId, true);
@@ -99,7 +106,7 @@ export class WhatsAppGateway extends GatewayProvider implements AuthorizationReq
       }
 
       if (text === '/help' || text === '/start') {
-        void message.reply('OpenMac WhatsApp\nUse /status, /doctor, /queue, /sessions, /memory, /safe, /sandbox, /model, or send a task.');
+        void message.reply('OpenMac WhatsApp\nUse /status, /screen, /doctor, /queue, /sessions, /memory, /safe, /sandbox, /model, or send a task.');
         return;
       }
 
@@ -153,6 +160,21 @@ export class WhatsAppGateway extends GatewayProvider implements AuthorizationReq
   private async sendStatus(to: string): Promise<void> {
     const lines = await getGatewayStatusLines(() => 'Unavailable', () => 'Unavailable');
     await this.sendResponse(to, lines.join('\n'));
+  }
+
+  private async sendScreen(to: string): Promise<void> {
+    if (!this.client) {
+      throw new Error('WhatsApp client is not initialized.');
+    }
+
+    const imagePath = '/tmp/openmac-whatsapp-screen.png';
+    try {
+      await captureScreenshot(imagePath);
+      const media = MessageMedia.fromFilePath(imagePath);
+      await this.client.sendMessage(to, media, { caption: 'Current desktop snapshot' });
+    } finally {
+      await cleanupScreenshot(imagePath);
+    }
   }
 
   private isAuthorized(chatId: string, authorId: string): boolean {

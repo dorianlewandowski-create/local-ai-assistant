@@ -16,6 +16,7 @@ import { cleanupTempFile, writeTempMediaFile } from '../media/files';
 import { transcribeAudioFile } from '../media/transcription';
 import { chunkRemoteResponse, formatRemoteAssistantText } from './responseFormatting';
 import { getGatewayStatusLines } from './status';
+import { captureScreenshot, cleanupScreenshot } from './screenshot';
 
 type AdminCommandHandler = (task: TaskEnvelope, input: string) => Promise<string | null>;
 const TELEGRAM_IMAGE_EXTENSIONS: Record<string, string> = {
@@ -81,12 +82,12 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
     const sendScreen = async (chatId: string) => {
       const imagePath = '/tmp/screen.png';
       try {
-        execSync(`screencapture -x ${imagePath}`);
+        await captureScreenshot(imagePath);
         await this.bot!.telegram.sendPhoto(chatId, Input.fromLocalFile(imagePath), {
           caption: ' Current desktop snapshot',
         });
       } finally {
-        await fs.unlink(imagePath).catch(() => undefined);
+        await cleanupScreenshot(imagePath);
       }
     };
 
