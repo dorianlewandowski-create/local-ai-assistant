@@ -1,11 +1,7 @@
 import http from 'http';
 import { TaskQueue } from '../runtime/taskQueue';
-import { sessionStore } from '../runtime/sessionStore';
-import { memoryStore } from '../db/memory';
-import { vectorStore } from '../db/vectorStore';
-import { readRecentSecurityAudit } from '../security/audit';
-import { runtimeSecurityState } from '../security/runtimeState';
 import { config } from '../config';
+import { RuntimeServices } from '../runtime/services';
 
 export interface DashboardStatusProvider {
   getPendingApprovalCount(): number;
@@ -51,7 +47,7 @@ function renderHtml() {
 </html>`;
 }
 
-export function createDashboardServer(taskQueue: TaskQueue, approvals: DashboardStatusProvider) {
+export function createDashboardServer(taskQueue: TaskQueue, approvals: DashboardStatusProvider, services: RuntimeServices) {
   const server = http.createServer(async (req, res) => {
     const url = req.url || '/';
 
@@ -66,19 +62,19 @@ export function createDashboardServer(taskQueue: TaskQueue, approvals: Dashboard
         health: {
           version: config.app.version,
           ollamaHost: config.ollama.host,
-          remoteSafeMode: runtimeSecurityState.isRemoteSafeModeEnabled(),
+          remoteSafeMode: services.isRemoteSafeModeEnabled(),
           pendingApprovals: approvals.getPendingApprovalCount(),
         },
         queue: taskQueue.getSnapshot(),
         sessions: {
-          count: sessionStore.count(),
-          recent: sessionStore.listSessions(10),
+          count: services.getSessionCount(),
+          recent: services.listSessions(10),
         },
         memory: {
-          facts: memoryStore.count(),
-          vectors: await vectorStore.count(),
+          facts: services.countFacts(),
+          vectors: await services.countVectors(),
         },
-        audit: readRecentSecurityAudit(20),
+        audit: services.readRecentAudit(20),
       };
 
       res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
