@@ -13,6 +13,7 @@ import { writeSecurityAudit } from '../security/audit';
 import { config } from '../config';
 import { sessionStore } from '../runtime/sessionStore';
 import { ollamaChatProvider } from '../models/ollama';
+import { chatWithFallback } from '../models/runtime';
 
 const AUTONOMOUS_AGENT_SYSTEM_PROMPT = `You are OpenMac, an elite autonomous agent for macOS. You are precise, helpful, and sophisticated. Use the  OpenMac signature in final responses.
 
@@ -473,11 +474,11 @@ export class Orchestrator {
     let awaitingReflection = false;
 
     for (let step = 1; step <= MAX_REASONING_STEPS; step++) {
-      const response = await ollamaChatProvider.chat({
+      const response = await chatWithFallback(ollamaChatProvider, {
         model: agent.model,
         messages: messages,
         tools: toolRegistry.getOllamaToolsDefinition(agent.tools) as any,
-      });
+      }, config.models.chatFallback);
 
       const assistantMessage: Message = {
         role: response.message.role,

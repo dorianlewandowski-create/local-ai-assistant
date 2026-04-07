@@ -3,6 +3,7 @@ import path from 'path';
 import { connect, Connection, Table } from '@lancedb/lancedb';
 import { config } from '../config';
 import { ollamaEmbeddingProvider } from '../models/ollama';
+import { embedWithFallback } from '../models/runtime';
 
 export interface VectorRecordInput {
   source: string;
@@ -25,6 +26,7 @@ const DEFAULT_DB_PATH = config.storage.vectorStorePath;
 const FALLBACK_DB_PATH = path.join(process.cwd(), 'data', 'lancedb');
 const VECTOR_TABLE_NAME = 'knowledge_chunks';
 const EMBEDDING_MODEL = config.models.embedding;
+const FALLBACK_EMBEDDING_MODEL = config.models.embeddingFallback;
 const MAX_CONTENT_LENGTH = 12000;
 
 function resolveDbPath(preferredPath: string): string {
@@ -126,7 +128,7 @@ export class VectorStore {
   }
 
   private async embed(input: string): Promise<number[]> {
-    return ollamaEmbeddingProvider.embed(EMBEDDING_MODEL, input);
+    return embedWithFallback(ollamaEmbeddingProvider, EMBEDDING_MODEL, input, FALLBACK_EMBEDDING_MODEL);
   }
 
   private async getConnection(): Promise<Connection> {

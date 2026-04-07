@@ -14,7 +14,9 @@ interface RawConfig {
   };
   models?: {
     chat?: string;
+    chatFallback?: string;
     embedding?: string;
+    embeddingFallback?: string;
     vision?: string;
     webSearch?: string;
   };
@@ -72,7 +74,9 @@ export interface OpenMacConfig {
   };
   models: {
     chat: string;
+    chatFallback?: string;
     embedding: string;
+    embeddingFallback?: string;
     vision: string;
     webSearch: string;
   };
@@ -232,7 +236,9 @@ function buildEnvConfig(env: EnvSource): RawConfig {
   return {
     models: {
       chat: readEnv(env, 'OLLAMA_MODEL'),
+      chatFallback: readEnv(env, 'OLLAMA_FALLBACK_MODEL'),
       embedding: readEnv(env, 'OLLAMA_EMBEDDING_MODEL'),
+      embeddingFallback: readEnv(env, 'OLLAMA_FALLBACK_EMBEDDING_MODEL'),
       vision: readEnv(env, 'OLLAMA_VISION_MODEL'),
       webSearch: readEnv(env, 'PERPLEXITY_WEB_SEARCH_MODEL'),
     },
@@ -303,7 +309,9 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
     },
     models: {
       chat: 'gemma4:e4b',
+      chatFallback: '',
       embedding: 'nomic-embed-text',
+      embeddingFallback: '',
       vision: 'llama3.2-vision',
       webSearch: 'llama-3.1-sonar-small-128k-online',
     },
@@ -393,7 +401,9 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
     },
     models: {
       chat: merged.models?.chat ?? 'gemma4:e4b',
+      chatFallback: merged.models?.chatFallback || undefined,
       embedding: merged.models?.embedding ?? 'nomic-embed-text',
+      embeddingFallback: merged.models?.embeddingFallback || undefined,
       vision: merged.models?.vision ?? 'llama3.2-vision',
       webSearch: merged.models?.webSearch ?? 'llama-3.1-sonar-small-128k-online',
     },

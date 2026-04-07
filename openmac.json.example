@@ -1,7 +1,9 @@
 {
   "models": {
     "chat": "gemma4:e4b",
+    "chatFallback": "llama3.1:8b",
     "embedding": "nomic-embed-text",
+    "embeddingFallback": "mxbai-embed-large",
     "vision": "llama3.2-vision"
   },
   "watcher": {
