@@ -11,6 +11,7 @@ import { assessToolRisk } from './guardian';
 import { findRelevantExperience, saveExperience, savePerformanceNote } from './memory';
 import { writeSecurityAudit } from '../security/audit';
 import { config } from '../config';
+import { sessionStore } from '../runtime/sessionStore';
 
 const AUTONOMOUS_AGENT_SYSTEM_PROMPT = `You are OpenMac, an elite autonomous agent for macOS. You are precise, helpful, and sophisticated. Use the  OpenMac signature in final responses.
 
@@ -333,6 +334,8 @@ export class Orchestrator {
       ? String((result as any).result)
       : JSON.stringify(result);
 
+    sessionStore.appendInteraction(task, task.prompt, response);
+
     if ((task.source === 'whatsapp' || task.source === 'telegram' || task.source === 'slack') && task.sourceId) {
       const gateway = this.gateways.get(task.source);
       if (gateway) {
@@ -349,6 +352,9 @@ export class Orchestrator {
       metadata: {
         taskId: task.id,
         source: task.source,
+        sourceId: task.sourceId,
+        sessionKey: sessionStore.getSessionKey(task),
+        sourceKey: sessionStore.getSourceKey(task.source),
         subAgent: 'Fast Path',
       },
     });
@@ -362,13 +368,26 @@ export class Orchestrator {
   }
 
   private async runSubAgent(agent: AgentConfig, task: TaskEnvelope, managerNote: string): Promise<string> {
+    const sessionHistory = sessionStore.formatSessionHistory(task, 6);
+    const sourceHistory = sessionStore.formatSourceHistory(task.source, 6);
     const memoryContext = memoryStore.formatContext(task.prompt, 5);
     const recentNotifications = memoryStore.formatRecentNotificationContext(5);
-    const vectorContext = await vectorStore.searchSimilar(task.prompt, 3);
+    const vectorContext = await vectorStore.searchSimilar(task.prompt, 8);
     const experiences = await findRelevantExperience(task.prompt, 3);
-    const vectorSummary = vectorContext.length === 0
+    const sessionKey = sessionStore.getSessionKey(task);
+    const sourceKey = sessionStore.getSourceKey(task.source);
+    const sessionVectorContext = vectorContext.filter((item) => item.metadata?.sessionKey === sessionKey);
+    const sourceVectorContext = vectorContext.filter((item) => item.metadata?.sourceKey === sourceKey && item.metadata?.sessionKey !== sessionKey);
+    const globalVectorContext = vectorContext.filter((item) => item.metadata?.sessionKey !== sessionKey && item.metadata?.sourceKey !== sourceKey);
+    const vectorSummary = globalVectorContext.length === 0
       ? 'No related vector memory matches found.'
-      : vectorContext.map((item) => `- [${item.scope}] ${item.content}`).join('\n');
+      : globalVectorContext.map((item) => `- [${item.scope}] ${item.content}`).join('\n');
+    const sessionVectorSummary = sessionVectorContext.length === 0
+      ? 'No session-specific vector memory matches found.'
+      : sessionVectorContext.map((item) => `- [${item.scope}] ${item.content}`).join('\n');
+    const sourceVectorSummary = sourceVectorContext.length === 0
+      ? 'No source-specific vector memory matches found.'
+      : sourceVectorContext.map((item) => `- [${item.scope}] ${item.content}`).join('\n');
     const experienceSummary = experiences.length === 0
       ? 'No relevant past experience found.'
       : experiences
@@ -394,7 +413,23 @@ export class Orchestrator {
       },
       {
         role: 'system',
+        content: `Recent session history:\n${sessionHistory}`,
+      },
+      {
+        role: 'system',
+        content: `Recent source history:\n${sourceHistory}`,
+      },
+      {
+        role: 'system',
         content: `Recent proactive notifications:\n${recentNotifications}`,
+      },
+      {
+        role: 'system',
+        content: `Session vector memory:\n${sessionVectorSummary}`,
+      },
+      {
+        role: 'system',
+        content: `Source vector memory:\n${sourceVectorSummary}`,
       },
       {
         role: 'system',
@@ -456,6 +491,7 @@ export class Orchestrator {
             logger.system(`🧠 Learning: Performance note captured for slow task`);
             await savePerformanceNote(task.prompt, note);
           }
+          sessionStore.appendInteraction(task, task.prompt, assistantMessage.content);
           return assistantMessage.content;
         }
 

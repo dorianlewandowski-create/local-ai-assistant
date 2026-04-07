@@ -42,10 +42,10 @@ Use this file to track progress against the roadmap.
 
 ## Phase 6: Introduce Real Session State
 
-- [ ] Add session objects keyed by source/sourceId
-- [ ] Store recent message history per session
-- [ ] Add scoped memory: global, per-session, per-source
-- [ ] Support per-session settings
+- [x] Add session objects keyed by source/sourceId
+- [x] Store recent message history per session
+- [x] Add scoped memory: global, per-session, per-source
+- [x] Support per-session settings
 
 ## Phase 7: Add Provider Abstraction
 
