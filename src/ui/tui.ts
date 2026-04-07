@@ -56,7 +56,7 @@ export class OpenMacTui implements LoggerSink {
     this.screen = blessed.screen({
       smartCSR: true,
       fullUnicode: true,
-      title: 'OpenMac | OS Agent v0.6.0',
+      title: 'OpenMac | OS Agent v0.7.0',
       dockBorders: true,
       transparent: true as any,
       style: {
@@ -160,7 +160,7 @@ export class OpenMacTui implements LoggerSink {
         fg: 'black',
         bg: 'blue',
       },
-      content: '  OPENMAC 0.6.0 | VAULT: LOCKED | AI: GEMMA-4 | MODE: FAST-PATH ',
+      content: '  OPENMAC 0.7.0 | VAULT: LOCKED | AI: GEMMA-4 | MODE: FAST-PATH ',
     });
 
     this.inputWrapper = blessed.box({

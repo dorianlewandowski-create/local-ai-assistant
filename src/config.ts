@@ -298,7 +298,7 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
 
   const defaults: Required<RawConfig> = {
     app: {
-      version: '0.6.0',
+      version: '0.7.0',
       statusAiLabel: 'GEMMA-4',
     },
     models: {
@@ -388,7 +388,7 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
 
   return {
     app: {
-      version: merged.app?.version ?? '0.6.0',
+      version: merged.app?.version ?? '0.7.0',
       statusAiLabel: merged.app?.statusAiLabel ?? 'GEMMA-4',
     },
     models: {

@@ -73,7 +73,7 @@ export class MemoryStore {
     if (existing) {
       this.db.prepare(
         `UPDATE memory
-         SET category = ?, source = ?, confidence = ?, last_recalled_at = COALESCE(last_recalled_at, CURRENT_TIMESTAMP)
+         SET category = ?, source = ?, confidence = ?
          WHERE id = ?`
       ).run(category, source, confidence, existing.id);
 

@@ -15,8 +15,9 @@ import { AuthorizationRequest, TaskSource } from '../types';
 
 function createFailClosedRemoteAuthorizer(source: TaskSource) {
   return {
-    async requestAuthorization(_request: AuthorizationRequest): Promise<boolean> {
+    async requestAuthorization(request: AuthorizationRequest): Promise<boolean> {
       logger.warn(`Authorization denied for ${source}: no remote approval flow is implemented for this channel.`);
+      logger.chat('assistant', `[${source}] Approval required for ${request.toolName}, but this channel does not support remote approvals yet.`);
       return false;
     },
   };

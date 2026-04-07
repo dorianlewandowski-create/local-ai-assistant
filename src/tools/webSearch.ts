@@ -18,7 +18,7 @@ async function fetchUrlText(url: string) {
   try {
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'OpenMac/0.6.0',
+        'User-Agent': 'OpenMac/0.7.0',
       },
     });
     if (!response.ok) {
@@ -290,7 +290,7 @@ export const webSearch: Tool<typeof WebSearchParams> = {
       const searchUrl = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
       const response = await fetch(searchUrl, {
         headers: {
-          'User-Agent': 'OpenMac/0.6.0',
+          'User-Agent': 'OpenMac/0.7.0',
         },
       });
       if (!response.ok) {

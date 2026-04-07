@@ -239,7 +239,11 @@ export class TelegramGateway extends GatewayProvider implements AuthorizationReq
             telegramPhotoId: photo.file_id,
             downloadedImagePath: imagePath,
           },
-        );
+        ).catch(async (error: any) => {
+          await fs.unlink(imagePath).catch(() => undefined);
+          logger.error(`[Telegram] photo dispatch failed: ${error.message}`);
+          await ctx.reply(' I could not queue that image for analysis.');
+        });
       } catch (error: any) {
         console.log(`[Telegram] photo handling failed: ${error.message}`);
         await ctx.reply(' I could not process that image.');

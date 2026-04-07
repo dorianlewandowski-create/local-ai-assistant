@@ -200,6 +200,9 @@ export class Orchestrator {
       metadata: {
         taskId: task.id,
         source: task.source,
+        sourceId: task.sourceId,
+        sessionKey: sessionStore.getSessionKey(task),
+        sourceKey: sessionStore.getSourceKey(task.source),
         subAgent: subAgent.name,
       },
     });
@@ -373,9 +376,9 @@ export class Orchestrator {
       taskId: task.id,
       source: task.source,
       agent: 'Fast Path',
-      response,
-    };
-  }
+        response,
+      };
+    }
 
   private async runSubAgent(agent: AgentConfig, task: TaskEnvelope, managerNote: string): Promise<string> {
     const sessionHistory = sessionStore.formatSessionHistory(task, 6);
