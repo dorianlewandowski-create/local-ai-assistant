@@ -10,6 +10,7 @@ import { validateStartup } from '../startupValidation';
 import { openMacAssistantConfig } from './assistantConfig';
 import { createProactiveScheduler } from '../runtime/proactiveScheduler';
 import { createTuiClient } from '../clients/tuiClient';
+import { attachLocalConsole, runInitialConsolePrompt } from '../clients/localConsole';
 import { startResidentFileWatcher } from '../runtime/fileWatcher';
 import { AuthorizationRequest, TaskSource } from '../types';
 import { sessionStore } from '../runtime/sessionStore';
@@ -94,67 +95,10 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
     process.exit(0);
   };
 
-  tui.onSubmit((value) => {
-    if (value.trim() === '/exit') {
-      void shutdown();
-      return;
-    }
-
-    void appContext.adminCommands({
-      id: `terminal-admin-${Date.now()}`,
-      source: 'terminal',
-      sourceId: 'local-console',
-      prompt: value,
-    }, value).then((response) => {
-      if (!response) {
-        logger.chat('user', value);
-        void appContext.taskQueue.enqueue({
-          id: `terminal-${Date.now()}`,
-          source: 'terminal',
-          sourceId: 'local-console',
-          prompt: value,
-          timeoutMs: 120_000,
-        }).then((result) => {
-          logger.chat('assistant', result.response);
-          updateStatus();
-        }).catch((error: any) => {
-          logger.error(`Terminal prompt failed: ${error.message}`);
-        });
-        return;
-      }
-
-      logger.chat('assistant', response);
-      updateStatus();
-    }).catch((error: any) => {
-      logger.error(`Terminal prompt failed: ${error.message}`);
-    });
-  });
+  attachLocalConsole(appContext, tui, updateStatus, shutdown);
 
   if (prompt) {
-    const adminResponse = await appContext.adminCommands({
-      id: `terminal-admin-${Date.now()}`,
-      source: 'terminal',
-      sourceId: 'local-console',
-      prompt,
-    }, prompt);
-    if (adminResponse) {
-      logger.chat('assistant', adminResponse);
-      updateStatus();
-    } else {
-      logger.chat('user', prompt);
-      void appContext.taskQueue.enqueue({
-        id: `terminal-${Date.now()}`,
-        source: 'terminal',
-        sourceId: 'local-console',
-        prompt,
-        timeoutMs: 120_000,
-      }).then((result) => {
-        logger.chat('assistant', result.response);
-        updateStatus();
-      }).catch((error: any) => {
-        logger.error(`Terminal prompt failed: ${error.message}`);
-      });
-    }
+    await runInitialConsolePrompt(appContext, prompt, updateStatus);
   }
 
   logger.system('Resident mode active');
