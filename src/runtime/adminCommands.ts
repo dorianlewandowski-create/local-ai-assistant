@@ -2,6 +2,7 @@ import { runDoctor } from '../doctor';
 import { TaskEnvelope } from '../types';
 import { TaskQueue } from './taskQueue';
 import { RuntimeServices } from './services';
+import { RuntimeApi } from './api';
 
 export interface ApprovalStatusProvider {
   getPendingApprovalCount(): number;
@@ -11,6 +12,7 @@ export interface AdminCommandDependencies {
   taskQueue: TaskQueue;
   approvals?: ApprovalStatusProvider;
   services: RuntimeServices;
+  api: RuntimeApi;
 }
 
 function parseSlashCommand(input: string): { name: string; args: string[] } | null {
@@ -73,14 +75,14 @@ export function createAdminCommandHandler(dependencies: AdminCommandDependencies
           return 'Remote-safe mode can only be changed from the local terminal.';
         }
         if (mode === 'on') {
-          dependencies.services.setRemoteSafeMode(true);
+          dependencies.api.setRemoteSafeMode(true);
           return 'Remote-safe mode enabled.';
         }
         if (mode === 'off') {
-          dependencies.services.setRemoteSafeMode(false);
+          dependencies.api.setRemoteSafeMode(false);
           return 'Remote-safe mode disabled.';
         }
-        return `Remote-safe mode is ${dependencies.services.isRemoteSafeModeEnabled() ? 'on' : 'off'}. Use /safe on or /safe off.`;
+        return `Remote-safe mode is ${dependencies.api.isRemoteSafeModeEnabled() ? 'on' : 'off'}. Use /safe on or /safe off.`;
       }
       case 'sandbox': {
         const mode = command.args[0]?.toLowerCase();
@@ -88,19 +90,19 @@ export function createAdminCommandHandler(dependencies: AdminCommandDependencies
           return 'Remote sessions cannot change sandbox mode remotely. View-only access is allowed.';
         }
         if (mode === 'strict') {
-          dependencies.services.setSessionSandboxMode(task, 'strict');
+          dependencies.api.setSessionSandboxMode(task, 'strict');
           return 'Session sandbox mode set to strict.';
         }
         if (mode === 'off') {
-          dependencies.services.setSessionSandboxMode(task, 'off');
+          dependencies.api.setSessionSandboxMode(task, 'off');
           return 'Session sandbox mode disabled.';
         }
         if (mode === 'default') {
-          dependencies.services.setSessionSandboxMode(task, 'default');
+          dependencies.api.setSessionSandboxMode(task, 'default');
           return 'Session sandbox mode reset to default.';
         }
 
-        return `Session sandbox mode is ${dependencies.services.getSessionSandboxMode(task) || 'default'}. Use /sandbox strict, /sandbox off, or /sandbox default.`;
+        return `Session sandbox mode is ${dependencies.api.getSessionSandboxMode(task) || 'default'}. Use /sandbox strict, /sandbox off, or /sandbox default.`;
       }
       case 'model': {
         const selectedModel = command.args.join(' ').trim();
@@ -108,11 +110,11 @@ export function createAdminCommandHandler(dependencies: AdminCommandDependencies
           return 'Remote sessions cannot change the model remotely. View-only access is allowed.';
         }
         if (selectedModel) {
-          dependencies.services.setSessionModel(task, selectedModel);
+          dependencies.api.setSessionModel(task, selectedModel);
           return `Session model set to ${selectedModel}.`;
         }
 
-        return `Session model is ${dependencies.services.getSessionModel(task) || 'default'}.`;
+        return `Session model is ${dependencies.api.getSessionModel(task) || 'default'}.`;
       }
       case 'approvals': {
         const pending = dependencies.approvals?.getPendingApprovalCount() ?? 0;

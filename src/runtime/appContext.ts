@@ -21,8 +21,8 @@ export interface AppContext {
 }
 
 export function createAppContext(taskQueue: TaskQueue, approvals: PendingApprovalCounter = { getPendingApprovalCount: () => 0 }): AppContext {
-  const adminCommands = createAdminCommandHandler({ taskQueue, approvals, services: runtimeServices });
   const api = createRuntimeApi(taskQueue, approvals, runtimeServices);
+  const adminCommands = createAdminCommandHandler({ taskQueue, approvals, services: runtimeServices, api });
   const dashboard = createDashboardServer(api);
 
   return {

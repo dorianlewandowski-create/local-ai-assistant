@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createAdminCommandHandler } from '../src/runtime/adminCommands';
 import { TaskQueue } from '../src/runtime/taskQueue';
 import { runtimeServices } from '../src/runtime/services';
+import { createRuntimeApi } from '../src/runtime/api';
 import { TaskEnvelope } from '../src/types';
 import { sessionStore } from '../src/runtime/sessionStore';
 
@@ -25,9 +26,11 @@ function createRemoteTask(prompt: string): TaskEnvelope {
 }
 
 test('admin commands return queue status', async () => {
+  const taskQueue = new TaskQueue(async (task) => ({ taskId: task.id, source: task.source, agent: 'test', response: 'ok' }));
   const handler = createAdminCommandHandler({
-    taskQueue: new TaskQueue(async (task) => ({ taskId: task.id, source: task.source, agent: 'test', response: 'ok' })),
+    taskQueue,
     services: runtimeServices,
+    api: createRuntimeApi(taskQueue, { getPendingApprovalCount: () => 0 }, runtimeServices),
   });
 
   const response = await handler(createTask('/queue'), '/queue');
@@ -35,9 +38,11 @@ test('admin commands return queue status', async () => {
 });
 
 test('admin commands update per-session model', async () => {
+  const taskQueue = new TaskQueue(async (task) => ({ taskId: task.id, source: task.source, agent: 'test', response: 'ok' }));
   const handler = createAdminCommandHandler({
-    taskQueue: new TaskQueue(async (task) => ({ taskId: task.id, source: task.source, agent: 'test', response: 'ok' })),
+    taskQueue,
     services: runtimeServices,
+    api: createRuntimeApi(taskQueue, { getPendingApprovalCount: () => 0 }, runtimeServices),
   });
 
   const task = createTask('/model llama3.1:8b');
@@ -47,9 +52,11 @@ test('admin commands update per-session model', async () => {
 });
 
 test('non-command input passes through admin handler', async () => {
+  const taskQueue = new TaskQueue(async (task) => ({ taskId: task.id, source: task.source, agent: 'test', response: 'ok' }));
   const handler = createAdminCommandHandler({
-    taskQueue: new TaskQueue(async (task) => ({ taskId: task.id, source: task.source, agent: 'test', response: 'ok' })),
+    taskQueue,
     services: runtimeServices,
+    api: createRuntimeApi(taskQueue, { getPendingApprovalCount: () => 0 }, runtimeServices),
   });
 
   const response = await handler(createTask('hello'), 'hello');
@@ -57,9 +64,11 @@ test('non-command input passes through admin handler', async () => {
 });
 
 test('remote sessions cannot change model via admin command', async () => {
+  const taskQueue = new TaskQueue(async (task) => ({ taskId: task.id, source: task.source, agent: 'test', response: 'ok' }));
   const handler = createAdminCommandHandler({
-    taskQueue: new TaskQueue(async (task) => ({ taskId: task.id, source: task.source, agent: 'test', response: 'ok' })),
+    taskQueue,
     services: runtimeServices,
+    api: createRuntimeApi(taskQueue, { getPendingApprovalCount: () => 0 }, runtimeServices),
   });
 
   const task = createRemoteTask('/model llama3.1:8b');
@@ -68,9 +77,11 @@ test('remote sessions cannot change model via admin command', async () => {
 });
 
 test('remote sessions cannot change sandbox mode via admin command', async () => {
+  const taskQueue = new TaskQueue(async (task) => ({ taskId: task.id, source: task.source, agent: 'test', response: 'ok' }));
   const handler = createAdminCommandHandler({
-    taskQueue: new TaskQueue(async (task) => ({ taskId: task.id, source: task.source, agent: 'test', response: 'ok' })),
+    taskQueue,
     services: runtimeServices,
+    api: createRuntimeApi(taskQueue, { getPendingApprovalCount: () => 0 }, runtimeServices),
   });
 
   const task = createRemoteTask('/sandbox strict');
