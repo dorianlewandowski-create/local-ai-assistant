@@ -58,7 +58,7 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   logger.system('Resident mode active');
   logger.system(`Watching: ${config.watcher.directories.join(', ')}`);
   if (config.dashboard.enabled) {
-    logger.system(`Dashboard: http://127.0.0.1:${runtimeHost.appContext.dashboard.getPort()}`);
+    logger.system(`Dashboard: http://127.0.0.1:${runtimeHost.getDashboardPort()}`);
   }
   await runtimeHost.start();
   updateStatus();

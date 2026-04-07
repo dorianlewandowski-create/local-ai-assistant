@@ -13,6 +13,7 @@ export interface RuntimeHost {
   appContext: ReturnType<typeof createAppContext>;
   localConsole: LocalConsoleRuntime;
   getQueueSnapshot(): TaskQueueSnapshot;
+  getDashboardPort(): number;
   startLifecycle(shutdown: () => Promise<void>): void;
   start(): Promise<void>;
   stop(): Promise<void>;
@@ -57,6 +58,9 @@ export function createRuntimeHost(localAuthorizer: AuthorizationRequester, onSta
     } satisfies LocalConsoleRuntime,
     getQueueSnapshot() {
       return appContextWithApprovals.taskQueue.getSnapshot();
+    },
+    getDashboardPort() {
+      return appContextWithApprovals.dashboard.getPort();
     },
     startLifecycle(shutdown: () => Promise<void>) {
       lifecycle = attachProcessLifecycle(shutdown);
