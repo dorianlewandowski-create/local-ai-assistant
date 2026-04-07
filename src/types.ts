@@ -44,6 +44,7 @@ export interface TaskEnvelope {
   metadata?: Record<string, unknown>;
   supplementalSystemPrompt?: string;
   trackProactiveNotifications?: boolean;
+  timeoutMs?: number;
 }
 
 export interface TaskResult {

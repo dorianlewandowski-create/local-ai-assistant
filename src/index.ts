@@ -72,10 +72,12 @@ function createProactiveScheduler(taskQueue: TaskQueue, onReviewComplete?: () =>
     void taskQueue.enqueue({
       id: `proactive-review-${reason}-${Date.now()}`,
       source: 'scheduler',
+      sourceId: 'proactive-review',
       prompt: INTERNAL_REVIEW_PROMPT,
       supplementalSystemPrompt: INTERNAL_REVIEW_SYSTEM_PROMPT,
       trackProactiveNotifications: true,
       metadata: { reason },
+      timeoutMs: 90_000,
     }).then((result) => {
       logger.chat('assistant', `[Proactive Review] ${result.response}`);
       onReviewComplete?.();
@@ -153,10 +155,11 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   let watcher: ReturnType<typeof chokidar.watch> | null = null;
 
   const updateStatus = () => {
-    const activeTasks = taskQueue.getActiveTaskCount();
+    const snapshot = taskQueue.getSnapshot();
+    const activeTasks = snapshot.active;
     const pulse = activeTasks > 0 ? pulseFrames[pulseIndex++ % pulseFrames.length] : '●';
     const mode = activeTasks > 0 ? 'FAST-PATH ○' : 'FAST-PATH ⚡';
-    logger.status(`${pulse}  OPENMAC ${config.app.version} | VAULT: LOCKED | AI: ${config.app.statusAiLabel} | MODE: ${mode}`);
+    logger.status(`${pulse}  OPENMAC ${config.app.version} | VAULT: LOCKED | AI: ${config.app.statusAiLabel} | Q:${snapshot.active}/${snapshot.pending} | MODE: ${mode}`);
   };
 
   const proactiveScheduler = createProactiveScheduler(taskQueue, updateStatus);
@@ -194,7 +197,9 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
     void taskQueue.enqueue({
       id: `terminal-${Date.now()}`,
       source: 'terminal',
+      sourceId: 'local-console',
       prompt: value,
+      timeoutMs: 120_000,
     }).then((result) => {
       logger.chat('assistant', result.response);
       updateStatus();
@@ -208,7 +213,9 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
     void taskQueue.enqueue({
       id: `terminal-${Date.now()}`,
       source: 'terminal',
+      sourceId: 'local-console',
       prompt,
+      timeoutMs: 120_000,
     }).then((result) => {
       logger.chat('assistant', result.response);
       updateStatus();
@@ -248,8 +255,10 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
     void taskQueue.enqueue({
       id: `${label}-${Date.now()}`,
       source: 'file_watcher',
+      sourceId: 'resident-watch',
       prompt: eventPrompt,
       metadata: { eventType, filePath },
+      timeoutMs: 60_000,
     }).then((result) => {
       logger.chat('assistant', `[FileWatcher] ${result.response}`);
       updateStatus();

@@ -19,11 +19,11 @@ Use this file to track progress against the roadmap.
 
 ## Phase 3: Fix Queueing And Session Boundaries
 
-- [ ] Replace the single global `TaskQueue` with keyed queues
-- [ ] Queue by `source + sourceId`
-- [ ] Give watcher and scheduler their own queues
-- [ ] Add task timeout and cancellation support
-- [ ] Add queue status to TUI
+- [x] Replace the single global `TaskQueue` with keyed queues
+- [x] Queue by `source + sourceId`
+- [x] Give watcher and scheduler their own queues
+- [x] Add task timeout and cancellation support
+- [x] Add queue status to TUI
 
 ## Phase 4: Harden Remote Safety
 
