@@ -11,6 +11,7 @@ import { sessionStore } from '../runtime/sessionStore';
 import { createAppContext } from '../runtime/appContext';
 import { createRuntimeRunner } from '../runtime/runtimeRunner';
 import { composeGateways } from '../runtime/gatewayComposition';
+import { attachProcessLifecycle } from '../runtime/lifecycle';
 
 export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   const startupWarnings = await validateStartup();
@@ -44,6 +45,7 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   };
 
   const runtimeRunner = createRuntimeRunner(appContextWithApprovals.taskQueue, updateStatus);
+  let lifecycle: ReturnType<typeof attachProcessLifecycle> | null = null;
 
   const shutdown = async () => {
     if (shuttingDown) {
@@ -58,9 +60,12 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
     }
     await gateways.stopAll();
     await appContextWithApprovals.dashboard.stop();
+    lifecycle?.detach();
     destroy();
     process.exit(0);
   };
+
+  lifecycle = attachProcessLifecycle(shutdown);
 
   attachLocalConsole(appContextWithApprovals, tui, updateStatus, shutdown);
 
@@ -84,14 +89,4 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   tui.onExit(() => {
     void shutdown();
   });
-
-  process.on('SIGINT', () => {
-    void shutdown();
-  });
-
-  process.on('SIGTERM', () => {
-    void shutdown();
-  });
-
-  process.stdin.resume();
 }
