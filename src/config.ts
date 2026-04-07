@@ -45,11 +45,15 @@ interface RawConfig {
       chatId?: string;
     };
     slack?: {
+      enabled?: boolean;
+      appToken?: string;
       botToken?: string;
+      allowFrom?: string[];
     };
     whatsapp?: {
       enabled?: boolean;
       executablePath?: string;
+      allowFrom?: string[];
     };
   };
   integrations?: {
@@ -119,11 +123,15 @@ export interface OpenMacConfig {
       chatId?: string;
     };
     slack: {
+      enabled: boolean;
+      appToken?: string;
       botToken?: string;
+      allowFrom: string[];
     };
     whatsapp: {
       enabled: boolean;
       executablePath?: string;
+      allowFrom: string[];
     };
   };
   integrations: {
@@ -295,11 +303,15 @@ function buildEnvConfig(env: EnvSource): RawConfig {
         chatId: readEnv(env, 'TELEGRAM_CHAT_ID'),
       },
       slack: {
+        enabled: readBooleanEnv(env, 'SLACK_ENABLED'),
+        appToken: readEnv(env, 'SLACK_APP_TOKEN'),
         botToken: readEnv(env, 'SLACK_BOT_TOKEN'),
+        allowFrom: readCsvEnv(env, 'OPENMAC_SLACK_ALLOW_FROM'),
       },
       whatsapp: {
         enabled: readBooleanEnv(env, 'WHATSAPP_ENABLED'),
         executablePath: readEnv(env, 'PUPPETEER_EXECUTABLE_PATH'),
+        allowFrom: readCsvEnv(env, 'OPENMAC_WHATSAPP_ALLOW_FROM'),
       },
     },
     integrations: {
@@ -386,11 +398,15 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
         chatId: '',
       },
       slack: {
+        enabled: false,
+        appToken: '',
         botToken: '',
+        allowFrom: [],
       },
       whatsapp: {
         enabled: false,
         executablePath: '',
+        allowFrom: [],
       },
     },
     integrations: {
@@ -432,12 +448,16 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
     ...(merged.gateways?.telegram ?? {}),
   };
   const slackConfig = {
+    enabled: false,
+    appToken: '',
     botToken: '',
+    allowFrom: [] as string[],
     ...(merged.gateways?.slack ?? {}),
   };
   const whatsappConfig = {
     enabled: false,
     executablePath: '',
+    allowFrom: [] as string[],
     ...(merged.gateways?.whatsapp ?? {}),
   };
   const spotifyConfig = {
@@ -505,11 +525,15 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
         chatId: telegramConfig.chatId || undefined,
       },
       slack: {
+        enabled: slackConfig.enabled,
+        appToken: slackConfig.appToken || undefined,
         botToken: slackConfig.botToken || undefined,
+        allowFrom: slackConfig.allowFrom,
       },
       whatsapp: {
         enabled: whatsappConfig.enabled,
         executablePath: whatsappConfig.executablePath ? expandHomePath(whatsappConfig.executablePath) : undefined,
+        allowFrom: whatsappConfig.allowFrom,
       },
     },
     integrations: {

@@ -44,9 +44,16 @@
       "botToken": "",
       "chatId": ""
     },
+    "slack": {
+      "enabled": false,
+      "appToken": "",
+      "botToken": "",
+      "allowFrom": []
+    },
     "whatsapp": {
       "enabled": false,
-      "executablePath": ""
+      "executablePath": "",
+      "allowFrom": []
     }
   },
   "security": {

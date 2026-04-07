@@ -7,6 +7,7 @@ import { config } from '../config';
 import { TaskEnvelope } from '../types';
 import { chunkRemoteResponse, formatRemoteAssistantText } from './responseFormatting';
 import { getGatewayStatusLines } from './status';
+import { getOrCreatePairingCode, isChannelSubjectApproved } from '../security/channelPairingStore';
 
 type AdminCommandHandler = (task: TaskEnvelope, input: string) => Promise<string | null>;
 
@@ -62,6 +63,12 @@ export class WhatsAppGateway extends GatewayProvider {
 
     this.client.on('message', (message) => {
       const text = message.body.trim();
+      if (!this.isAuthorized(message.from)) {
+        const { code } = getOrCreatePairingCode('whatsapp', message.from);
+        void message.reply(`OpenMac WhatsApp is not paired for this chat yet. Pairing code: ${code}. Approve locally with: openmac pairing approve whatsapp ${code}`);
+        return;
+      }
+
       if (text === '/status') {
         void this.sendStatus(message.from);
         return;
@@ -122,6 +129,10 @@ export class WhatsAppGateway extends GatewayProvider {
   private async sendStatus(to: string): Promise<void> {
     const lines = await getGatewayStatusLines(() => 'Unavailable', () => 'Unavailable');
     await this.sendResponse(to, lines.join('\n'));
+  }
+
+  private isAuthorized(subject: string): boolean {
+    return isChannelSubjectApproved('whatsapp', subject, config.gateways.whatsapp.allowFrom);
   }
 
   async stop(): Promise<void> {

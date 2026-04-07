@@ -15,3 +15,4 @@ functions.json
 *.tmp
 __pycache__/
 .venv/
+.local-plans/

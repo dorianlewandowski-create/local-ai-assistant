@@ -48,7 +48,7 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   });
   const whatsappGateway = createWhatsAppGateway(taskQueue, adminCommands);
   telegramGateway = createTelegramGateway(taskQueue, adminCommands);
-  const slackGateway = createSlackGateway(taskQueue);
+  const slackGateway = createSlackGateway(taskQueue, adminCommands);
   const dashboard = createDashboardServer(taskQueue, {
     getPendingApprovalCount: () => telegramGateway?.getPendingApprovalCount() ?? 0,
   });
