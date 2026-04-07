@@ -12,6 +12,7 @@ const REQUIRED_RELEASE_FILES = [
   'openmac.json.example',
   'package.json',
   'package-lock.json',
+  'node_modules',
 ];
 
 function copyRecursive(source: string, target: string): void {
@@ -79,11 +80,22 @@ export async function runReleasePack(write: (line: string) => void = console.log
   );
   writeReleaseLauncher(path.join(stagingDir, 'bin', 'openmac'));
 
+  write('Installing production dependencies into release staging...');
+  execFileSync('npm', ['ci', '--omit=dev'], {
+    cwd: stagingDir,
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      PUPPETEER_SKIP_DOWNLOAD: 'true',
+      PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true',
+    },
+  });
+
   execFileSync('tar', ['-czf', archivePath, '-C', releasesDir, releaseName]);
 
   write(`Release staging directory: ${stagingDir}`);
   write(`Release archive: ${archivePath}`);
-  write('Install flow: tar -xzf <archive> && cd openmac-<version> && npm ci --omit=dev');
+  write('Install flow: tar -xzf <archive> && cd openmac-<version> && ./bin/openmac update');
   return 0;
 }
 
@@ -113,6 +125,11 @@ export async function runReleaseVerify(write: (line: string) => void = console.l
   if (archiveStats.size === 0) {
     throw new Error(`Release archive is empty: ${archivePath}`);
   }
+
+  execFileSync('node', ['dist/cli.js', 'update'], {
+    cwd: stagingDir,
+    stdio: 'ignore',
+  });
 
   write(`Release verification passed for ${releaseName}`);
   write(`Verified archive: ${archivePath}`);

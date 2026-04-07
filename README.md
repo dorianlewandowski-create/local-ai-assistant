@@ -127,7 +127,9 @@ This creates:
 - `releases/openmac-<version>/`
 - `releases/openmac-<version>.tar.gz`
 
-The release bundle includes compiled `dist/`, a production `bin/openmac` launcher, `README.md`, example config files, and `package-lock.json` for deterministic installs.
+The release bundle includes compiled `dist/`, a production `bin/openmac` launcher, bundled production `node_modules`, `README.md`, example config files, and `package-lock.json`.
+
+The packaged runtime is smoke-verified during `npm run release:verify`.
 
 Additional optional keys are included in `.env.example` and `openmac.json.example`.
 
