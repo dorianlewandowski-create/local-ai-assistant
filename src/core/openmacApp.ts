@@ -8,13 +8,12 @@ import { createSlackGateway } from '../gateways/slack';
 import { config } from '../config';
 import { validateStartup } from '../startupValidation';
 import { openMacAssistantConfig } from './assistantConfig';
-import { createProactiveScheduler } from '../runtime/proactiveScheduler';
 import { createTuiClient } from '../clients/tuiClient';
 import { attachLocalConsole, runInitialConsolePrompt } from '../clients/localConsole';
-import { startResidentFileWatcher } from '../runtime/fileWatcher';
 import { AuthorizationRequest, TaskSource } from '../types';
 import { sessionStore } from '../runtime/sessionStore';
 import { createAppContext } from '../runtime/appContext';
+import { createRuntimeRunner } from '../runtime/runtimeRunner';
 
 function createFailClosedRemoteAuthorizer(source: TaskSource) {
   return {
@@ -63,7 +62,6 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   const pulseFrames = ['·', '•', '◦', '•'];
   let shuttingDown = false;
   let statusInterval: NodeJS.Timeout | null = null;
-  let watcher: ReturnType<typeof startResidentFileWatcher> | null = null;
 
   const updateStatus = () => {
     const snapshot = appContext.taskQueue.getSnapshot();
@@ -73,7 +71,7 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
     logger.status(`${pulse}  OPENMAC ${config.app.version} | VAULT: LOCKED | AI: ${config.app.statusAiLabel} | Q:${snapshot.active}/${snapshot.pending} | MODE: ${mode}`);
   };
 
-  const proactiveScheduler = createProactiveScheduler(taskQueue, updateStatus);
+  const runtimeRunner = createRuntimeRunner(appContext.taskQueue, updateStatus);
 
   const shutdown = async () => {
     if (shuttingDown) {
@@ -82,7 +80,7 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
 
     shuttingDown = true;
     logger.system('Shutting down');
-    proactiveScheduler.stop();
+    await runtimeRunner.stop();
     if (statusInterval) {
       clearInterval(statusInterval);
     }
@@ -90,7 +88,6 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
     await telegramGateway.stop();
     await slackGateway.stop();
     await appContext.dashboard.stop();
-    await watcher?.close();
     destroy();
     process.exit(0);
   };
@@ -106,7 +103,7 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   if (config.dashboard.enabled) {
     logger.system(`Dashboard: http://127.0.0.1:${appContext.dashboard.getPort()}`);
   }
-  proactiveScheduler.start();
+  runtimeRunner.start();
   await Promise.all([
     whatsappGateway.start(),
     config.gateways.telegram.enabled
@@ -117,7 +114,6 @@ export async function runOpenMac(argv: string[] = process.argv.slice(2)) {
   ]);
   updateStatus();
   statusInterval = setInterval(updateStatus, 5000);
-  watcher = startResidentFileWatcher(appContext.taskQueue, updateStatus);
 
   tui.onExit(() => {
     void shutdown();
