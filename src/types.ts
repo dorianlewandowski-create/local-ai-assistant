@@ -18,11 +18,34 @@ export interface ToolCall {
   };
 }
 
+export type ToolCategory =
+  | 'filesystem'
+  | 'memory'
+  | 'web'
+  | 'calendar'
+  | 'browser'
+  | 'system'
+  | 'automation'
+  | 'utility';
+
+export type ToolRiskLevel = 'low' | 'medium' | 'high';
+
+export interface ToolResult {
+  success: boolean;
+  message: string;
+  data?: unknown;
+  error?: string;
+  risk?: ToolRiskLevel;
+  result?: string;
+}
+
 export interface Tool<T extends z.ZodObject<any> = any> {
   name: string;
   description: string;
+  category?: ToolCategory;
+  riskLevel?: ToolRiskLevel;
   parameters: T;
-  execute: (args: z.infer<T>) => Promise<any>;
+  execute: (args: z.infer<T>) => Promise<ToolResult | any>;
 }
 
 export interface AgentConfig {

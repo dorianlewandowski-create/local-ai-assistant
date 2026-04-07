@@ -56,10 +56,10 @@ Use this file to track progress against the roadmap.
 
 ## Phase 8: Improve Tooling Surface
 
-- [ ] Add tool categories and metadata
-- [ ] Add a standard tool result shape
-- [ ] Add tool execution logs
-- [ ] Improve schema validation error handling
+- [x] Add tool categories and metadata
+- [x] Add a standard tool result shape
+- [x] Add tool execution logs
+- [x] Improve schema validation error handling
 
 ## Recommended First Milestone
 

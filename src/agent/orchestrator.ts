@@ -1,4 +1,5 @@
 import fs from 'fs/promises';
+import { ZodError } from 'zod';
 import { AgentConfig, Message, TaskEnvelope, TaskResult, ToolCall } from '../types';
 import { toolRegistry } from '../tools/registry';
 import { memoryStore } from '../db/memory';
@@ -71,6 +72,15 @@ function formatToolError(toolName: string, args: unknown, error: unknown): strin
     args,
     error: getErrorMessage(error),
   });
+}
+
+function formatSchemaValidationError(error: ZodError): string {
+  return error.issues
+    .map((issue) => {
+      const path = issue.path.length > 0 ? issue.path.join('.') : 'input';
+      return `${path}: ${issue.message}`;
+    })
+    .join('; ');
 }
 
 function hasFinished(content: string): boolean {
@@ -617,7 +627,7 @@ export class Orchestrator {
 
           const result = await tool.execute(validatedArgs);
           if (result && typeof result === 'object' && 'success' in result && result.success === false) {
-            throw new Error(typeof result.error === 'string' ? result.error : `Tool ${tool.name} reported a failure.`);
+            throw new Error(typeof result.error === 'string' ? result.error : typeof result.message === 'string' ? result.message : `Tool ${tool.name} reported a failure.`);
           }
 
           if (task.trackProactiveNotifications && tool.name === 'send_system_notification') {
@@ -634,14 +644,17 @@ export class Orchestrator {
             tool_call_id: toolCall.id,
           });
         } catch (error) {
+          const friendlyError = error instanceof ZodError
+            ? `Invalid arguments for ${tool.name}: ${formatSchemaValidationError(error)}`
+            : getErrorMessage(error);
           logger.error(`Tool ${tool.name} ${getErrorMessage(error)}`);
-          await saveExperience(task.prompt, `Tool ${tool.name} failed with error: ${getErrorMessage(error)}`, `Adjust ${tool.name} arguments based on the error and retry with a narrower, validated plan.`);
-          if (/applescript|spotify|music|finder|system events/i.test(tool.name) || /spotify|music|finder|system events/i.test(getErrorMessage(error))) {
+          await saveExperience(task.prompt, `Tool ${tool.name} failed with error: ${friendlyError}`, `Adjust ${tool.name} arguments based on the error and retry with a narrower, validated plan.`);
+          if (/applescript|spotify|music|finder|system events/i.test(tool.name) || /spotify|music|finder|system events/i.test(friendlyError)) {
             logger.system(`🧠 Learning: Optimized AppleScript for ${tool.name}`);
           }
           messages.push({
             role: 'tool',
-            content: formatToolError(tool.name, toolCall.function.arguments, error),
+            content: formatToolError(tool.name, toolCall.function.arguments, friendlyError),
             tool_call_id: toolCall.id,
           });
           messages.push({

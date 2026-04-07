@@ -1,11 +1,27 @@
 import { Tool } from '../types';
 import { zodToJsonSchema } from 'zod-to-json-schema';
+import { logger } from '../utils/logger';
+import { inferToolCategory, inferToolRiskLevel, normalizeToolResult } from './result';
 
 export class ToolRegistry {
   private tools: Map<string, Tool> = new Map();
 
   register(tool: Tool) {
-    this.tools.set(tool.name, tool);
+    const normalizedTool: Tool = {
+      ...tool,
+      category: tool.category ?? inferToolCategory(tool.name),
+      riskLevel: tool.riskLevel ?? inferToolRiskLevel(tool.name),
+      execute: async (args: any) => {
+        logger.debug(`[TOOL] ${tool.name} (${tool.category ?? inferToolCategory(tool.name)}) start`);
+        const startedAt = Date.now();
+        const result = await tool.execute(args);
+        const normalized = normalizeToolResult({ ...tool, category: tool.category ?? inferToolCategory(tool.name), riskLevel: tool.riskLevel ?? inferToolRiskLevel(tool.name) }, result);
+        logger.debug(`[TOOL] ${tool.name} end ${normalized.success ? 'ok' : 'error'} ${Date.now() - startedAt}ms`);
+        return normalized;
+      },
+    };
+
+    this.tools.set(tool.name, normalizedTool);
   }
 
   getTool(name: string): Tool | undefined {
