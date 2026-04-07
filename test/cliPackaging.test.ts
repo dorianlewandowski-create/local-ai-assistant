@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveCliCommand } from '../src/cli';
+import { resolveCliCommand } from '../src/index';
 import { buildLaunchdPlist } from '../src/launchd';
 
 test('cli resolves onboarding and packaging commands', () => {

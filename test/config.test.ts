@@ -4,7 +4,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { loadConfig, resolveConfigPath } from '../src/config';
-import { resolveCliCommand } from '../src/cli';
+import { resolveCliCommand } from '../src/index';
 
 test('config exposes default watcher directories', () => {
   const config = loadConfig({ env: {} });
