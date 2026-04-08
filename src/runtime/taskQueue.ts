@@ -27,7 +27,7 @@ export interface TaskQueueSnapshot {
   }>;
 }
 
-const DEFAULT_TIMEOUT_MS = 2 * 60 * 1000;
+const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
 
 export class TaskQueue {
   private readonly queues = new Map<string, QueueState>();
@@ -46,7 +46,7 @@ export class TaskQueue {
         started: false,
       });
 
-      logger.system(`Queue enqueued ${queueKey} ${task.source}:${task.id}`);
+      logger.debug(`Queue enqueued ${queueKey} ${task.source}:${task.id}`);
       this.runNext(queueKey);
     });
   }
@@ -75,6 +75,19 @@ export class TaskQueue {
 
   getPendingTaskCount(): number {
     return Array.from(this.queues.values()).reduce((sum, queue) => sum + queue.pending.length, 0);
+  }
+
+  async safeEnqueue(task: TaskEnvelope): Promise<TaskResult> {
+    try {
+      return await this.enqueue(task);
+    } catch (error: any) {
+      return {
+        taskId: task.id,
+        source: task.source,
+        agent: 'System',
+        response: ` Task execution failed: ${error.message}`,
+      };
+    }
   }
 
   getSnapshot(): TaskQueueSnapshot {
@@ -155,8 +168,9 @@ export class TaskQueue {
       logger.system(`Queue finished ${queueKey} ${task.source}:${task.id}`);
       queuedTask.resolve(result);
     } catch (error: any) {
-      logger.error(`Queue failed ${queueKey} ${task.source}:${task.id}: ${error.message}`);
-      queuedTask.reject(error instanceof Error ? error : new Error(String(error)));
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error(`Queue failed ${queueKey} ${task.source}:${task.id}: ${message}`);
+      queuedTask.reject(error instanceof Error ? error : new Error(message));
     } finally {
       queue.running = false;
       this.cleanupQueue(queueKey);

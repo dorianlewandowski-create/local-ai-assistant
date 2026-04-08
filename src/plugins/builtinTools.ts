@@ -16,6 +16,7 @@ import '../tools/transactionTools';
 import '../tools/visionControl';
 import '../tools/deepWeb';
 import '../tools/multiAgent';
+import '../tools/modelControl';
 import '../skills/garmin/tool';
 import '../skills/tech-news/tool';
 import '../skills/productivity/tool';

@@ -11,12 +11,18 @@ export interface ModelRoute {
 
 class ModelRouter {
   getRoute(tier: ModelTier): ModelRoute {
+    // TEMPORARY: Force Gemini for testing speed and reasoning
+    if (config.apiKeys.gemini) {
+      return {
+        provider: 'gemini',
+        model: 'gemini-1.5-pro',
+        apiKey: config.apiKeys.gemini,
+      };
+    }
+
     const tiers = config.models.tiers;
-    
-    // Logic to select model based on tier
-    // In the future, this can check for API keys to switch provider
     let modelName: string;
-    
+
     switch (tier) {
       case 'fast':
         modelName = tiers.fast;

@@ -1,0 +1,143 @@
+{
+  "sessions": [
+    {
+      "key": "telegram:chat-a",
+      "source": "telegram",
+      "sourceId": "chat-a",
+      "sourceKey": "source:telegram",
+      "history": [
+        {
+          "role": "user",
+          "content": "hello a",
+          "createdAt": "2026-04-08T06:30:55.136Z"
+        },
+        {
+          "role": "assistant",
+          "content": "reply a",
+          "createdAt": "2026-04-08T06:30:55.136Z"
+        }
+      ],
+      "settings": {},
+      "updatedAt": "2026-04-08T06:30:55.136Z"
+    },
+    {
+      "key": "telegram:chat-b",
+      "source": "telegram",
+      "sourceId": "chat-b",
+      "sourceKey": "source:telegram",
+      "history": [
+        {
+          "role": "user",
+          "content": "hello b",
+          "createdAt": "2026-04-08T06:30:55.136Z"
+        },
+        {
+          "role": "assistant",
+          "content": "reply b",
+          "createdAt": "2026-04-08T06:30:55.136Z"
+        }
+      ],
+      "settings": {},
+      "updatedAt": "2026-04-08T06:30:55.136Z"
+    },
+    {
+      "key": "telegram:chat-source-1",
+      "source": "telegram",
+      "sourceId": "chat-source-1",
+      "sourceKey": "source:telegram",
+      "history": [
+        {
+          "role": "user",
+          "content": "source one",
+          "createdAt": "2026-04-08T06:30:55.148Z"
+        },
+        {
+          "role": "assistant",
+          "content": "reply one",
+          "createdAt": "2026-04-08T06:30:55.148Z"
+        }
+      ],
+      "settings": {},
+      "updatedAt": "2026-04-08T06:30:55.148Z"
+    },
+    {
+      "key": "telegram:chat-source-2",
+      "source": "telegram",
+      "sourceId": "chat-source-2",
+      "sourceKey": "source:telegram",
+      "history": [
+        {
+          "role": "user",
+          "content": "source two",
+          "createdAt": "2026-04-08T06:30:55.148Z"
+        },
+        {
+          "role": "assistant",
+          "content": "reply two",
+          "createdAt": "2026-04-08T06:30:55.148Z"
+        }
+      ],
+      "settings": {},
+      "updatedAt": "2026-04-08T06:30:55.148Z"
+    },
+    {
+      "key": "terminal:local-console-session",
+      "source": "terminal",
+      "sourceId": "local-console-session",
+      "sourceKey": "source:terminal",
+      "history": [],
+      "settings": {
+        "verbosity": "high",
+        "approvalMode": "strict"
+      },
+      "updatedAt": "2026-04-08T06:30:55.148Z"
+    }
+  ],
+  "sourceHistory": [
+    [
+      "source:telegram",
+      [
+        {
+          "role": "user",
+          "content": "hello a",
+          "createdAt": "2026-04-08T06:30:55.136Z"
+        },
+        {
+          "role": "assistant",
+          "content": "reply a",
+          "createdAt": "2026-04-08T06:30:55.136Z"
+        },
+        {
+          "role": "user",
+          "content": "hello b",
+          "createdAt": "2026-04-08T06:30:55.136Z"
+        },
+        {
+          "role": "assistant",
+          "content": "reply b",
+          "createdAt": "2026-04-08T06:30:55.136Z"
+        },
+        {
+          "role": "user",
+          "content": "source one",
+          "createdAt": "2026-04-08T06:30:55.148Z"
+        },
+        {
+          "role": "assistant",
+          "content": "reply one",
+          "createdAt": "2026-04-08T06:30:55.148Z"
+        },
+        {
+          "role": "user",
+          "content": "source two",
+          "createdAt": "2026-04-08T06:30:55.148Z"
+        },
+        {
+          "role": "assistant",
+          "content": "reply two",
+          "createdAt": "2026-04-08T06:30:55.148Z"
+        }
+      ]
+    ]
+  ]
+}

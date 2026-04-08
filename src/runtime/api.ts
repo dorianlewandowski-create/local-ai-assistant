@@ -103,8 +103,8 @@ export function createRuntimeApi(taskQueue: TaskQueue, approvals: PendingApprova
         }
       }
 
-      const result = await taskQueue.enqueue(task);
-      return result.response;
+      logger.debug(`Api enqueuing task ${task.id}`);
+      return (await taskQueue.safeEnqueue(task)).response;
     },
     setAdminCommandHandler(handler) {
       adminCommandHandler = handler;

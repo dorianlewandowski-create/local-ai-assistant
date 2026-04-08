@@ -44,7 +44,7 @@ export function startResidentFileWatcher(taskQueue: TaskQueue, onTaskSettled: ()
 
     const label = `${eventType}:${path.basename(filePath)}`;
     const eventPrompt = await buildFileEventPrompt(eventType, filePath);
-    void taskQueue.enqueue({
+    void taskQueue.safeEnqueue({
       id: `${label}-${Date.now()}`,
       source: 'file_watcher',
       sourceId: 'resident-watch',
@@ -54,8 +54,6 @@ export function startResidentFileWatcher(taskQueue: TaskQueue, onTaskSettled: ()
     }).then((result) => {
       logger.chat('assistant', `[FileWatcher] ${result.response}`);
       onTaskSettled();
-    }).catch((error: any) => {
-      logger.error(`Watcher event ${label} failed: ${error.message}`);
     });
   };
 

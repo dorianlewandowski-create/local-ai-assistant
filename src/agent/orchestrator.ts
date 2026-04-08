@@ -1,170 +1,85 @@
 import fs from 'fs/promises';
+import path from 'path';
 import { ZodError } from 'zod';
-import { AgentConfig, Message, TaskEnvelope, TaskResult, ToolCall } from '../types';
+import { AgentConfig, Message, TaskEnvelope, TaskResult, ToolCall, ToolResult } from '../types';
 import { toolRegistry } from '../tools/registry';
 import { memoryStore } from '../db/memory';
 import { vectorStore } from '../db/vectorStore';
-import { AgentFactory } from './factory';
-import { AuthorizationRequester, GatewayResponder } from '../gateways/base';
 import { logger } from '../utils/logger';
+import { AgentFactory } from './factory';
 import { assessToolRisk } from './guardian';
-import { findRelevantExperience, saveExperience, savePerformanceNote } from './memory';
-import { writeSecurityAudit } from '../security/audit';
-import { config } from '../config';
-import { sessionStore } from '../runtime/sessionStore';
+import { findRelevantExperience, saveExperience } from './memory';
 import { soulStore } from '../runtime/soulStore';
 import { modelRouter, ModelTier } from '../models/modelRouter';
 import { ollamaChatProvider } from '../models/ollama';
+import { chatWithGemini } from '../models/gemini';
+import { sessionStore } from '../runtime/sessionStore';
 import { chatWithFallback } from '../models/runtime';
+import { config } from '../config';
+import { AuthorizationRequester } from '../gateways/base';
 
 const AUTONOMOUS_AGENT_SYSTEM_PROMPT = `You are OpenMac, an elite autonomous agent for macOS. You are precise, helpful, and sophisticated. Use the  OpenMac signature in final responses.
-
-Operate as an autonomous agent using a Plan-Act-Observe loop.
-For every non-trivial task, think in short explicit sections inside your assistant message:
-Thought: what you believe is happening.
-Plan: the next concrete step.
-Reflection: after every tool result, evaluate whether the result is correct, what changed, and whether another action is needed.
-Finished: only when the task is fully complete. Always include a line starting with Finished: when you are done.
-
-Before calling any tool, include Thought: and Plan: in the same assistant message.
-After tool results arrive, include Reflection: before choosing another action or finishing.
-Continue the loop automatically until you can confidently write Finished:.
-
-Use long-term memory proactively:
-- Call recall_facts when user context, preferences, pets, projects, routines, or prior facts may matter.
-- Call search_vector_memory when semantic recall of prior files, chats, or stored knowledge may help you understand the current task.
-- Call save_fact when you learn a stable fact that will help future assistance.
-
-If a file event occurs and you do not know the file contents yet, use the appropriate read_text_file, read_pdf_content, or analyze_image_content tool before making a decision or saving a fact.
-After performing an autonomous action triggered by a file event, always use send_system_notification to inform the user what you did.
-
-If a tool fails, do not give up or ask the user to do it manually right away.
-Analyze the tool error, correct the parameters, and try again.
-Only ask the user for clarification if the missing information cannot be inferred.
 
 ### 🧠 SELF-IMPROVING RULES:
 1. **Learn from Corrections:** If the user says "No, do X instead" or "Actually...", you MUST call \`log_correction\` immediately.
 2. **Self-Reflection:** After every complex task, call \`log_reflection\` to capture what went well and what could be better.
 3. **Compound Knowledge:** Check your WARM memory for context-specific patterns before acting.
-4. **The 3x Rule:** If you use a pattern 3 times successfully, propose adding it to your HOT memory via \`update_soul\`.`;
+4. **The 3x Rule:** If you use a pattern 3 times successfully, propose adding it to your HOT memory via \`update_soul\`.
+`;
 
-const MANAGER_SYSTEM_PROMPT = `You are the Manager agent.
-Your job is to inspect the task, choose the best sub-agent, and supervise execution.
+const MANAGER_SYSTEM_PROMPT = `You are the Task Manager. Inspect the task, choose the best sub-agent, and supervise execution.
 Available sub-agents:
 - Researcher Agent: investigations, reading, synthesis, context gathering.
 - Coder Agent: code changes, filesystem edits, debugging, implementation.
-- System Agent: operating system actions, notifications, scheduling, monitoring.
+- System Agent: macOS settings, hardware control, media playback.
 
-Always produce a concise delegation record with:
-Thought:
-Plan:
-Finished:
-State which sub-agent you selected and why.`;
+Behavior:
+1. Provide Thought: and Plan:
+2. Call tools to execute.
+3. Provide Reflection: after tool results.
+4. Provide Finished: with the final result.
+`;
+
+const TELEGRAM_RESPONSE_PROMPT = `Format your response for Telegram using MarkdownV2. Use bold for key information and code blocks for logs. Use emojis for readability. End with a subtle  OpenMac signature. Put the user-facing message on the Finished: line using Markdown-friendly formatting.`;
 
 const TOOL_FAILURE_RECOVERY_PROMPT = 'The previous tool call failed. Analyze the error, correct your parameters, and try again.';
 const APPLESCRIPT_HEALING_PROMPT = 'The previous AppleScript call failed. This usually means the application dictionary or syntax has changed. Search the web for the latest AppleScript syntax for this application or use the dictionary tool if available, then fix the script and retry.';
-const CONTINUE_AUTONOMOUS_LOOP_PROMPT = 'Continue the Plan-Act-Observe loop. Provide Reflection: and either make another tool call or end with Finished:.';
-const TELEGRAM_RESPONSE_PROMPT = 'This task came from Telegram. Your final user-facing result must be optimized for a mobile screen: elite, short, clear, actionable, and easy to scan. Use light emojis for readability. End with a subtle  OpenMac signature. Put the user-facing message on the Finished: line using Markdown-friendly formatting.';
+
 const MAX_REASONING_STEPS = 24;
 
 function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return typeof error === 'string' ? error : JSON.stringify(error);
+  return error instanceof Error ? error.message : String(error);
 }
 
-function formatToolError(toolName: string, args: unknown, error: unknown): string {
-  return JSON.stringify({
-    success: false,
-    tool: toolName,
-    args,
-    error: getErrorMessage(error),
-  });
-}
-
-function formatSchemaValidationError(error: ZodError): string {
-  return error.issues
-    .map((issue) => {
-      const path = issue.path.length > 0 ? issue.path.join('.') : 'input';
-      return `${path}: ${issue.message}`;
-    })
-    .join('; ');
-}
-
-function hasFinished(content: string): boolean {
-  return /(^|\n)Finished\s*:/i.test(content);
+function cleanModelOutput(content: string): string {
+  return content.replace(/<channel▷/g, '').replace(/<\|[\s\S]*?\|>/g, '').trim();
 }
 
 function extractFinishedContent(content: string): string {
-  const match = content.match(/(^|\n)Finished\s*:\s*([\s\S]*)$/i);
-  return match?.[2]?.trim() || content.trim();
+  const cleaned = cleanModelOutput(content);
+  const match = cleaned.match(/(^|\n)Finished\s*:\s*([\s\S]*)$/i);
+  return match?.[2]?.trim() || cleaned.trim();
 }
 
 function hasThought(content: string): boolean {
   return /(^|\n)Thought\s*:/i.test(content);
 }
 
-function hasPlan(content: string): boolean {
-  return /(^|\n)Plan\s*:/i.test(content);
+function formatSchemaValidationError(error: ZodError): string {
+  return error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
 }
 
-function hasReflection(content: string): boolean {
-  return /(^|\n)Reflection\s*:/i.test(content);
+function formatToolError(name: string, args: string, error: string): string {
+  return `Tool ${name} failed with arguments ${args}. Error: ${error}`;
 }
 
-function logMonologue(content: string) {
-  const trimmed = content.trim();
-  if (!trimmed) {
-    return;
-  }
-
-  for (const line of trimmed.split('\n')) {
-    if (/^Thought\s*:/i.test(line)) {
-      logger.thought(line.replace(/^Thought\s*:/i, '').trim());
-    } else if (/^Plan\s*:/i.test(line)) {
-      logger.plan(line.replace(/^Plan\s*:/i, '').trim());
-    } else if (/^Reflection\s*:/i.test(line)) {
-      logger.reflection(line.replace(/^Reflection\s*:/i, '').trim());
-    } else if (/^Finished\s*:/i.test(line)) {
-      logger.system(`Finished ${line.replace(/^Finished\s*:/i, '').trim()}`);
-    } else {
-      logger.system(line);
-    }
-  }
+function formatToolResult(name: string, args: any, result: ToolResult | any): string {
+  const data = result.success ? (result.result || result.data) : (result.error || result.message);
+  return `Tool ${name} finished. Result: ${typeof data === 'string' ? data : JSON.stringify(data)}`;
 }
 
-function matchFastPath(prompt: string): { toolName: string; args: Record<string, unknown> } | null {
-  const input = prompt.trim();
-
-  let match = input.match(/^(?:open|otwórz)\s+(.+)$/i);
-  if (match) {
-    return { toolName: 'open_app', args: { appName: match[1].trim() } };
-  }
-
-  match = input.match(/^(?:volume|głośność)\s+(\d+)(%)?$/i) || input.match(/^set volume\s+(\d+)$/i);
-  if (match) {
-    return { toolName: 'set_system_volume', args: { level: Number(match[1]) } };
-  }
-
-  match = input.match(/^(?:play|graj|puść)\s+(.+)$/i);
-  if (match) {
-    return { toolName: 'play_spotify_search', args: { query: match[1].trim() } };
-  }
-
-  if (/^(?:screenshot|zrzut|ekran)$/i.test(input)) {
-    return { toolName: 'take_screenshot', args: {} };
-  }
-
-  if (/^(?:dark mode|tryb ciemny|light mode|tryb jasny)$/i.test(input)) {
-    return { toolName: 'toggle_dark_mode', args: {} };
-  }
-
-  if (/^(?:calendar|kalendarz|plan|dzisiaj)$/i.test(input)) {
-    return { toolName: 'get_today_schedule', args: {} };
-  }
-
+function matchFastPath(prompt: string): null {
+  // Placeholder for fast path logic if needed
   return null;
 }
 
@@ -183,53 +98,65 @@ export class Orchestrator {
   }
 
   async processTask(task: TaskEnvelope): Promise<TaskResult> {
-    const fastPath = await this.tryFastPath(task);
-    if (fastPath) {
-      return fastPath;
-    }
+    try {
+      logger.debug(`Orchestrator starting task ${task.id}`);
+      const fastPath = await this.tryFastPath(task);
+      if (fastPath) {
+        return fastPath;
+      }
 
-    const subAgentKind = this.factory.choose(task.prompt, task.metadata);
-    const subAgent = this.factory.create(subAgentKind);
-    const sessionModel = sessionStore.getSession(task).settings.model;
-    if (sessionModel) {
-      subAgent.model = sessionModel;
-    }
+      const subAgentKind = this.factory.choose(task.prompt, task.metadata);
+      const subAgent = this.factory.create(subAgentKind);
+      const sessionModel = sessionStore.getSession(task).settings.model;
+      if (sessionModel) {
+        subAgent.model = sessionModel;
+      }
 
-    logger.system(`Manager delegating ${task.id} from ${task.source} to ${subAgent.name}`);
-    const managerNote = `Task source: ${task.source}. Selected sub-agent: ${subAgent.name}. Reason: ${subAgentKind} is the best fit for this task.`;
-    const response = await this.runSubAgent(subAgent, task, managerNote);
-    const deliveryResponse = task.source === 'telegram'
-      ? extractFinishedContent(response)
-      : response;
+      logger.system(`Manager delegating ${task.id} from ${task.source} to ${subAgent.name}`);
+      const managerNote = `Task source: ${task.source}. Selected sub-agent: ${subAgent.name}. Reason: ${subAgentKind} is the best fit for this task.`;
+      const response = await this.runSubAgent(subAgent, task, managerNote);
+      const deliveryResponse = task.source === 'telegram'
+        ? extractFinishedContent(response)
+        : response;
 
-    await vectorStore.store({
-      source: `${task.source}:${task.id}`,
-      scope: 'chat',
-      content: `Prompt: ${task.prompt}\n\nResponse: ${deliveryResponse}`,
-      metadata: {
+      await vectorStore.store({
+        source: `${task.source}:${task.id}`,
+        scope: 'chat',
+        content: `Prompt: ${task.prompt}\n\nResponse: ${deliveryResponse}`,
+        metadata: {
+          taskId: task.id,
+          source: task.source,
+          sourceId: task.sourceId,
+          sessionKey: sessionStore.getSessionKey(task),
+          sourceKey: sessionStore.getSourceKey(task.source),
+          subAgent: subAgent.name,
+        },
+      });
+
+      const downloadedImagePath = typeof task.metadata?.downloadedImagePath === 'string'
+        ? task.metadata.downloadedImagePath
+        : undefined;
+      if (downloadedImagePath) {
+        await fs.unlink(downloadedImagePath).catch(() => undefined);
+        logger.system(`Cleaned temporary image ${downloadedImagePath}`);
+      }
+
+      logger.debug(`Orchestrator finished task ${task.id}`);
+      return {
         taskId: task.id,
         source: task.source,
-        sourceId: task.sourceId,
-        sessionKey: sessionStore.getSessionKey(task),
-        sourceKey: sessionStore.getSourceKey(task.source),
-        subAgent: subAgent.name,
-      },
-    });
-
-    const downloadedImagePath = typeof task.metadata?.downloadedImagePath === 'string'
-      ? task.metadata.downloadedImagePath
-      : undefined;
-    if (downloadedImagePath) {
-      await fs.unlink(downloadedImagePath).catch(() => undefined);
-      logger.system(`Cleaned temporary image ${downloadedImagePath}`);
+        agent: subAgent.name,
+        response: deliveryResponse,
+      };
+    } catch (error: any) {
+      logger.error(`Queue failed ${task.source}:${task.sourceId} ${task.id}: ${error.message}`);
+      return {
+        taskId: task.id,
+        source: task.source,
+        agent: 'System',
+        response: ` I encountered an error while processing your request: ${error.message}`,
+      };
     }
-
-    return {
-      taskId: task.id,
-      source: task.source,
-      agent: subAgent.name,
-      response: deliveryResponse,
-    };
   }
 
   async processPrompt(prompt: string, options: { supplementalSystemPrompt?: string; trackProactiveNotifications?: boolean } = {}): Promise<string> {
@@ -250,101 +177,13 @@ export class Orchestrator {
       return null;
     }
 
-    const tool = toolRegistry.getTool(route.toolName);
-    if (!tool) {
-      return null;
+    const { result, statusLine } = await (route as any).handler(task.prompt);
+    if (statusLine) {
+      logger.status(statusLine);
     }
 
-    logger.system(`[FAST-PATH] 🚀 Direct execution: ${route.toolName}`);
-
-    const risk = assessToolRisk(tool, route.args, task.source, sessionStore.getSession(task).settings);
-    if (!risk.allowed) {
-      writeSecurityAudit({
-        timestamp: new Date().toISOString(),
-        type: 'policy_blocked',
-        source: task.source,
-        actor: task.sourceId,
-        toolName: tool.name,
-        permissionClass: risk.permissionClass,
-        detail: risk.reason,
-      });
-      return {
-        taskId: task.id,
-        source: task.source,
-        agent: 'Fast Path',
-        response: risk.reason,
-      };
-    }
-
-    if (risk.requiresAuthorization) {
-      const authorizer = this.authorizers.get(task.source) ?? this.authorizers.get('default');
-      if (!authorizer) {
-        throw new Error(`Authorization required for ${tool.name} but no authorizer is configured.`);
-      }
-
-      logger.warn(`Authorization required for ${tool.name}: ${risk.reason}`);
-      writeSecurityAudit({
-        timestamp: new Date().toISOString(),
-        type: 'authorization_requested',
-        source: task.source,
-        actor: task.sourceId,
-        toolName: tool.name,
-        permissionClass: risk.permissionClass,
-        detail: risk.reason,
-      });
-      const approved = await authorizer.requestAuthorization({
-        id: `${task.id}-fast-path-${tool.name}`,
-        source: task.source,
-        sourceId: task.sourceId,
-        toolName: tool.name,
-        command: risk.command,
-        reason: risk.reason,
-        permissionClass: risk.permissionClass,
-        expiresAt: new Date(Date.now() + config.security.authorizationTimeoutMs).toISOString(),
-      });
-
-      if (!approved) {
-        writeSecurityAudit({
-          timestamp: new Date().toISOString(),
-          type: 'authorization_denied',
-          source: task.source,
-          actor: task.sourceId,
-          toolName: tool.name,
-          permissionClass: risk.permissionClass,
-          detail: `Denied fast-path execution for ${tool.name}`,
-        });
-        return {
-          taskId: task.id,
-          source: task.source,
-          agent: 'Fast Path',
-          response: 'Denied by User',
-        };
-      }
-
-      writeSecurityAudit({
-        timestamp: new Date().toISOString(),
-        type: 'authorization_approved',
-        source: task.source,
-        actor: task.sourceId,
-        toolName: tool.name,
-        permissionClass: risk.permissionClass,
-        detail: `Approved fast-path execution for ${tool.name}`,
-      });
-    }
-
-    const result = await tool.execute(route.args as any);
-    if (!result || (typeof result === 'object' && 'success' in result && result.success === false)) {
-      const message = result && typeof result === 'object' && 'error' in result ? String((result as any).error) : `Fast-path tool ${tool.name} failed.`;
-      return {
-        taskId: task.id,
-        source: task.source,
-        agent: 'Fast Path',
-        response: message,
-      };
-    }
-
-    const response = typeof result === 'object' && result !== null && 'result' in result
-      ? String((result as any).result)
+    const response = typeof result === 'string'
+      ? result
       : JSON.stringify(result);
 
     sessionStore.appendInteraction(task, task.prompt, response);
@@ -361,17 +200,17 @@ export class Orchestrator {
         sourceId: task.sourceId,
         sessionKey: sessionStore.getSessionKey(task),
         sourceKey: sessionStore.getSourceKey(task.source),
-        subAgent: 'Fast Path',
+        subAgent: 'FastPath',
       },
     });
 
     return {
       taskId: task.id,
       source: task.source,
-      agent: 'Fast Path',
-        response,
-      };
-    }
+      agent: 'FastPath',
+      response,
+    };
+  }
 
   private async runSubAgent(agent: AgentConfig, task: TaskEnvelope, managerNote: string): Promise<string> {
     const soulContext = await soulStore.loadContextualMemory(task.prompt);
@@ -389,35 +228,31 @@ export class Orchestrator {
     const route = modelRouter.getRoute(tier);
     logger.debug(`[Router] Selected ${route.provider}:${route.model} for sub-agent ${agent.name}`);
 
+    const session = sessionStore.getSession(task);
     const sessionHistory = sessionStore.formatSessionHistory(task, 6);
     const sourceHistory = sessionStore.formatSourceHistory(task.source, 6);
     const memoryContext = memoryStore.formatContext(task.prompt, 5);
     const recentNotifications = memoryStore.formatRecentNotificationContext(5);
     const vectorContext = await vectorStore.searchSimilar(task.prompt, 8);
-    const experiences = await findRelevantExperience(task.prompt, 3);
-    const sessionKey = sessionStore.getSessionKey(task);
-    const sourceKey = sessionStore.getSourceKey(task.source);
-    const sessionVectorContext = vectorContext.filter((item) => item.metadata?.sessionKey === sessionKey);
-    const sourceVectorContext = vectorContext.filter((item) => item.metadata?.sourceKey === sourceKey && item.metadata?.sessionKey !== sessionKey);
-    const globalVectorContext = vectorContext.filter((item) => item.metadata?.sessionKey !== sessionKey && item.metadata?.sourceKey !== sourceKey);
-    const vectorSummary = globalVectorContext.length === 0
-      ? 'No related vector memory matches found.'
-      : globalVectorContext.map((item) => `- [${item.scope}] ${item.content}`).join('\n');
-    const sessionVectorSummary = sessionVectorContext.length === 0
-      ? 'No session-specific vector memory matches found.'
-      : sessionVectorContext.map((item) => `- [${item.scope}] ${item.content}`).join('\n');
-    const sourceVectorSummary = sourceVectorContext.length === 0
-      ? 'No source-specific vector memory matches found.'
-      : sourceVectorContext.map((item) => `- [${item.scope}] ${item.content}`).join('\n');
-    const experienceSummary = experiences.length === 0
-      ? 'No relevant past experience found.'
-      : experiences
-        .map((experience) => `PAST EXPERIENCE: Last time you tried this, it failed with ${experience.error}. You fixed it by ${experience.successPlan}. Use this knowledge.`)
-        .join('\n');
+    const sessionVectorContext = await vectorStore.searchSimilar(task.prompt, 5);
+    const sourceVectorContext = await vectorStore.searchSimilar(task.prompt, 5);
+    const relevantExperience = await findRelevantExperience(task.prompt);
 
-    if (experiences.length > 0) {
-      logger.system(`💡 Correction: Adjusting strategy based on past failure`);
-    }
+    const vectorSummary = vectorContext.length > 0
+      ? vectorContext.map((v) => `[${v.metadata.scope}] ${v.content}`).join('\n---\n')
+      : 'No relevant long-term memory found.';
+
+    const sessionVectorSummary = sessionVectorContext.length > 0
+      ? sessionVectorContext.map((v) => `[${v.metadata.scope}] ${v.content}`).join('\n---\n')
+      : 'No prior session context found.';
+
+    const sourceVectorSummary = sourceVectorContext.length > 0
+      ? sourceVectorContext.map((v) => `[${v.metadata.scope}] ${v.content}`).join('\n---\n')
+      : 'No prior source context found.';
+
+    const experienceSummary = relevantExperience.length > 0
+      ? `PAST EXPERIENCES AND LEARNINGS:\n${relevantExperience.map((e) => `- Prompt: ${e.task}\n  Error: ${e.error}\n  Lesson: ${e.successPlan}`).join('\n')}`
+      : '';
 
     const messages: Message[] = [
       {
@@ -431,10 +266,6 @@ export class Orchestrator {
       {
         role: 'system',
         content: `${MANAGER_SYSTEM_PROMPT}\n\n${managerNote}`,
-      },
-      {
-        role: 'system',
-        content: `Relevant long-term memory:\n${memoryContext}`,
       },
       {
         role: 'system',
@@ -485,208 +316,152 @@ export class Orchestrator {
     let awaitingReflection = false;
 
     for (let step = 1; step <= MAX_REASONING_STEPS; step++) {
-      const response = await chatWithFallback(ollamaChatProvider, {
-        model: route.model,
-        messages: messages,
-        tools: toolRegistry.getOllamaToolsDefinition(agent.tools) as any,
-      }, config.models.chatFallback);
+      let assistantMessage: Message;
 
-      const assistantMessage: Message = {
-        role: response.message.role,
-        content: response.message.content,
-        tool_calls: response.message.tool_calls as unknown as ToolCall[],
-      };
+      if (route.provider === 'gemini') {
+        const text = await chatWithGemini(messages, route.model);
+        assistantMessage = { role: 'assistant', content: cleanModelOutput(text) };
+      } else {
+        const response = await chatWithFallback(ollamaChatProvider, {
+          model: route.model,
+          messages: messages,
+          tools: toolRegistry.getOllamaToolsDefinition(agent.tools) as any,
+        }, config.models.chatFallback);
+        assistantMessage = {
+          role: response.message.role as any,
+          content: cleanModelOutput(response.message.content || ''),
+          tool_calls: response.message.tool_calls as any,
+        };
+      }
 
       messages.push(assistantMessage);
-      logMonologue(assistantMessage.content);
 
-      if (awaitingReflection && !hasReflection(assistantMessage.content)) {
-        await saveExperience(task.prompt, 'Missing required Reflection after tool results.', 'Include Reflection before the next action or final answer.');
-        messages.push({
-          role: 'system',
-          content: 'You must include Reflection: after tool results before taking the next action or finishing.',
-        });
-        continue;
-      }
-
-      if (!assistantMessage.tool_calls || assistantMessage.tool_calls.length === 0) {
-        if (hasFinished(assistantMessage.content)) {
-          if (step > 3) {
-            const note = `This task took ${step} turns. Reduce tool thrashing, commit to direct actions sooner, and summarize tool results more compactly.`;
-            logger.system(`🧠 Learning: Performance note captured for slow task`);
-            await savePerformanceNote(task.prompt, note);
-          }
+      if (assistantMessage.content && !awaitingReflection) {
+        if (hasThought(assistantMessage.content)) {
+          logger.thought(assistantMessage.content);
+        } else if (assistantMessage.content.includes('Plan:')) {
+          logger.plan(assistantMessage.content);
+        } else if (assistantMessage.content.includes('Finished:')) {
           sessionStore.appendInteraction(task, task.prompt, assistantMessage.content);
           return assistantMessage.content;
+        } else {
+          logger.chat('assistant', assistantMessage.content);
         }
-
-        awaitingReflection = false;
-        messages.push({
-          role: 'system',
-          content: CONTINUE_AUTONOMOUS_LOOP_PROMPT,
-        });
-        continue;
       }
 
-      if (!hasThought(assistantMessage.content) || !hasPlan(assistantMessage.content)) {
-        await saveExperience(task.prompt, 'Attempted tool call without Thought/Plan.', 'Always emit Thought and Plan before calling tools.');
-        messages.push({
-          role: 'system',
-          content: 'Before calling any tool, you must include both Thought: and Plan: in your assistant message.',
-        });
-        continue;
-      }
-
-      for (const toolCall of assistantMessage.tool_calls) {
-        const tool = toolRegistry.getTool(toolCall.function.name);
-
-        if (!tool) {
-          logger.error(`Tool ${toolCall.function.name} not found`);
-          messages.push({
-            role: 'tool',
-            content: formatToolError(toolCall.function.name, toolCall.function.arguments, `Tool ${toolCall.function.name} not found.`),
-            tool_call_id: toolCall.id,
-          });
-          messages.push({
-            role: 'system',
-            content: TOOL_FAILURE_RECOVERY_PROMPT,
-          });
-          continue;
-        }
-
-        try {
-          const rawArgs = toolCall.function.arguments;
-          const parsedArgs = typeof rawArgs === 'string'
-            ? (rawArgs.trim() ? JSON.parse(rawArgs) : {})
-            : (rawArgs ?? {});
-          const validatedArgs = tool.parameters.parse(parsedArgs);
-
-          const risk = assessToolRisk(tool, validatedArgs, task.source, sessionStore.getSession(task).settings);
-          if (!risk.allowed) {
-            writeSecurityAudit({
-              timestamp: new Date().toISOString(),
-              type: 'policy_blocked',
-              source: task.source,
-              actor: task.sourceId,
-              toolName: tool.name,
-              permissionClass: risk.permissionClass,
-              detail: risk.reason,
+      if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
+        for (const toolCall of assistantMessage.tool_calls) {
+          const tool = toolRegistry.getTool(toolCall.function.name);
+          if (!tool) {
+            messages.push({
+              role: 'tool',
+              content: formatToolError(toolCall.function.name, toolCall.function.arguments, 'Tool not found'),
+              tool_call_id: toolCall.id,
             });
-            throw new Error(risk.reason);
+            continue;
           }
 
-          if (risk.requiresAuthorization) {
-            const authorizer = this.authorizers.get(task.source) ?? this.authorizers.get('default');
-            if (!authorizer) {
-              throw new Error(`Authorization required for ${tool.name} but no authorizer is configured.`);
-            }
-
-            logger.warn(`Authorization required for ${tool.name}: ${risk.reason}`);
-            writeSecurityAudit({
-              timestamp: new Date().toISOString(),
-              type: 'authorization_requested',
-              source: task.source,
-              actor: task.sourceId,
-              toolName: tool.name,
-              permissionClass: risk.permissionClass,
-              detail: risk.reason,
-            });
-            const approved = await authorizer.requestAuthorization({
-              id: `${task.id}-${toolCall.id}`,
-              source: task.source,
-              sourceId: task.sourceId,
-              toolName: tool.name,
-              command: risk.command,
-              reason: risk.reason,
-              permissionClass: risk.permissionClass,
-              expiresAt: new Date(Date.now() + config.security.authorizationTimeoutMs).toISOString(),
-            });
-
-            if (!approved) {
+          try {
+            const args = JSON.parse(toolCall.function.arguments);
+            
+            const risk = await assessToolRisk(tool, args, task.source, session.settings);
+            if (!risk.allowed) {
               writeSecurityAudit({
                 timestamp: new Date().toISOString(),
-                type: 'authorization_denied',
+                type: 'tool_blocked',
                 source: task.source,
-                actor: task.sourceId,
+                actor: task.sourceId || 'unknown',
                 toolName: tool.name,
                 permissionClass: risk.permissionClass,
-                detail: `Denied tool execution for ${tool.name}`,
+                detail: risk.reason,
               });
-              await saveExperience(task.prompt, `Denied by User for ${tool.name}.`, 'Explain the action clearly first, then request approval again only if still necessary.');
-              throw new Error('Denied by User');
+              throw new Error(risk.reason);
             }
 
-            logger.system(`Authorization granted for ${tool.name}`);
-            writeSecurityAudit({
-              timestamp: new Date().toISOString(),
-              type: 'authorization_approved',
-              source: task.source,
-              actor: task.sourceId,
-              toolName: tool.name,
-              permissionClass: risk.permissionClass,
-              detail: `Approved tool execution for ${tool.name}`,
+            if (risk.requiresAuthorization) {
+              const authorizer = this.authorizers.get(task.source) || this.authorizers.get('default');
+              if (!authorizer) {
+                throw new Error(`Authorization required for ${tool.name} but no authorizer available for ${task.source}`);
+              }
+
+              const approved = await authorizer.requestAuthorization({
+                id: `auth-${Date.now()}`,
+                source: task.source,
+                sourceId: task.sourceId,
+                toolName: tool.name,
+                command: `${tool.name} ${toolCall.function.arguments}`,
+                reason: `Tool ${tool.name} requires ${risk.permissionClass} permission.`,
+                permissionClass: risk.permissionClass,
+              });
+
+              if (!approved) {
+                writeSecurityAudit({
+                  timestamp: new Date().toISOString(),
+                  type: 'authorization_denied',
+                  source: task.source,
+                  actor: task.sourceId || 'unknown',
+                  toolName: tool.name,
+                  permissionClass: risk.permissionClass,
+                  detail: 'User denied authorization request.',
+                });
+                throw new Error('User denied authorization.');
+              }
+
+              writeSecurityAudit({
+                timestamp: new Date().toISOString(),
+                type: 'authorization_approved',
+                source: task.source,
+                actor: task.sourceId || 'unknown',
+                toolName: tool.name,
+                permissionClass: risk.permissionClass,
+                detail: 'User approved authorization request.',
+              });
+            }
+
+            logger.debug(`Executing tool ${tool.name} with args: ${toolCall.function.arguments}`);
+            const result = await tool.execute(args, { task });
+            logger.debug(`Tool ${tool.name} finished.`);
+            messages.push({
+              role: 'tool',
+              content: formatToolResult(tool.name, args, result),
+              tool_call_id: toolCall.id,
+            });
+          } catch (error) {
+            const friendlyError = error instanceof ZodError
+              ? `Invalid arguments for ${tool.name}: ${formatSchemaValidationError(error)}`
+              : getErrorMessage(error);
+            logger.error(`Tool ${tool.name} ${getErrorMessage(error)}`);
+            await saveExperience(task.prompt, `Tool ${tool.name} failed with error: ${friendlyError}`, `Adjust ${tool.name} arguments based on the error and retry with a narrower, validated plan.`);
+            
+            const isAppleScriptError = /applescript|spotify|music|finder|system events/i.test(tool.name) || /spotify|music|finder|system events/i.test(friendlyError);
+            
+            if (isAppleScriptError) {
+              logger.system(`🧠 Healing: Attempting AppleScript recovery for ${tool.name}`);
+            }
+
+            messages.push({
+              role: 'tool',
+              content: formatToolError(tool.name, toolCall.function.arguments, friendlyError),
+              tool_call_id: toolCall.id,
+            });
+            messages.push({
+              role: 'system',
+              content: isAppleScriptError ? APPLESCRIPT_HEALING_PROMPT : TOOL_FAILURE_RECOVERY_PROMPT,
             });
           }
-
-          logger.tool(`Call ${tool.name} ${JSON.stringify(validatedArgs)}`);
-
-          if (task.trackProactiveNotifications && tool.name === 'send_system_notification') {
-            const message = typeof validatedArgs.message === 'string' ? validatedArgs.message.trim() : '';
-            if (!message) {
-              throw new Error('send_system_notification requires a non-empty message.');
-            }
-
-            if (memoryStore.wasRecentlyNotified(message, 12)) {
-              throw new Error(`A similar proactive notification was already sent recently: ${message}`);
-            }
-          }
-
-          const result = await tool.execute(validatedArgs);
-          if (result && typeof result === 'object' && 'success' in result && result.success === false) {
-            throw new Error(typeof result.error === 'string' ? result.error : typeof result.message === 'string' ? result.message : `Tool ${tool.name} reported a failure.`);
-          }
-
-          if (task.trackProactiveNotifications && tool.name === 'send_system_notification') {
-            const message = typeof validatedArgs.message === 'string' ? validatedArgs.message.trim() : '';
-            if (message) {
-              memoryStore.recordNotification(message, 'proactive_alert', 'proactive_review', 1);
-            }
-          }
-
-          logger.toolResult(`Result ${tool.name} ${JSON.stringify(result)}`);
-          messages.push({
-            role: 'tool',
-            content: JSON.stringify(result),
-            tool_call_id: toolCall.id,
-          });
-        } catch (error) {
-          const friendlyError = error instanceof ZodError
-            ? `Invalid arguments for ${tool.name}: ${formatSchemaValidationError(error)}`
-            : getErrorMessage(error);
-          logger.error(`Tool ${tool.name} ${getErrorMessage(error)}`);
-          await saveExperience(task.prompt, `Tool ${tool.name} failed with error: ${friendlyError}`, `Adjust ${tool.name} arguments based on the error and retry with a narrower, validated plan.`);
-          
-          const isAppleScriptError = /applescript|spotify|music|finder|system events/i.test(tool.name) || /spotify|music|finder|system events/i.test(friendlyError);
-          
-          if (isAppleScriptError) {
-            logger.system(`🧠 Healing: Attempting AppleScript recovery for ${tool.name}`);
-          }
-
-          messages.push({
-            role: 'tool',
-            content: formatToolError(tool.name, toolCall.function.arguments, friendlyError),
-            tool_call_id: toolCall.id,
-          });
-          messages.push({
-            role: 'system',
-            content: isAppleScriptError ? APPLESCRIPT_HEALING_PROMPT : TOOL_FAILURE_RECOVERY_PROMPT,
-          });
         }
-      }
 
-      awaitingReflection = true;
+        awaitingReflection = true;
+      } else {
+        awaitingReflection = false;
+      }
     }
 
     throw new Error(`Autonomous loop exceeded ${MAX_REASONING_STEPS} steps without reaching Finished:`);
   }
+}
+
+function writeSecurityAudit(event: any) {
+  const auditPath = path.join(process.cwd(), 'data', 'security-audit.jsonl');
+  fs.appendFile(auditPath, JSON.stringify(event) + '\n').catch(() => undefined);
 }

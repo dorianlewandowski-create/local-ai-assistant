@@ -161,6 +161,11 @@ export interface OpenMacConfig {
       groupAllowFrom: string[];
     };
   };
+  apiKeys: {
+    gemini?: string;
+    openai?: string;
+    anthropic?: string;
+  };
   integrations: {
     spotify: {
       clientId?: string;
@@ -428,9 +433,9 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
       transcription: '',
       webSearch: 'llama-3.1-sonar-small-128k-online',
       tiers: {
-        fast: 'llama3.2:3b',
-        reasoning: 'deepseek-r1:14b',
-        vision: 'llama3.2-vision',
+        fast: 'gemma3:4b',
+        reasoning: 'gemma4:e4b',
+        vision: 'qwen3-vl:4b',
         coding: 'qwen2.5-coder:7b',
       },
     },
@@ -586,9 +591,9 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
       transcription: merged.models?.transcription || undefined,
       webSearch: merged.models?.webSearch ?? 'llama-3.1-sonar-small-128k-online',
       tiers: {
-        fast: merged.models?.tiers?.fast ?? 'llama3.2:3b',
-        reasoning: merged.models?.tiers?.reasoning ?? 'deepseek-r1:14b',
-        vision: merged.models?.tiers?.vision ?? 'llama3.2-vision',
+        fast: merged.models?.tiers?.fast ?? 'gemma3:4b',
+        reasoning: merged.models?.tiers?.reasoning ?? 'gemma4:e4b',
+        vision: merged.models?.tiers?.vision ?? 'qwen3-vl:4b',
         coding: merged.models?.tiers?.coding ?? 'qwen2.5-coder:7b',
       },
     },
@@ -629,6 +634,11 @@ export function loadConfig(options: { cwd?: string; env?: EnvSource } = {}): Ope
         groupPolicy: whatsappConfig.groupPolicy,
         groupAllowFrom: whatsappConfig.groupAllowFrom,
       },
+    },
+    apiKeys: {
+      gemini: readEnv(env, 'GOOGLE_GEMINI_API_KEY'),
+      openai: readEnv(env, 'OPENAI_API_KEY'),
+      anthropic: readEnv(env, 'ANTHROPIC_API_KEY'),
     },
     integrations: {
       spotify: {

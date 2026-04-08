@@ -231,7 +231,13 @@ export class OpenMacTui implements LoggerSink {
     this.screen.key(['k'], () => this.scrollActivePanel(-2));
     this.screen.key(['g'], () => this.scrollActivePanelToTop());
     this.screen.key(['G'], () => this.scrollActivePanelToBottom());
-    this.screen.key(['escape', 'C-c'], () => this.onExitHandler?.());
+    this.screen.key(['escape', 'C-c'], () => {
+      if (this.onExitHandler) {
+        this.onExitHandler();
+      } else {
+        process.exit(0);
+      }
+    });
     this.screen.program.on('focus', () => {
       if (!this.pendingAuthorization) {
         this.focusPanel('input');

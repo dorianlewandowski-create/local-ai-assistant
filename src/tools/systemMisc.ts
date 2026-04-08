@@ -32,8 +32,12 @@ export const getCurrentWeather: Tool<typeof GetCurrentWeatherParams> = {
   description: 'Get the current weather in a given location.',
   parameters: GetCurrentWeatherParams,
   execute: async ({ location }) => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
     try {
-      const response = await fetch(`https://wttr.in/${encodeURIComponent(location)}?format=j1`);
+      const response = await fetch(`https://wttr.in/${encodeURIComponent(location)}?format=j1`, {
+        signal: controller.signal,
+      });
       if (!response.ok) {
         throw new Error(`Weather request failed with status ${response.status}`);
       }
@@ -56,7 +60,9 @@ export const getCurrentWeather: Tool<typeof GetCurrentWeatherParams> = {
 
       return { success: true, result: summary };
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.name === 'AbortError' ? 'Weather request timed out' : error.message };
+    } finally {
+      clearTimeout(timeout);
     }
   },
 };

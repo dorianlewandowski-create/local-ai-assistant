@@ -53,7 +53,7 @@ export interface Tool<T extends z.ZodObject<any> = any> {
   riskLevel?: ToolRiskLevel;
   manifest?: ToolManifest;
   parameters: T;
-  execute: (args: z.infer<T>) => Promise<ToolResult | any>;
+  execute: (args: z.infer<T>, context?: { task: TaskEnvelope }) => Promise<ToolResult | any>;
 }
 
 export interface AgentConfig {

@@ -7,6 +7,7 @@ import { AuthorizationRequester } from '../gateways/base';
 import { PendingApprovalSummary } from '../gateways/nativeApproval';
 import { createRuntimeServiceClient } from './serviceClient';
 import { config } from '../config';
+import { logger } from '../utils/logger';
 
 export function composeGateways(orchestrator: Orchestrator, appContext: AppContext, localAuthorizer: AuthorizationRequester) {
   let telegramGateway: ReturnType<typeof createTelegramGateway>;
@@ -43,11 +44,12 @@ export function composeGateways(orchestrator: Orchestrator, appContext: AppConte
       },
     },
     async startAll(startTelegram: boolean) {
-      await Promise.all([
-        whatsappGateway.start(),
-        startTelegram ? telegramGateway.start() : Promise.resolve(),
-        slackGateway.start(),
-      ]);
+      // Start in background to avoid blocking total app startup on slow gateways
+      void whatsappGateway.start().catch((err) => logger.error(`WhatsApp start failed: ${err.message}`));
+      if (startTelegram) {
+        void telegramGateway.start().catch((err) => logger.error(`Telegram start failed: ${err.message}`));
+      }
+      void slackGateway.start().catch((err) => logger.error(`Slack start failed: ${err.message}`));
     },
     async stopAll() {
       await whatsappGateway.stop();

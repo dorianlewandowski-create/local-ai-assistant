@@ -2,6 +2,27 @@ import 'dotenv/config';
 import { registerCoreTools } from './core/registerTools';
 import { runOpenMac } from './core/openmacApp';
 import { logger } from './utils/logger';
+import fs from 'fs';
+import path from 'path';
+
+function logFatalError(error: any) {
+  const logPath = path.join(process.cwd(), 'debug.log');
+  const message = `[${new Date().toISOString()}] FATAL ERROR: ${error.stack || error.message}\n`;
+  fs.appendFileSync(logPath, message);
+  console.error(message);
+}
+
+process.on('uncaughtException', (error) => {
+  logFatalError(error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  logFatalError(reason instanceof Error ? reason : new Error(String(reason)));
+  // Instead of exit, we can just log it since we've added more try-catches
+  // but for reliability let's keep the exit for now to know it's happening.
+  process.exit(1);
+});
 
 registerCoreTools();
 
@@ -78,8 +99,12 @@ export function resolveCliCommand(argv: string[]) {
 export { runOpenMac };
 
 if (require.main === module) {
-  runOpenMac().catch((error: any) => {
-    logger.error(`Error during processing: ${error.message}`);
-    process.exit(1);
-  });
+  void (async () => {
+    try {
+      await runOpenMac();
+    } catch (error: any) {
+      logFatalError(error);
+      process.exit(1);
+    }
+  })();
 }

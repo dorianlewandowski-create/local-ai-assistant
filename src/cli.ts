@@ -8,6 +8,15 @@ import { runReleasePack, runReleaseVerify } from './release';
 import { runPairing } from './pairing';
 import { createRuntimeServiceClient } from './runtime/serviceClient';
 import { resolveCliCommand } from './index';
+import fs from 'fs';
+import path from 'path';
+
+function logFatalError(error: any) {
+  const logPath = path.join(process.cwd(), 'debug.log');
+  const message = `[${new Date().toISOString()}] FATAL ERROR (CLI): ${error.stack || error.message}\n`;
+  fs.appendFileSync(logPath, message);
+  console.error(message);
+}
 
 async function main() {
   const resolved = resolveCliCommand(process.argv.slice(2));
@@ -133,8 +142,12 @@ async function main() {
 }
 
 if (require.main === module) {
-  main().catch((error: any) => {
-    console.error(error.message);
-    process.exit(1);
-  });
+  void (async () => {
+    try {
+      await main();
+    } catch (error: any) {
+      logFatalError(error);
+      process.exit(1);
+    }
+  })();
 }

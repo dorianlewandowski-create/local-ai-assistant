@@ -5,7 +5,6 @@ export function attachProcessLifecycle(shutdown: () => Promise<void>) {
 
   process.on('SIGINT', onExit);
   process.on('SIGTERM', onExit);
-  process.stdin.resume();
 
   return {
     detach() {

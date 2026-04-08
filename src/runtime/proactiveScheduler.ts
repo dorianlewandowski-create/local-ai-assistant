@@ -9,7 +9,7 @@ export function createProactiveScheduler(taskQueue: TaskQueue, onReviewComplete?
   let lastMorningReviewKey = '';
 
   const runReview = (reason: 'interval' | 'morning') => {
-    void taskQueue.enqueue({
+    void taskQueue.safeEnqueue({
       id: `proactive-review-${reason}-${Date.now()}`,
       source: 'scheduler',
       sourceId: 'proactive-review',
@@ -21,8 +21,6 @@ export function createProactiveScheduler(taskQueue: TaskQueue, onReviewComplete?
     }).then((result) => {
       logger.chat('assistant', `[Proactive Review] ${result.response}`);
       onReviewComplete?.();
-    }).catch((error: any) => {
-      logger.error(`Scheduler proactive review failed: ${error.message}`);
     });
   };
 
