@@ -1,0 +1,136 @@
+================================================================================
+EXTENDING APEX — WHERE TO ADD THINGS
+================================================================================
+Root install: pnpm install (workspace monorepo). Examples below often say npm run;
+pnpm run is equivalent for the same package.json scripts.
+Quick map for contributors. Operator/runtime auth, launchd, install root:
+docs/OPERATOR_TRUST.txt. Registry naming for allowlists: see
+docs/TOOL_REGISTRY_NAMING.txt. Full inventory: docs/AGENTS_SKILLS_TOOLS.txt.
+
+================================================================================
+1. Add a core tool (native tool in src/tools/)
+================================================================================
+1. Add or extend a module under src/tools/ (e.g. myFeature.ts).
+2. Define a Zod parameters object and export a Tool with:
+     name: 'snake_case_id'   (unique across the registry)
+     description, parameters, execute, optional manifest (category/risk).
+3. Call toolRegistry.register(yourTool) at module bottom (same pattern as
+   existing files).
+4. Import that module from src/plugins/builtinTools.ts so it loads with the
+   builtin pack (side-effect registration).
+5. Add or extend tests under test/ (e.g. tool behavior or registry metadata).
+6. Update test/toolInventory.test.ts if you add a “must always exist” tool
+   (CRITICAL_TOOL_NAMES and/or MIN_TOTAL_TOOLS).
+7. Run: npm run docs:list-tools — confirm your name appears; npm run test.
+
+================================================================================
+2. Add a bundled skill (src/skills/<skillId>/)
+================================================================================
+  JSON under src/skills/ must be strict JSON (RFC 8259): Node JSON.parse and
+  Python json.load — see docs/SKILL_JSON_CONTRACT.txt. Run pnpm run validate:skill-json
+  before pushing; use pnpm run normalize:skill-json if you imported relaxed JSON.
+
+1. Create a folder src/skills/<skillId>/ with tool.ts (and scripts, config,
+   SKILL.md, skill.json as needed — follow existing skills).
+2. Export tools and register them with toolRegistry.register(...) in tool.ts.
+3. Add one line to src/plugins/builtinTools.ts:
+     import '../skills/<skillId>/tool'
+4. Tests + docs:list-tools + test/toolInventory as for core tools.
+
+================================================================================
+3. Add an SDK-style plugin (worker plugin under src/plugins/<PluginId>/)
+================================================================================
+In-repo plugins live next to builtin code; the loader discovers directories
+under src/plugins (or dist/plugins when built). See src/core/pluginLoader.ts.
+
+1. Add src/plugins/<PluginId>/ with:
+     manifest.json  — name, version, permissions, tools[] (name + parametersJsonSchema)
+     index.ts       — plugin class implementing the SDK contract (callTool, etc.)
+2. Tools are registered as PluginId.toolName (e.g. ScreenControl.get_ui_tree).
+3. SDK plugins are skipped in the default Node test runner unless you opt in;
+   core inventory tests do not require them.
+4. Build/run the app so discoverAndLoadAll() runs (registerCoreTools path).
+
+External drop-in plugins use config.plugins.directory (default ./plugins) and
+apex-plugin.json — see src/plugins/loader.ts (discoverExternalPlugins).
+
+================================================================================
+4. MCP-bridged tools
+================================================================================
+1. Implementation: src/plugins/mcpBridge.ts — registers tools from configured
+   MCP servers with names like mcp_<serverId>__<toolName> (sanitized).
+2. Configure MCP servers where your project stores them (apex.json / env — follow
+   existing McpHostManager wiring).
+3. Allowlists must use the exact bridged string; see docs/TOOL_REGISTRY_NAMING.txt.
+
+================================================================================
+5. CLI-only commands (no toolRegistry)
+================================================================================
+For fast, non-agent commands (e.g. apex files preview, apex files apply, apex help):
+
+1. Add routing in src/index.ts resolveCliCommand for the top-level verb.
+2. In src/cli.ts runCliMain(), handle the command before loadConfig() and
+   registerCoreTools() when you want a lightweight path (see early exit for
+   help and files).
+3. Implement logic in a small module (e.g. src/filesPreviewCli.ts,
+   src/filesApplyCli.ts) and wire from runCliMain.
+4. Document in docs/cliHelp.ts (apex help text) if user-facing.
+
+Entry: bin/run.sh → dist/cli.bundle.js → src/cliBundle.ts → runCliMain.
+
+================================================================================
+6. Sub-agent routing (runtime / terminal)
+================================================================================
+- Heuristic routing: src/agent/factory.ts (keyword-based choose()).
+- Session override: SessionSettings.subAgentKind (researcher | coder | system).
+  Applied in src/runtime/taskQueue.ts via enrichTaskWithSessionMetadata →
+  task.metadata.subAgentKind for orchestrator.processTask.
+- Terminal slash commands: /agent researcher|coder|system|auto|status (see
+  src/runtime/adminCommands.ts). Remote chat sources cannot change the override.
+- HTTP (localhost daemon; Authorization: Bearer ~/.apex/runtime.token): GET /api/control/session-sub-agent?source=...&sourceId=...
+  returns JSON { ok, kind }; POST /api/control/session-sub-agent with
+  { source, sourceId, kind } (kind: researcher|coder|system|auto) — see
+  src/runtime/serviceServer.ts and createRuntimeServiceClient() in
+  src/runtime/serviceClient.ts.
+- Per-kind tool tiers: src/agent/subAgentToolPolicy.ts (researcher = read + allowlisted
+  memory/consult writes; coder/system = full allowlist).
+- Structured traces (optional): set APEX_TRACE=1 (or true/json/stderr). Emits JSON lines
+  to stderr: task_start, routing, llm_roundtrip, tool_execute, tool_blocked, tool_error,
+  task_end. traceId = task.metadata.correlationId when set, else task.id. Implementation:
+  core/brain/src/observability.ts + instrumentation in ApexCoreOrchestrator.processTask /
+  runSubAgent.
+
+================================================================================
+7. Local runtime HTTP API (daemon, localhost)
+================================================================================
+- Listener: 127.0.0.1 (see apex.json runtimeService.port). GET /health is unauthenticated
+  and returns the plaintext body `ok` only (no config or secrets).
+  All other routes require:
+    Authorization: Bearer <token>   OR   X-Apex-Token: <token>
+- Token file: ~/.apex/runtime.token (0600), created when the daemon starts
+  (src/runtime/runtimeServiceToken.ts). Overrides: APEX_RUNTIME_TOKEN,
+  APEX_RUNTIME_TOKEN_FILE, APEX_STATE_DIR (default ~/.apex).
+- POST /api/prompt must use a known task source enum (see TaskSource in @apex/types).
+  For source "terminal", sourceId defaults to local-console when omitted.
+- Install / repo root for native assets: APEX_INSTALL_ROOT, else walk from the Node
+  entry script (nodes/macos/src/installRoot.ts). launchd sets APEX_INSTALL_ROOT in the plist.
+- Remote gateway pairing (Slack/WhatsApp/Discord/Telegram): docs/PAIRING_SECURITY.txt
+- End-user trust & troubleshooting (same topics, prose): docs/OPERATOR_TRUST.txt
+- Operator CLI snapshot (no secrets): `apex runtime-info` / `apex runtime-info --json`
+
+================================================================================
+8. Checklist before opening a PR
+================================================================================
+[ ] npm run typecheck
+[ ] npm run test
+[ ] If you changed routing or sub-agent tool tiers: update test/evals/golden.cases.json
+      and run npm run test:eval (or npm test)
+[ ] If you changed tool registrations: refresh docs/tools-list.golden.txt
+      (node scripts/list-tools.mjs > docs/tools-list.golden.txt) so
+      test/docsListToolsGolden.test.ts passes
+[ ] npm run docs:list-tools (optional spot-check)
+[ ] If allowlists matter: docs/TOOL_REGISTRY_NAMING.txt examples still valid
+
+================================================================================
+END
+================================================================================

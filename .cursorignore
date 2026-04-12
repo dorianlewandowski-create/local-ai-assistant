@@ -1,0 +1,4 @@
+# Prevent secret leakage into AI context and accidental edits to local secrets.
+.env
+.env.*
+!.env.example

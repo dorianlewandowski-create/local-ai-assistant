@@ -1,13 +1,13 @@
-import { z } from 'zod';
-import { Tool } from '../types';
-import { toolRegistry } from './registry';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { z } from 'zod'
+import type { Tool } from '@apex/types'
+import { toolRegistry } from './registry'
+import { exec } from 'child_process'
+import { promisify } from 'util'
 
-const execAsync = promisify(exec);
+const execAsync = promisify(exec)
 
 // --- CHROME ACTIVE TAB TOOL ---
-const BrowserParams = z.object({});
+const BrowserParams = z.object({})
 
 export const browserChromeActiveTab: Tool<typeof BrowserParams> = {
   name: 'browser_chrome_active_tab',
@@ -24,14 +24,14 @@ export const browserChromeActiveTab: Tool<typeof BrowserParams> = {
           set current_title to title of active tab of front window
           return current_title & " | " & current_url
         end tell
-      `;
-      const { stdout } = await execAsync(`osascript -e ${JSON.stringify(script)}`);
-      return { success: true, result: stdout.trim() };
+      `
+      const { stdout } = await execAsync(`osascript -e ${JSON.stringify(script)}`)
+      return { success: true, result: stdout.trim() }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
 // --- SAFARI ACTIVE TAB TOOL ---
 export const browserSafariActiveTab: Tool<typeof BrowserParams> = {
@@ -49,15 +49,15 @@ export const browserSafariActiveTab: Tool<typeof BrowserParams> = {
           set current_title to name of front document
           return current_title & " | " & current_url
         end tell
-      `;
-      const { stdout } = await execAsync(`osascript -e ${JSON.stringify(script)}`);
-      return { success: true, result: stdout.trim() };
+      `
+      const { stdout } = await execAsync(`osascript -e ${JSON.stringify(script)}`)
+      return { success: true, result: stdout.trim() }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
 // Register tools
-toolRegistry.register(browserChromeActiveTab);
-toolRegistry.register(browserSafariActiveTab);
+toolRegistry.register(browserChromeActiveTab)
+toolRegistry.register(browserSafariActiveTab)

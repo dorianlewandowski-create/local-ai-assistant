@@ -1,6 +1,8 @@
 # Post 0.7.4 Roadmap: The Cognitive Sovereignty Era
 
-This roadmap tracks the evolution of OpenMac from a local orchestrator to a fully autonomous, self-improving agent platform.
+> **Note:** The project version line is now **`1.0.0-rc.x`** (see `package.json` and **CHANGELOG.md**). This document title is historical.
+
+This roadmap tracks the evolution of Apex from a local orchestrator to a fully autonomous, self-improving agent platform.
 
 ## Phase 17: Cognitive Sovereignty (Memory & Learning) ✅
 - [x] Implement Tiered Memory System (HOT/WARM/COLD)
@@ -10,7 +12,7 @@ This roadmap tracks the evolution of OpenMac from a local orchestrator to a full
 - [x] Establish "3x Rule" for promoting patterns to HOT memory
 
 ## Phase 18: Distributed Control Plane (Service Architecture) ✅
-- [x] Decouple Runtime Host into a background Daemon (`openmac daemon`)
+- [x] Decouple Runtime Host into a background Daemon (`apex daemon`)
 - [x] Implement remote TUI/CLI connectivity via RuntimeServiceClient
 - [x] Add SSE-based log streaming from Daemon to remote clients
 - [x] Migrate all gateways (Telegram, Slack, WhatsApp) to the service boundary
@@ -63,4 +65,4 @@ This roadmap tracks the evolution of OpenMac from a local orchestrator to a full
 - [ ] Implement fully offline Whisper-based transcription (bypass server entirely)
 
 ---
-*OpenMac Roadmap — Building the definitive autonomous control plane.*
+*Apex roadmap — Building the definitive autonomous control plane.*

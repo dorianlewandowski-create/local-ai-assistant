@@ -1,112 +1,117 @@
-import { exec, execFile } from 'child_process';
-import os from 'os';
-import path from 'path';
-import { promisify } from 'util';
-import { z } from 'zod';
-import { Tool } from '../types';
-import { toolRegistry } from './registry';
-import { logger } from '../utils/logger';
-import { config } from '../config';
+import { exec, execFile } from 'child_process'
+import os from 'os'
+import path from 'path'
+import { promisify } from 'util'
+import { z } from 'zod'
+import type { Tool } from '@apex/types'
+import { toolRegistry } from './registry'
+import { logger } from '../utils/logger'
+import { config } from '@apex/core'
+import { fetchJsonWithTimeout, TOOL_HTTP_TIMEOUT_MS } from '../runtime/fetchWithTimeout'
 
-const execAsync = promisify(exec);
-const execFileAsync = promisify(execFile);
-const SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token';
-const SPOTIFY_SEARCH_URL = 'https://api.spotify.com/v1/search';
+const execAsync = promisify(exec)
+const execFileAsync = promisify(execFile)
+const SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token'
+const SPOTIFY_SEARCH_URL = 'https://api.spotify.com/v1/search'
 
 async function runAppleScript(script: string) {
-  logger.system('⌨️ Executing System Command...');
-  const { stdout, stderr } = await execFileAsync('osascript', ['-e', script]);
+  logger.system('⌨️ Executing System Command...')
+  const { stdout, stderr } = await execFileAsync('osascript', ['-e', script])
 
   if (stderr) {
-    throw new Error(stderr.trim());
+    throw new Error(stderr.trim())
   }
 
-  return stdout.trim();
+  return stdout.trim()
 }
 
 async function getSpotifyAccessToken() {
-  const clientId = config.integrations.spotify.clientId;
-  const clientSecret = config.integrations.spotify.clientSecret;
+  const clientId = config.integrations.spotify.clientId
+  const clientSecret = config.integrations.spotify.clientSecret
 
   if (!clientId || !clientSecret) {
-    throw new Error('Spotify API is not configured. Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in .env.');
+    throw new Error('Spotify API is not configured. Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in .env.')
   }
 
-  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-  const response = await fetch(SPOTIFY_TOKEN_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
+  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
+  const data: any = await fetchJsonWithTimeout(
+    SPOTIFY_TOKEN_URL,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({ grant_type: 'client_credentials' }),
     },
-    body: new URLSearchParams({ grant_type: 'client_credentials' }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Spotify token request failed with status ${response.status}`);
-  }
-
-  const data: any = await response.json();
+    {
+      timeoutMs: TOOL_HTTP_TIMEOUT_MS,
+      timeoutMessage: `Spotify token request timed out after ${TOOL_HTTP_TIMEOUT_MS}ms`,
+    },
+  )
   if (!data.access_token) {
-    throw new Error('Spotify token response did not include an access token.');
+    throw new Error('Spotify token response did not include an access token.')
   }
 
-  return data.access_token as string;
+  return data.access_token as string
 }
 
 function normalizeSpotifyQuery(query: string) {
-  const trimmed = query.trim();
-  const anySongMatch = trimmed.match(/any song from\s+(.+)/i);
+  const trimmed = query.trim()
+  const anySongMatch = trimmed.match(/any song from\s+(.+)/i)
   if (anySongMatch) {
     return {
       searchQuery: `artist:${anySongMatch[1].trim()}`,
       mode: 'artist',
-    };
+    }
   }
 
-  const fromArtistMatch = trimmed.match(/(.+)\s+from\s+(.+)/i);
+  const fromArtistMatch = trimmed.match(/(.+)\s+from\s+(.+)/i)
   if (fromArtistMatch) {
     return {
       searchQuery: `track:${fromArtistMatch[1].trim()} artist:${fromArtistMatch[2].trim()}`,
       mode: 'track',
-    };
+    }
   }
 
   return {
     searchQuery: trimmed,
     mode: 'track',
-  };
+  }
 }
 
 async function searchSpotifyTrackUri(query: string) {
-  const accessToken = await getSpotifyAccessToken();
-  const normalized = normalizeSpotifyQuery(query);
-  const url = new URL(SPOTIFY_SEARCH_URL);
-  url.searchParams.set('q', normalized.searchQuery);
-  url.searchParams.set('type', 'track');
-  url.searchParams.set('limit', '1');
+  const accessToken = await getSpotifyAccessToken()
+  const normalized = normalizeSpotifyQuery(query)
+  const url = new URL(SPOTIFY_SEARCH_URL)
+  url.searchParams.set('q', normalized.searchQuery)
+  url.searchParams.set('type', 'track')
+  url.searchParams.set('limit', '1')
 
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
+  const data: any = await fetchJsonWithTimeout(
+    url.toString(),
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Spotify search failed with status ${response.status}`);
-  }
-
-  const data: any = await response.json();
-  const track = data.tracks?.items?.[0];
+    {
+      timeoutMs: TOOL_HTTP_TIMEOUT_MS,
+      timeoutMessage: `Spotify search timed out after ${TOOL_HTTP_TIMEOUT_MS}ms`,
+    },
+  )
+  const track = data.tracks?.items?.[0]
   if (!track?.uri) {
-    throw new Error(`No Spotify track found for query: ${query}`);
+    throw new Error(`No Spotify track found for query: ${query}`)
   }
 
   return {
     uri: track.uri as string,
     name: track.name as string,
-    artist: Array.isArray(track.artists) ? track.artists.map((artist: any) => artist.name).join(', ') : 'Unknown artist',
-  };
+    artist: Array.isArray(track.artists)
+      ? track.artists.map((artist: any) => artist.name).join(', ')
+      : 'Unknown artist',
+  }
 }
 
 function buildPlaySpotifyTrackScript(trackUri: string) {
@@ -121,7 +126,7 @@ set trackName to name of current track
 set artistName to artist of current track
 set trackId to id of current track
 return playerState & " | " & trackName & " | " & artistName & " | " & trackId
-end tell`;
+end tell`
 }
 
 function buildPlaySpotifySearchScript(query: string) {
@@ -129,25 +134,25 @@ function buildPlaySpotifySearchScript(query: string) {
 activate
 open location ${JSON.stringify(`spotify:search:${query}`)}
 delay 1
-end tell`;
+end tell`
 }
 
 function parseSpotifyPlaybackResult(result: string) {
-  const parts = result.split(' | ');
+  const parts = result.split(' | ')
   return {
     state: parts[0] || 'stopped',
     track: parts[1] || '',
     artist: parts[2] || '',
     uri: parts[3] || '',
-  };
+  }
 }
 
 function buildSetSystemVolumeScript(level: number) {
-  return `set volume output volume ${level}`;
+  return `set volume output volume ${level}`
 }
 
 function buildOpenAppScript(appName: string) {
-  return `tell application ${JSON.stringify(appName)} to activate`;
+  return `tell application ${JSON.stringify(appName)} to activate`
 }
 
 function buildToggleDarkModeScript() {
@@ -155,32 +160,37 @@ function buildToggleDarkModeScript() {
 tell appearance preferences
 set dark mode to not dark mode
 end tell
-end tell`;
+end tell`
 }
 
 function buildHideAllAppsScript() {
-  return `tell application "System Events" to key code 103 using {command down}`;
+  return `tell application "System Events" to key code 103 using {command down}`
 }
 
 function buildEmptyTrashScript() {
   return `tell application "Finder"
 empty the trash
-end tell`;
+end tell`
 }
 
 async function takeScreenshotFile() {
-  const outputPath = path.join(os.tmpdir(), `openmac-screenshot-${Date.now()}.png`);
-  const { stderr } = await execFileAsync('screencapture', ['-x', outputPath]);
+  const outputPath = path.join(os.tmpdir(), `apex-screenshot-${Date.now()}.png`)
+  const { stderr } = await execFileAsync('screencapture', ['-x', outputPath])
   if (stderr) {
-    throw new Error(stderr.trim());
+    throw new Error(stderr.trim())
   }
 
-  return outputPath;
+  return outputPath
 }
 
 const ExecuteAppleScriptParams = z.object({
-  script: z.string().min(1).describe('Raw AppleScript code to run via osascript. This directly controls macOS applications and system behaviors.'),
-});
+  script: z
+    .string()
+    .min(1)
+    .describe(
+      'Raw AppleScript code to run via osascript. This directly controls macOS applications and system behaviors.',
+    ),
+})
 
 export const executeAppleScript: Tool<typeof ExecuteAppleScriptParams> = {
   name: 'execute_applescript',
@@ -188,17 +198,22 @@ export const executeAppleScript: Tool<typeof ExecuteAppleScriptParams> = {
   parameters: ExecuteAppleScriptParams,
   execute: async ({ script }) => {
     try {
-      const result = await runAppleScript(script);
-      return { success: true, result };
+      const result = await runAppleScript(script)
+      return { success: true, result }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
 const PlaySpotifyTrackParams = z.object({
-  uri: z.string().min(1).describe('The exact Spotify track URI, such as spotify:track:123abc. Use this only when you already know the URI.'),
-});
+  uri: z
+    .string()
+    .min(1)
+    .describe(
+      'The exact Spotify track URI, such as spotify:track:123abc. Use this only when you already know the URI.',
+    ),
+})
 
 export const playSpotifyTrack: Tool<typeof PlaySpotifyTrackParams> = {
   name: 'play_spotify_track',
@@ -206,69 +221,75 @@ export const playSpotifyTrack: Tool<typeof PlaySpotifyTrackParams> = {
   parameters: PlaySpotifyTrackParams,
   execute: async ({ uri }) => {
     try {
-      const script = buildPlaySpotifyTrackScript(uri);
-      const result = await runAppleScript(script);
-      const playback = parseSpotifyPlaybackResult(result);
-      const matched = playback.uri === uri;
+      const script = buildPlaySpotifyTrackScript(uri)
+      const result = await runAppleScript(script)
+      const playback = parseSpotifyPlaybackResult(result)
+      const matched = playback.uri === uri
       if (playback.state !== 'playing' || !matched) {
         return {
           success: false,
           error: `Spotify did not confirm playback for ${uri}. Current state: ${playback.state || 'unknown'}, current track: ${playback.track || 'unknown'}.`,
-        };
+        }
       }
 
       return {
         success: true,
         result: `Playing ${playback.track} by ${playback.artist}.`,
-      };
+      }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
 const PlaySpotifySearchParams = z.object({
-  query: z.string().min(1).describe('A plain-language Spotify search query, such as an artist name, album name, or track request like "labrinth" or "any song from Labrinth".'),
-});
+  query: z
+    .string()
+    .min(1)
+    .describe(
+      'A plain-language Spotify search query, such as an artist name, album name, or track request like "labrinth" or "any song from Labrinth".',
+    ),
+})
 
 export const playSpotifySearch: Tool<typeof PlaySpotifySearchParams> = {
   name: 'play_spotify_search',
-  description: 'Resolve a plain-language Spotify request into an exact track URI using the Spotify Web API, then play it in Spotify.',
+  description:
+    'Resolve a plain-language Spotify request into an exact track URI using the Spotify Web API, then play it in Spotify.',
   parameters: PlaySpotifySearchParams,
   execute: async ({ query }) => {
     try {
-      const match = await searchSpotifyTrackUri(query);
-      const script = buildPlaySpotifyTrackScript(match.uri);
-      const result = await runAppleScript(script);
-      const playback = parseSpotifyPlaybackResult(result);
-      const matched = playback.uri === match.uri;
+      const match = await searchSpotifyTrackUri(query)
+      const script = buildPlaySpotifyTrackScript(match.uri)
+      const result = await runAppleScript(script)
+      const playback = parseSpotifyPlaybackResult(result)
+      const matched = playback.uri === match.uri
       if (playback.state !== 'playing' || !matched) {
-        throw new Error(`Spotify search resolved ${match.name}, but playback was not confirmed.`);
+        throw new Error(`Spotify search resolved ${match.name}, but playback was not confirmed.`)
       }
 
       return {
         success: true,
         played: true,
         result: `Playing ${playback.track} by ${playback.artist}.`,
-      };
+      }
     } catch (error: any) {
       try {
-        const fallbackScript = buildPlaySpotifySearchScript(query);
-        await runAppleScript(fallbackScript);
+        const fallbackScript = buildPlaySpotifySearchScript(query)
+        await runAppleScript(fallbackScript)
         return {
           success: false,
           error: `Opened Spotify search for "${query}", but playback was not confirmed automatically. Do not claim that music is playing.`,
-        };
+        }
       } catch {
-        return { success: false, error: error.message };
+        return { success: false, error: error.message }
       }
     }
   },
-};
+}
 
 const SetSystemVolumeParams = z.object({
   level: z.number().int().min(0).max(100).describe('System output volume level from 0 to 100.'),
-});
+})
 
 export const setSystemVolume: Tool<typeof SetSystemVolumeParams> = {
   name: 'set_system_volume',
@@ -276,16 +297,16 @@ export const setSystemVolume: Tool<typeof SetSystemVolumeParams> = {
   parameters: SetSystemVolumeParams,
   execute: async ({ level }) => {
     try {
-      const script = buildSetSystemVolumeScript(level);
-      const result = await runAppleScript(script);
-      return { success: true, result: result || `Volume set to ${level}` };
+      const script = buildSetSystemVolumeScript(level)
+      const result = await runAppleScript(script)
+      return { success: true, result: result || `Volume set to ${level}` }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
-const ToggleDarkModeParams = z.object({});
+const ToggleDarkModeParams = z.object({})
 
 export const toggleDarkMode: Tool<typeof ToggleDarkModeParams> = {
   name: 'toggle_dark_mode',
@@ -293,15 +314,15 @@ export const toggleDarkMode: Tool<typeof ToggleDarkModeParams> = {
   parameters: ToggleDarkModeParams,
   execute: async () => {
     try {
-      const result = await runAppleScript(buildToggleDarkModeScript());
-      return { success: true, result: result || 'Toggled dark mode.' };
+      const result = await runAppleScript(buildToggleDarkModeScript())
+      return { success: true, result: result || 'Toggled dark mode.' }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
-const HideAllAppsParams = z.object({});
+const HideAllAppsParams = z.object({})
 
 export const hideAllApps: Tool<typeof HideAllAppsParams> = {
   name: 'hide_all_apps',
@@ -309,17 +330,20 @@ export const hideAllApps: Tool<typeof HideAllAppsParams> = {
   parameters: HideAllAppsParams,
   execute: async () => {
     try {
-      const result = await runAppleScript(buildHideAllAppsScript());
-      return { success: true, result: result || 'Hid all apps.' };
+      const result = await runAppleScript(buildHideAllAppsScript())
+      return { success: true, result: result || 'Hid all apps.' }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
 const OpenAppParams = z.object({
-  appName: z.string().min(1).describe('The macOS application name to launch, such as Safari, Notes, or Music.'),
-});
+  appName: z
+    .string()
+    .min(1)
+    .describe('The macOS application name to launch, such as Safari, Notes, or Music.'),
+})
 
 export const openApp: Tool<typeof OpenAppParams> = {
   name: 'open_app',
@@ -327,16 +351,16 @@ export const openApp: Tool<typeof OpenAppParams> = {
   parameters: OpenAppParams,
   execute: async ({ appName }) => {
     try {
-      const script = buildOpenAppScript(appName);
-      const result = await runAppleScript(script);
-      return { success: true, result: result || `Opened ${appName}` };
+      const script = buildOpenAppScript(appName)
+      const result = await runAppleScript(script)
+      return { success: true, result: result || `Opened ${appName}` }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
-const EmptyTrashParams = z.object({});
+const EmptyTrashParams = z.object({})
 
 export const emptyTrash: Tool<typeof EmptyTrashParams> = {
   name: 'empty_trash',
@@ -344,16 +368,16 @@ export const emptyTrash: Tool<typeof EmptyTrashParams> = {
   parameters: EmptyTrashParams,
   execute: async () => {
     try {
-      const script = buildEmptyTrashScript();
-      const result = await runAppleScript(script);
-      return { success: true, result: result || 'Trash emptied.' };
+      const script = buildEmptyTrashScript()
+      const result = await runAppleScript(script)
+      return { success: true, result: result || 'Trash emptied.' }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
-const TakeScreenshotParams = z.object({});
+const TakeScreenshotParams = z.object({})
 
 export const takeScreenshot: Tool<typeof TakeScreenshotParams> = {
   name: 'take_screenshot',
@@ -361,23 +385,23 @@ export const takeScreenshot: Tool<typeof TakeScreenshotParams> = {
   parameters: TakeScreenshotParams,
   execute: async () => {
     try {
-      const screenshotPath = await takeScreenshotFile();
-      return { success: true, result: `Screenshot saved to ${screenshotPath}`, path: screenshotPath };
+      const screenshotPath = await takeScreenshotFile()
+      return { success: true, result: `Screenshot saved to ${screenshotPath}`, path: screenshotPath }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
-toolRegistry.register(executeAppleScript);
-toolRegistry.register(playSpotifyTrack);
-toolRegistry.register(playSpotifySearch);
-toolRegistry.register(setSystemVolume);
-toolRegistry.register(toggleDarkMode);
-toolRegistry.register(hideAllApps);
-toolRegistry.register(openApp);
-toolRegistry.register(emptyTrash);
-toolRegistry.register(takeScreenshot);
+toolRegistry.register(executeAppleScript)
+toolRegistry.register(playSpotifyTrack)
+toolRegistry.register(playSpotifySearch)
+toolRegistry.register(setSystemVolume)
+toolRegistry.register(toggleDarkMode)
+toolRegistry.register(hideAllApps)
+toolRegistry.register(openApp)
+toolRegistry.register(emptyTrash)
+toolRegistry.register(takeScreenshot)
 
 export const appleScriptTemplates = {
   buildPlaySpotifyTrackScript,
@@ -387,4 +411,4 @@ export const appleScriptTemplates = {
   buildToggleDarkModeScript,
   buildHideAllAppsScript,
   buildEmptyTrashScript,
-};
+}

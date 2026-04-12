@@ -4,6 +4,8 @@ Configuration overlay loader for tech-news-digest.
 
 Handles loading and merging of default configurations with optional user overlays.
 Supports sources.json and topics.json with overlay logic for customization.
+
+Bundled JSON must be strict JSON (json.load). See docs/SKILL_JSON_CONTRACT.txt.
 """
 
 import json

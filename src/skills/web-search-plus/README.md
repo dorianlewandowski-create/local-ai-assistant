@@ -31,7 +31,7 @@ python3 scripts/search.py -q "search privately without tracking" # → SearXNG (
 
 ## 🔍 When to Use Which Provider
 
-### Built-in Brave Search (OpenClaw default)
+### Built-in Brave Search (Apex default)
 - ✅ General web searches
 - ✅ Privacy-focused
 - ✅ Quick lookups

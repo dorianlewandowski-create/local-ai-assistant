@@ -11,7 +11,7 @@
 
 ## 💬 Install in One Message
 
-Tell your [OpenClaw](https://openclaw.ai) AI assistant:
+Tell your Apex AI assistant:
 
 > **"Install tech-news-digest and send a daily digest to #tech-news every morning at 9am"**
 
@@ -142,7 +142,7 @@ pip install weasyprint
 
 ## 🌟 Featured In
 
-- [Awesome OpenClaw Use Cases](https://github.com/hesamsheikh/awesome-openclaw-usecases) — Community-curated collection of OpenClaw agent use cases
+- [Awesome agentic use cases](https://github.com/hesamsheikh/awesome-openclaw-usecases) — Community-curated collection of agent use cases
 
 ## 📄 License
 

@@ -1,23 +1,17 @@
 {
-  "ts-node": {
-    "files": true
-  },
-  "compilerOptions": {
-    "target": "ESNext",
-    "module": "CommonJS",
-    "rootDir": "src",
-    "outDir": "dist",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "moduleResolution": "node",
-    "baseUrl": ".",
-    "paths": {
-      "*": ["node_modules/*", "src/*"]
-    }
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules"]
+  "extends": "./tsconfig.base.json",
+  "files": [],
+  "references": [
+    { "path": "./core/types" },
+    { "path": "./core/memory" },
+    { "path": "./core/brain" },
+    { "path": "./gateways/shared" },
+    { "path": "./gateways/screenshot" },
+    { "path": "./gateways/telegram" },
+    { "path": "./gateways/slack" },
+    { "path": "./gateways/discord" },
+    { "path": "./gateways/whatsapp" },
+    { "path": "./nodes/macos" },
+    { "path": "./tsconfig.app.json" }
+  ]
 }

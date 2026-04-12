@@ -391,7 +391,7 @@ export GH_APP_KEY_FILE="/path/to/key.pem"
 
 ## Cron / Scheduled Task Integration
 
-### OpenClaw Cron (Recommended)
+### Apex Cron (Recommended)
 
 The cron prompt should **NOT** hardcode the pipeline steps. Instead, reference `references/digest-prompt.md` and only pass configuration parameters. This ensures the pipeline logic stays in the skill repo and is consistent across all installations.
 
@@ -445,12 +445,12 @@ Follow every step in the prompt template strictly. Do not skip any steps.
 
 #### Why This Pattern?
 - **Single source of truth**: Pipeline logic lives in `digest-prompt.md`, not scattered across cron configs
-- **Portable**: Same skill on different OpenClaw instances, just change paths and channel IDs
+- **Portable**: Same skill on different Apex instances, just change paths and channel IDs
 - **Maintainable**: Update the skill → all cron jobs pick up changes automatically
 - **Anti-pattern**: Do NOT copy pipeline steps into the cron prompt — it will drift out of sync
 
 #### Multi-Channel Delivery Limitation
-OpenClaw enforces **cross-provider isolation**: a single session can only send messages to one provider (e.g., Discord OR Telegram, not both). If you need to deliver digests to multiple platforms, create **separate cron jobs** for each provider:
+Apex enforces **cross-provider isolation**: a single session can only send messages to one provider (e.g., Discord OR Telegram, not both). If you need to deliver digests to multiple platforms, create **separate cron jobs** for each provider:
 
 ```
 # Job 1: Discord + Email
@@ -470,7 +470,7 @@ This is a security feature, not a bug — it prevents accidental cross-context d
 ## Security Notes
 
 ### Execution Model
-This skill uses a **prompt template pattern**: the agent reads `digest-prompt.md` and follows its instructions. This is the standard OpenClaw skill execution model — the agent interprets structured instructions from skill-provided files. All instructions are shipped with the skill bundle and can be audited before installation.
+This skill uses a **prompt template pattern**: the agent reads `digest-prompt.md` and follows its instructions. This is the standard Apex skill execution model — the agent interprets structured instructions from skill-provided files. All instructions are shipped with the skill bundle and can be audited before installation.
 
 ### Network Access
 The Python scripts make outbound requests to:

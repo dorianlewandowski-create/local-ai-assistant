@@ -1,4 +1,11 @@
-import { PermissionClass, TaskSource, Tool, ToolCategory, ToolManifest, ToolRiskLevel } from '../types';
+import type {
+  PermissionClass,
+  TaskSource,
+  Tool,
+  ToolCategory,
+  ToolManifest,
+  ToolRiskLevel,
+} from '@apex/types'
 
 const MANIFESTS: Record<string, ToolManifest> = {
   fs_ls: { category: 'filesystem', riskLevel: 'low', permissionClass: 'read' },
@@ -40,9 +47,19 @@ const MANIFESTS: Record<string, ToolManifest> = {
   fs_cp: { category: 'filesystem', riskLevel: 'medium', permissionClass: 'write' },
   fs_mv: { category: 'filesystem', riskLevel: 'medium', permissionClass: 'write' },
   fs_organize: { category: 'filesystem', riskLevel: 'medium', permissionClass: 'write' },
+  file_organize_preview: {
+    category: 'filesystem',
+    riskLevel: 'low',
+    permissionClass: 'read',
+  },
   fs_rm: { category: 'filesystem', riskLevel: 'high', permissionClass: 'destructive' },
   send_system_notification: { category: 'system', riskLevel: 'medium', permissionClass: 'automation' },
-  execute_applescript: { category: 'automation', riskLevel: 'medium', permissionClass: 'automation', allowedSources: ['terminal', 'telegram', 'scheduler', 'file_watcher'] },
+  execute_applescript: {
+    category: 'automation',
+    riskLevel: 'medium',
+    permissionClass: 'automation',
+    allowedSources: ['terminal', 'telegram', 'discord', 'scheduler', 'file_watcher'],
+  },
   play_spotify_track: { category: 'automation', riskLevel: 'medium', permissionClass: 'automation' },
   play_spotify_search: { category: 'automation', riskLevel: 'medium', permissionClass: 'automation' },
   set_system_volume: { category: 'system', riskLevel: 'medium', permissionClass: 'automation' },
@@ -51,16 +68,25 @@ const MANIFESTS: Record<string, ToolManifest> = {
   open_app: { category: 'automation', riskLevel: 'medium', permissionClass: 'automation' },
   take_screenshot: { category: 'system', riskLevel: 'medium', permissionClass: 'automation' },
   empty_trash: { category: 'system', riskLevel: 'high', permissionClass: 'destructive' },
-};
-
-export function defaultToolManifest(category: ToolCategory, riskLevel: ToolRiskLevel, permissionClass: PermissionClass): ToolManifest {
-  return { category, riskLevel, permissionClass };
 }
 
-export function getToolManifest(tool: Pick<Tool, 'name' | 'manifest'>, category: ToolCategory, riskLevel: ToolRiskLevel, permissionClass: PermissionClass): ToolManifest {
-  return tool.manifest ?? MANIFESTS[tool.name] ?? defaultToolManifest(category, riskLevel, permissionClass);
+export function defaultToolManifest(
+  category: ToolCategory,
+  riskLevel: ToolRiskLevel,
+  permissionClass: PermissionClass,
+): ToolManifest {
+  return { category, riskLevel, permissionClass }
+}
+
+export function getToolManifest(
+  tool: Pick<Tool, 'name' | 'manifest'>,
+  category: ToolCategory,
+  riskLevel: ToolRiskLevel,
+  permissionClass: PermissionClass,
+): ToolManifest {
+  return tool.manifest ?? MANIFESTS[tool.name] ?? defaultToolManifest(category, riskLevel, permissionClass)
 }
 
 export function isSourceAllowed(manifest: ToolManifest, source: TaskSource): boolean {
-  return !manifest.allowedSources || manifest.allowedSources.includes(source);
+  return !manifest.allowedSources || manifest.allowedSources.includes(source)
 }

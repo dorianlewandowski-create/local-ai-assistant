@@ -1,0 +1,172 @@
+================================================================================
+IMPLEMENTATION PLAN — AGENTS, SKILLS, TOOLS & OPERABILITY
+================================================================================
+Purpose
+  Turn the recommendations from the capability inventory (see
+  AGENTS_SKILLS_TOOLS.txt) into a phased, ordered plan. Execute one phase at a
+  time; do not merge phases unless dependencies are satisfied.
+
+Principles
+  • Small, reviewable changes; no big-bang refactors unless a phase says so.
+  • Prefer automation that keeps docs honest over one-off manual edits.
+  • Security and policy docs should match how tools are actually named in the
+    registry (native vs pluginId.tool vs mcp_*__*).
+
+Out of scope for this plan (unless you open a new plan)
+  • Renaming existing tools or breaking plugin IDs.
+  • Replacing AgentFactory.choose() with an ML classifier (optional future).
+
+================================================================================
+PHASE 0 — Preconditions (5–15 min, do once)
+================================================================================
+Goal: Anyone opening the repo finds the inventory and this plan.
+
+Tasks
+  [x] Add a short "Documentation" or "Developer docs" subsection to README.md
+      with two bullets:
+        - docs/AGENTS_SKILLS_TOOLS.txt — inventory of agents, skills, tools
+        - docs/IMPLEMENTATION_PLAN_AGENTS_TOOLS.txt — phased implementation plan
+  [x] Optionally add one line at the top of AGENTS_SKILLS_TOOLS.txt:
+        "Companion plan: IMPLEMENTATION_PLAN_AGENTS_TOOLS.txt"
+
+Exit criteria
+  • README links to both files; links resolve on main branch.
+
+Dependencies
+  • None.
+
+================================================================================
+PHASE 1 — Regenerate hook for the inventory (high ROI, low risk)
+================================================================================
+Goal: The tool/skill list does not silently drift from code.
+
+Tasks
+  [x] Add scripts/list-tools.mjs (or .sh) that:
+        - Prints sorted unique tool names from src/tools/**/*.ts (name: '...')
+        - Prints skill tool names from src/skills/**/tool.ts
+        - Optionally prints plugin tool names from ScreenControl/manifest.json
+      Exit 0; suitable for CI or pre-commit.
+  [x] Add npm script, e.g. "docs:list-tools": "node scripts/list-tools.mjs"
+  [x] In docs/AGENTS_SKILLS_TOOLS.txt, add section "How to refresh" with the
+      exact command (npm run docs:list-tools) and note that full prose sections
+      may still be hand-edited.
+  [x] (Optional) Add a CI step that runs docs:list-tools and fails if output
+      differs from a committed golden file — only if you want strict drift
+      detection; otherwise skip to avoid noise.
+      (Done: docs/tools-list.golden.txt + test/docsListToolsGolden.test.ts +
+      npm run docs:check-tools.)
+
+Exit criteria
+  • One command regenerates a machine-readable list; README or AGENTS doc points
+    to it. (Done: README + AGENTS_SKILLS_TOOLS.txt + npm run docs:list-tools.)
+
+Dependencies
+  • Phase 0 (so people discover the script).
+
+Suggested order inside phase
+  1) Script + npm run
+  2) Update AGENTS_SKILLS_TOOLS.txt "How to refresh"
+  3) Optional CI golden file
+
+================================================================================
+PHASE 2 — Policy / operator clarity (documentation only)
+================================================================================
+Goal: Operators configuring allowlists understand prefixed names.
+
+Tasks
+  [x] Find where tool policy / allowlists are documented (README, SECURITY,
+      policy comments, or apex.json.example). Add a short subsection:
+        - Native tools: bare name (e.g. fs_mv)
+        - SDK plugins: pluginId.toolName (e.g. ScreenControl.get_ui_tree)
+        - MCP: mcp_<serverId>__<toolName> (see mcpBridge.ts)
+  [x] If apex.json (or equivalent) documents a tool subset, add one concrete
+      example of a minimal vs full tool list using real names.
+
+Exit criteria
+  • New contributor can match registry names to config without reading source.
+    (Done: docs/TOOL_REGISTRY_NAMING.txt, README, .env.example, apex.json.example.)
+
+Dependencies
+  • None; can run parallel to Phase 1 after Phase 0.
+
+================================================================================
+PHASE 3 — Snapshot test for registration drift (optional but valuable)
+================================================================================
+Goal: Accidental missing imports or duplicate registration surface in tests.
+
+Tasks
+  [x] Add test/toolInventory.test.ts (or extend an existing test) that:
+        - After registerCoreTools() (or minimal bootstrap used in tests), asserts
+          toolRegistry contains a small set of critical names OR asserts count is
+          >= N with a comment to update N when intentionally adding tools.
+      Choose one strategy:
+        A) Golden: list of ~10 critical tools must exist; OR
+        B) Count floor: e.g. >= 70 native tools — update when bulk-adding.
+  [x] Document in the test file how to update expectations when adding tools.
+
+Exit criteria
+  • CI fails if core tools disappear from the registry; no false positives on
+    normal doc edits.
+    (Done: test/toolInventory.test.ts — golden names + MIN_TOTAL_TOOLS floor.)
+
+Dependencies
+  • Prefer after Phase 1 so "list-tools" and tests don't contradict each other.
+
+================================================================================
+PHASE 4 — "How to add" developer guide (small doc)
+================================================================================
+Goal: One page for extending Apex without spelunking.
+
+Tasks
+  [x] Add docs/EXTENDING_APEX.md (or .txt) with sections:
+        - Add a core tool: file, zod schema, toolRegistry.register, tests
+        - Add a bundled skill: src/skills/<id>/, import in builtinTools.ts
+        - Add an SDK plugin: src/plugins/<PluginId>/, manifest, loader
+        - MCP: point to mcpBridge and config
+        - CLI-only commands: src/cli.ts early exit pattern (files preview/apply)
+  [x] Link EXTENDING_APEX.md from README Developer docs and from
+      AGENTS_SKILLS_TOOLS.txt.
+
+Exit criteria
+  • New capability type has a single entry point in docs.
+    (Done: docs/EXTENDING_APEX.txt + README + AGENTS_SKILLS_TOOLS.txt.)
+
+Dependencies
+  • Phase 0; benefits from Phase 2 (naming) for accuracy.
+
+================================================================================
+PHASE 5 — Consolidation / product bets (implemented)
+================================================================================
+  [x] data_analysis_consult: loads real skill markdown (SKILL.md, techniques.md,
+      chart-selection.md) instead of path-only hints; SOUL.md updated with
+      guidance + /agent note.
+  [x] Sub-agent routing: session setting subAgentKind + TaskQueue metadata merge;
+      AgentFactory.choose honors metadata.subAgentKind; terminal /agent admin
+      command (researcher|coder|system|auto|status). Remote gateways cannot
+      change override (same pattern as /model).
+  [x] Stricter CI: docs/tools-list.golden.txt + test/docsListToolsGolden.test.ts
+      (Phase 1 optional; counted here as Phase 5 “stricter list” deliverable).
+
+Further backlog (only if needed later)
+  • Replace regex routing with a classifier or richer UX.
+  • Split data_analysis_consult into smaller tools if context size becomes an issue.
+
+================================================================================
+Suggested execution order (summary)
+================================================================================
+  0 → 1 → 2  (fast wins: links, regen script, operator naming)
+  3 → 4      (tests + extending guide; order flexible)
+  5          (delivered — see Phase 5 section above)
+
+================================================================================
+PLAN STATUS
+================================================================================
+Delivered: Phases 0–5 (task checkboxes above).
+  • Inventory + README links, npm run docs:list-tools + golden, TOOL_REGISTRY_NAMING,
+    test/toolInventory.test.ts, docs/EXTENDING_APEX.txt, Phase 5 routing + consult tool.
+
+Ongoing reference: docs/EXTENDING_APEX.txt (how to add tools/skills/plugins/CLI).
+
+================================================================================
+END
+================================================================================

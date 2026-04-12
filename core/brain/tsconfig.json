@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@apex/types": ["../types/src/index.ts"],
+      "@apex/memory": ["../memory/src/index.ts"]
+    },
+    "rootDir": "./src",
+    "outDir": "./dist"
+  },
+  "include": ["src/**/*"],
+  "references": [{ "path": "../types" }, { "path": "../memory" }]
+}

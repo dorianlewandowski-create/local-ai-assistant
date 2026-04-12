@@ -1,3 +1,8 @@
+# Full install uses postinstall → scripts/build-native.sh (Swift). That fails on Linux
+# runners, so build/test/release verification run on macOS. Ubuntu job below is a
+# fast static pass only (no lifecycle scripts).
+#
+# Root install is pnpm (workspace:* monorepo). Use pnpm-lock.yaml + frozen install in CI.
 name: CI
 
 on:
@@ -5,29 +10,57 @@ on:
   pull_request:
 
 jobs:
-  test:
+  static:
+    name: Format / lint / typecheck (ubuntu)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
+      - name: Install dependencies (no lifecycle scripts)
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Quick static checks (same as pnpm run ci:quick)
+        run: pnpm run ci:quick
 
+  verify:
+    name: Build, test, release pack+verify (macOS)
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
       - name: Install dependencies
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
-
+        run: pnpm install --frozen-lockfile
+      - name: Build (tsc + dist/cli.bundle.js)
+        run: pnpm run build
+      - name: Assert CLI bundle exists
+        run: test -f dist/cli.bundle.js && node -e "require('fs').statSync('dist/cli.bundle.js')"
       - name: Test
-        run: npm run test
-
-      - name: Build
-        run: npm run build
+        run: pnpm test
+      - name: Routing evals
+        run: pnpm run test:eval
+      # Exercises full hardened path: flattened manifest, vendored nodes/macos, staging package-lock,
+      # npm install --omit=dev → npm ci --omit=dev, tarball. release:verify re-checks tree + require(@apex/macos-node).
+      - name: Release pack (staging npm install + npm ci + tar)
+        run: pnpm run release:pack
+        env:
+          CI: true
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
+          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true'
+      - name: Release verify (staging integrity + CLI smoke)
+        run: pnpm run release:verify
+        env:
+          CI: true
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
+          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true'

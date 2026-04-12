@@ -1,0 +1,7 @@
+/Library/**
+.pnpm-store/**
+node_modules/**
+releases/**
+nodes/macos/claw-native-bridge/.build/**
+apps/canvas/dist/**
+

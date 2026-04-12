@@ -1,0 +1,38 @@
+================================================================================
+PAIRING — THREAT MODEL & LIMITS (Slack / WhatsApp / Discord / Telegram)
+================================================================================
+What pairing does
+  Remote gateways need a way to bind an external identity (Slack user id, phone,
+  Telegram user id, …) to this Apex installation. Pairing codes are short-lived
+  secrets shown out-of-band; approval happens on the Mac (`apex pairing approve …`)
+  or (Telegram) from the configured owner account.
+
+Threat model (practical, local-first)
+  • Attackers who can read the machine’s disk may read pending pairings JSON and
+    approved lists — treat the host as trusted for pairing state.
+  • Attackers on the same LAN generally cannot mint pairing codes without also
+    reaching the chat surface; rate limits reduce brute force of **new** code
+    issuance per identity.
+  • Codes are generated with crypto.randomBytes (not Math.random) and compared
+    with timing-safe equality where applicable.
+
+Operational limits (defaults)
+  • Channel store (Slack/WhatsApp/Discord): rolling window limits on **new** code
+    mints per channel+subject (see core/brain/src/security/pairingRateLimit.ts).
+    Telegram uses the same limiter keyed per Telegram user id.
+  • Pending entries expire (channel store default TTL 1h; Telegram uses
+    config.security.pairingCodeTtlMs).
+  • channel-pairings.json is written with mode 0600 where the OS allows.
+
+Not a substitute for
+  • Channel allowlists in apex.json / env (still recommended for production).
+  • Bot token secrecy and Telegram/WhatsApp account security.
+
+Remaining limitations
+  • Rate limits are in-process (reset on daemon restart).
+  • Pairing JSON paths may still use process.cwd()-relative defaults unless
+    overridden with APEX_CHANNEL_PAIRING_STORE_PATH (separate from install root).
+
+================================================================================
+END
+================================================================================

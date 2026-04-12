@@ -1,17 +1,22 @@
-import { AuthorizationRequest, TaskEnvelope, TaskSource } from '../types';
+import type { AuthorizationRequest, TaskEnvelope, TaskSource } from '@apex/types'
 
-export type { AuthorizationRequest } from '../types';
+export type { AuthorizationRequest } from '@apex/types'
 
 export interface RuntimeSubmissionClient {
-  submitPrompt(source: TaskSource, sourceId: string, prompt: string, metadata?: Record<string, any>): Promise<string>;
+  submitPrompt(
+    source: TaskSource,
+    sourceId: string,
+    prompt: string,
+    metadata?: Record<string, any>,
+  ): Promise<string>
 }
 
 export interface GatewayResponder {
-  sendResponse(to: string, text: string): Promise<void>;
+  sendResponse(to: string, text: string): Promise<void>
 }
 
 export interface AuthorizationRequester {
-  requestAuthorization(request: AuthorizationRequest): Promise<boolean>;
+  requestAuthorization(request: AuthorizationRequest): Promise<boolean>
 }
 
 export abstract class GatewayProvider implements GatewayResponder {
@@ -20,11 +25,15 @@ export abstract class GatewayProvider implements GatewayResponder {
     protected readonly client: RuntimeSubmissionClient,
   ) {}
 
-  protected async dispatch(prompt: string, sourceId: string, metadata?: Record<string, unknown>): Promise<string> {
-    return await this.client.submitPrompt(this.source, sourceId, prompt, metadata);
+  protected async dispatch(
+    prompt: string,
+    sourceId: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<string> {
+    return await this.client.submitPrompt(this.source, sourceId, prompt, metadata)
   }
 
-  abstract sendResponse(to: string, text: string): Promise<void>;
-  abstract start(): Promise<void>;
-  abstract stop(): Promise<void>;
+  abstract sendResponse(to: string, text: string): Promise<void>
+  abstract start(): Promise<void>
+  abstract stop(): Promise<void>
 }

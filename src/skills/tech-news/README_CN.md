@@ -11,7 +11,7 @@
 
 ## 💬 一句话安装
 
-跟你的 [OpenClaw](https://openclaw.ai) AI 助手说：
+跟你的 Apex AI 助手说：
 
 > **"安装 tech-news-digest，每天早上 9 点发科技日报到 #tech-news 频道"**
 

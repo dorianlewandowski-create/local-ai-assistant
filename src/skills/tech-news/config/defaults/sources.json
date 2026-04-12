@@ -10,11 +10,7 @@
       "url": "https://simonwillison.net/atom/everything/",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "ai-agent", "frontier-tech"],
       "note": "LLM/AI tooling, prolific blogger"
     },
     {
@@ -24,10 +20,7 @@
       "url": "https://garymarcus.substack.com/feed",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "frontier-tech"],
       "note": "AI critic, industry analysis"
     },
     {
@@ -37,10 +30,7 @@
       "url": "https://huggingface.co/blog/feed.xml",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent"
-      ],
+      "topics": ["llm", "ai-agent"],
       "note": "Open source AI/ML"
     },
     {
@@ -50,11 +40,7 @@
       "url": "https://openai.com/blog/rss.xml",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "ai-agent", "frontier-tech"],
       "note": "Official OpenAI updates"
     },
     {
@@ -64,10 +50,7 @@
       "url": "https://magazine.sebastianraschka.com/feed",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "frontier-tech"],
       "note": "LLM research and tutorials"
     },
     {
@@ -77,10 +60,7 @@
       "url": "https://lilianweng.github.io/index.xml",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "frontier-tech"],
       "note": "In-depth ML tutorials"
     },
     {
@@ -90,10 +70,7 @@
       "url": "https://gwern.substack.com/feed",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "frontier-tech"],
       "note": "Deep AI/ML research essays"
     },
     {
@@ -103,10 +80,7 @@
       "url": "https://www.dwarkeshpatel.com/feed",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm",
-        "ai-agent"
-      ],
+      "topics": ["llm", "ai-agent"],
       "note": "AI interviews and analysis"
     },
     {
@@ -116,10 +90,7 @@
       "url": "https://minimaxir.com/index.xml",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "frontier-tech"],
       "note": "LLM benchmarks and experiments"
     },
     {
@@ -129,11 +100,7 @@
       "url": "https://blog.google/technology/ai/rss/",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm",
-        "ai-agent",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "ai-agent", "frontier-tech"],
       "note": "Google AI research"
     },
     {
@@ -143,9 +110,7 @@
       "url": "https://vitalik.eth.limo/feed.xml",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "Ethereum founder"
     },
     {
@@ -155,9 +120,7 @@
       "url": "https://www.coindesk.com/arc/outboundfeeds/rss/",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "Major crypto news"
     },
     {
@@ -167,9 +130,7 @@
       "url": "https://www.theblock.co/rss.xml",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "Crypto news"
     },
     {
@@ -179,9 +140,7 @@
       "url": "https://decrypt.co/feed",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "Crypto and web3 news"
     },
     {
@@ -191,9 +150,7 @@
       "url": "https://cointelegraph.com/rss",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "Crypto news and analysis"
     },
     {
@@ -203,9 +160,7 @@
       "url": "https://hnrss.org/frontpage",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "HN top stories"
     },
     {
@@ -215,9 +170,7 @@
       "url": "https://feeds.arstechnica.com/arstechnica/index",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Tech news"
     },
     {
@@ -227,9 +180,7 @@
       "url": "https://techcrunch.com/feed/",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Startup and tech news"
     },
     {
@@ -239,9 +190,7 @@
       "url": "https://www.theverge.com/rss/index.xml",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Tech news"
     },
     {
@@ -251,9 +200,7 @@
       "url": "https://krebsonsecurity.com/feed/",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Cybersecurity"
     },
     {
@@ -263,9 +210,7 @@
       "url": "https://daringfireball.net/feeds/main",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Apple/tech commentary"
     },
     {
@@ -275,9 +220,7 @@
       "url": "http://www.aaronsw.com/2002/feeds/pgessays.rss",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Startups and tech essays"
     },
     {
@@ -287,9 +230,7 @@
       "url": "https://www.troyhunt.com/rss/",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Security, HIBP"
     },
     {
@@ -299,9 +240,7 @@
       "url": "http://antirez.com/rss",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Redis creator, systems"
     },
     {
@@ -311,9 +250,7 @@
       "url": "https://mitchellh.com/feed.xml",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Ghostty, infrastructure"
     },
     {
@@ -323,10 +260,7 @@
       "url": "https://geohot.github.io/blog/feed.xml",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech",
-        "llm"
-      ],
+      "topics": ["frontier-tech", "llm"],
       "note": "tinygrad, AI infrastructure"
     },
     {
@@ -336,10 +270,7 @@
       "url": "https://www.reddit.com/r/MachineLearning/.rss",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "frontier-tech"],
       "note": "Reddit ML community"
     },
     {
@@ -349,10 +280,7 @@
       "url": "https://36kr.com/feed",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "frontier-tech",
-        "crypto"
-      ],
+      "topics": ["frontier-tech", "crypto"],
       "note": "中文科技媒体"
     },
     {
@@ -362,11 +290,7 @@
       "url": "https://www.jiqizhixin.com/rss",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "ai-agent", "frontier-tech"],
       "note": "中文AI媒体"
     },
     {
@@ -376,10 +300,7 @@
       "url": "https://www.qbitai.com/feed",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm",
-        "ai-agent"
-      ],
+      "topics": ["llm", "ai-agent"],
       "note": "中文AI媒体 (may 403)"
     },
     {
@@ -389,9 +310,7 @@
       "url": "https://www.infoq.cn/feed",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "技术社区"
     },
     {
@@ -401,11 +320,7 @@
       "handle": "sama",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "ai-agent", "frontier-tech"],
       "note": "OpenAI CEO"
     },
     {
@@ -415,11 +330,7 @@
       "handle": "OpenAI",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "ai-agent", "frontier-tech"],
       "note": "OpenAI official"
     },
     {
@@ -429,11 +340,7 @@
       "handle": "AnthropicAI",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "ai-agent", "frontier-tech"],
       "note": "Anthropic official"
     },
     {
@@ -443,10 +350,7 @@
       "handle": "ylecun",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "frontier-tech"],
       "note": "Meta AI"
     },
     {
@@ -456,10 +360,7 @@
       "handle": "MistralAI",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "frontier-tech"],
       "note": "Mistral AI official"
     },
     {
@@ -469,10 +370,7 @@
       "handle": "GoogleDeepMind",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "frontier-tech"],
       "note": "Google DeepMind official"
     },
     {
@@ -482,11 +380,7 @@
       "handle": "GoogleAI",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "ai-agent", "frontier-tech"],
       "note": "Google AI official"
     },
     {
@@ -496,11 +390,7 @@
       "handle": "xai",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "ai-agent", "frontier-tech"],
       "note": "xAI official"
     },
     {
@@ -510,11 +400,7 @@
       "handle": "karpathy",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "ai-agent", "frontier-tech"],
       "note": "AI researcher"
     },
     {
@@ -524,10 +410,7 @@
       "handle": "AndrewYNg",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent"
-      ],
+      "topics": ["llm", "ai-agent"],
       "note": "AI educator"
     },
     {
@@ -537,10 +420,7 @@
       "handle": "DrJimFan",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "ai-agent",
-        "frontier-tech"
-      ],
+      "topics": ["ai-agent", "frontier-tech"],
       "note": "NVIDIA AI"
     },
     {
@@ -550,10 +430,7 @@
       "handle": "huggingface",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent"
-      ],
+      "topics": ["llm", "ai-agent"],
       "note": "Hugging Face official"
     },
     {
@@ -563,9 +440,7 @@
       "handle": "LangChain",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "ai-agent"
-      ],
+      "topics": ["ai-agent"],
       "note": "LangChain official"
     },
     {
@@ -575,9 +450,7 @@
       "handle": "llama_index",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "ai-agent"
-      ],
+      "topics": ["ai-agent"],
       "note": "LlamaIndex official"
     },
     {
@@ -587,10 +460,7 @@
       "handle": "EMostaque",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "frontier-tech"],
       "note": "Stability AI"
     },
     {
@@ -600,10 +470,7 @@
       "handle": "rasbt",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "frontier-tech"],
       "note": "AI researcher"
     },
     {
@@ -613,9 +480,7 @@
       "handle": "VitalikButerin",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "Ethereum founder"
     },
     {
@@ -625,9 +490,7 @@
       "handle": "cz_binance",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "Binance"
     },
     {
@@ -637,9 +500,7 @@
       "handle": "brian_armstrong",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "Coinbase"
     },
     {
@@ -649,9 +510,7 @@
       "handle": "saylor",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "MicroStrategy"
     },
     {
@@ -661,9 +520,7 @@
       "handle": "APompliano",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "Crypto influencer"
     },
     {
@@ -673,9 +530,7 @@
       "handle": "zachxbt",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "on-chain investigator"
     },
     {
@@ -685,9 +540,7 @@
       "handle": "WuBlockchain",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "吴说区块链"
     },
     {
@@ -697,9 +550,7 @@
       "handle": "bitfish",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "F2Pool/Cobo co-founder"
     },
     {
@@ -709,9 +560,7 @@
       "handle": "mindaoyang",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "dForce founder"
     },
     {
@@ -721,9 +570,7 @@
       "handle": "herbertcrypto",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "PANews founder"
     },
     {
@@ -733,9 +580,7 @@
       "handle": "elonmusk",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Entrepreneur"
     },
     {
@@ -745,9 +590,7 @@
       "handle": "sundarpichai",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Google CEO"
     },
     {
@@ -757,10 +600,7 @@
       "handle": "pmarca",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech",
-        "crypto"
-      ],
+      "topics": ["frontier-tech", "crypto"],
       "note": "a16z"
     },
     {
@@ -770,9 +610,7 @@
       "handle": "levie",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Box CEO"
     },
     {
@@ -782,9 +620,7 @@
       "handle": "satyanadella",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Microsoft CEO"
     },
     {
@@ -794,11 +630,7 @@
       "url": "https://www.technologyreview.com/feed",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "ai-agent", "frontier-tech"],
       "note": "AI policy + deep analysis"
     },
     {
@@ -808,10 +640,7 @@
       "url": "https://venturebeat.com/category/ai/feed/",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm",
-        "ai-agent"
-      ],
+      "topics": ["llm", "ai-agent"],
       "note": "AI industry news"
     },
     {
@@ -821,9 +650,7 @@
       "url": "https://www.404media.co/rss",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Independent tech investigative journalism"
     },
     {
@@ -833,10 +660,7 @@
       "url": "https://aisnakeoil.substack.com/feed",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "frontier-tech"],
       "note": "Princeton professor, critical AI perspective"
     },
     {
@@ -846,9 +670,7 @@
       "url": "https://blog.bytebytego.com/feed",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "System design + engineering by Alex Xu"
     },
     {
@@ -858,10 +680,7 @@
       "url": "https://blogs.nvidia.com/feed/",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "frontier-tech"],
       "note": "GPU/AI infrastructure"
     },
     {
@@ -871,10 +690,7 @@
       "url": "https://deepmind.google/blog/rss.xml",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "frontier-tech"],
       "note": "Frontier AI research"
     },
     {
@@ -884,9 +700,7 @@
       "url": "https://www.producthunt.com/feed",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "New product discovery, AI tools"
     },
     {
@@ -896,9 +710,7 @@
       "url": "https://messari.io/rss",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "Crypto research reports"
     },
     {
@@ -908,9 +720,7 @@
       "url": "https://thedefiant.io/feed",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "DeFi professional media"
     },
     {
@@ -920,9 +730,7 @@
       "url": "https://www.ifanr.com/feed",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Chinese tech product reviews"
     },
     {
@@ -932,9 +740,7 @@
       "url": "https://sspai.com/feed",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Chinese productivity + tech depth"
     },
     {
@@ -944,9 +750,7 @@
       "url": "https://www.wired.com/feed/rss",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Tech culture deep reporting"
     },
     {
@@ -956,9 +760,7 @@
       "url": "https://spectrum.ieee.org/feeds/feed.rss",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Engineering + frontier tech authority"
     },
     {
@@ -968,10 +770,7 @@
       "handle": "rowancheung",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent"
-      ],
+      "topics": ["llm", "ai-agent"],
       "note": "AI newsletter founder, 567K followers"
     },
     {
@@ -981,10 +780,7 @@
       "handle": "ESYudkowsky",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "frontier-tech"],
       "note": "AI safety pioneer"
     },
     {
@@ -994,10 +790,7 @@
       "handle": "demishassabis",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "frontier-tech"],
       "note": "DeepMind CEO, Nobel laureate"
     },
     {
@@ -1007,10 +800,7 @@
       "handle": "DarioAmodei",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent"
-      ],
+      "topics": ["llm", "ai-agent"],
       "note": "Anthropic CEO"
     },
     {
@@ -1020,9 +810,7 @@
       "handle": "hwchase17",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "ai-agent"
-      ],
+      "topics": ["ai-agent"],
       "note": "LangChain founder, Agent ecosystem"
     },
     {
@@ -1032,10 +820,7 @@
       "handle": "swyx",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm",
-        "ai-agent"
-      ],
+      "topics": ["llm", "ai-agent"],
       "note": "AI Engineer community, Latent Space podcast"
     },
     {
@@ -1045,9 +830,7 @@
       "handle": "erikbryn",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Stanford Digital Economy Lab"
     },
     {
@@ -1057,10 +840,7 @@
       "handle": "balaji",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "crypto",
-        "frontier-tech"
-      ],
+      "topics": ["crypto", "frontier-tech"],
       "note": "Former Coinbase CTO, macro thinker"
     },
     {
@@ -1070,9 +850,7 @@
       "handle": "cobie",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "Influential independent crypto analyst"
     },
     {
@@ -1082,9 +860,7 @@
       "handle": "HsakaTrades",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "Crypto trading analysis"
     },
     {
@@ -1094,9 +870,7 @@
       "handle": "adamscochran",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "Cinneamhain Ventures, on-chain analysis"
     },
     {
@@ -1106,9 +880,7 @@
       "handle": "lawmaster",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "The Block research director"
     },
     {
@@ -1118,10 +890,7 @@
       "repo": "pytorch/pytorch",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "frontier-tech"],
       "note": "Leading deep learning framework from Meta"
     },
     {
@@ -1131,9 +900,7 @@
       "repo": "huggingface/transformers",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm"
-      ],
+      "topics": ["llm"],
       "note": "State-of-the-art transformer models library"
     },
     {
@@ -1143,9 +910,7 @@
       "repo": "langchain-ai/langchain",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "ai-agent"
-      ],
+      "topics": ["ai-agent"],
       "note": "Framework for building LLM applications"
     },
     {
@@ -1155,9 +920,7 @@
       "repo": "run-llama/llama_index",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "ai-agent"
-      ],
+      "topics": ["ai-agent"],
       "note": "Data framework for LLM applications"
     },
     {
@@ -1167,9 +930,7 @@
       "repo": "ollama/ollama",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm"
-      ],
+      "topics": ["llm"],
       "note": "Run LLMs locally with ease"
     },
     {
@@ -1179,9 +940,7 @@
       "repo": "vllm-project/vllm",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm"
-      ],
+      "topics": ["llm"],
       "note": "High-throughput LLM inference engine"
     },
     {
@@ -1191,9 +950,7 @@
       "repo": "openai/openai-python",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm"
-      ],
+      "topics": ["llm"],
       "note": "Official OpenAI Python client library"
     },
     {
@@ -1203,9 +960,7 @@
       "repo": "anthropics/anthropic-sdk-python",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm"
-      ],
+      "topics": ["llm"],
       "note": "Official Anthropic Python SDK"
     },
     {
@@ -1215,9 +970,7 @@
       "repo": "crewAIInc/crewAI",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "ai-agent"
-      ],
+      "topics": ["ai-agent"],
       "note": "Multi-agent AI collaboration framework"
     },
     {
@@ -1227,9 +980,7 @@
       "repo": "microsoft/autogen",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "ai-agent"
-      ],
+      "topics": ["ai-agent"],
       "note": "Multi-agent conversation framework from Microsoft"
     },
     {
@@ -1239,9 +990,7 @@
       "repo": "langgenius/dify",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "ai-agent"
-      ],
+      "topics": ["ai-agent"],
       "note": "LLM app development platform"
     },
     {
@@ -1251,9 +1000,7 @@
       "repo": "openclaw/openclaw",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "ai-agent"
-      ],
+      "topics": ["ai-agent"],
       "note": "Open source AI assistant platform"
     },
     {
@@ -1263,9 +1010,7 @@
       "repo": "ethereum/go-ethereum",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "Official Go implementation of Ethereum"
     },
     {
@@ -1275,9 +1020,7 @@
       "repo": "ethereum/solidity",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "Ethereum smart contract programming language"
     },
     {
@@ -1287,9 +1030,7 @@
       "repo": "foundry-rs/foundry",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "Fast, portable and modular Ethereum toolkit"
     },
     {
@@ -1299,9 +1040,7 @@
       "repo": "ethereum/EIPs",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "Ethereum Improvement Proposals repository"
     },
     {
@@ -1311,9 +1050,7 @@
       "repo": "torvalds/linux",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Linux kernel source code maintained by Linus Torvalds"
     },
     {
@@ -1323,9 +1060,7 @@
       "repo": "rust-lang/rust",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "The Rust programming language compiler and standard library"
     },
     {
@@ -1335,9 +1070,7 @@
       "repo": "agno-agi/agno",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "ai-agent"
-      ],
+      "topics": ["ai-agent"],
       "note": "Lightweight AI agent framework"
     },
     {
@@ -1347,10 +1080,7 @@
       "url": "https://www.bensbites.com/feed",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent"
-      ]
+      "topics": ["llm", "ai-agent"]
     },
     {
       "id": "the-decoder-rss",
@@ -1359,10 +1089,7 @@
       "url": "https://the-decoder.com/feed/",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm",
-        "ai-agent"
-      ]
+      "topics": ["llm", "ai-agent"]
     },
     {
       "id": "a16zcrypto-rss",
@@ -1371,9 +1098,7 @@
       "url": "https://a16zcrypto.substack.com/feed",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "crypto"
-      ]
+      "topics": ["crypto"]
     },
     {
       "id": "bankless-rss",
@@ -1382,9 +1107,7 @@
       "url": "https://newsletter.banklesshq.com/feed",
       "enabled": false,
       "priority": true,
-      "topics": [
-        "crypto"
-      ]
+      "topics": ["crypto"]
     },
     {
       "id": "twitter-clementdelangue",
@@ -1393,10 +1116,7 @@
       "handle": "ClementDelangue",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent"
-      ]
+      "topics": ["llm", "ai-agent"]
     },
     {
       "id": "twitter-gaborhm",
@@ -1405,10 +1125,7 @@
       "handle": "GregBrockman",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent"
-      ]
+      "topics": ["llm", "ai-agent"]
     },
     {
       "id": "twitter-zuck",
@@ -1417,10 +1134,7 @@
       "handle": "finkd",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent"
-      ]
+      "topics": ["llm", "ai-agent"]
     },
     {
       "id": "github-mcp-servers",
@@ -1429,9 +1143,7 @@
       "repo": "modelcontextprotocol/servers",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "ai-agent"
-      ]
+      "topics": ["ai-agent"]
     },
     {
       "id": "github-deepseek-v3",
@@ -1440,9 +1152,7 @@
       "repo": "deepseek-ai/DeepSeek-V3",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm"
-      ]
+      "topics": ["llm"]
     },
     {
       "id": "github-meta-llama",
@@ -1451,9 +1161,7 @@
       "repo": "meta-llama/llama-models",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm"
-      ]
+      "topics": ["llm"]
     },
     {
       "id": "reddit-machinelearning",
@@ -1465,10 +1173,7 @@
       "min_score": 50,
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent"
-      ]
+      "topics": ["llm", "ai-agent"]
     },
     {
       "id": "reddit-localllama",
@@ -1480,9 +1185,7 @@
       "min_score": 30,
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm"
-      ]
+      "topics": ["llm"]
     },
     {
       "id": "reddit-cryptocurrency",
@@ -1494,9 +1197,7 @@
       "min_score": 50,
       "enabled": true,
       "priority": true,
-      "topics": [
-        "crypto"
-      ]
+      "topics": ["crypto"]
     },
     {
       "id": "reddit-artificial",
@@ -1508,10 +1209,7 @@
       "min_score": 30,
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm",
-        "ai-agent"
-      ]
+      "topics": ["llm", "ai-agent"]
     },
     {
       "id": "reddit-ethereum",
@@ -1523,9 +1221,7 @@
       "min_score": 30,
       "enabled": true,
       "priority": false,
-      "topics": [
-        "crypto"
-      ]
+      "topics": ["crypto"]
     },
     {
       "id": "reddit-chatgpt",
@@ -1537,10 +1233,7 @@
       "min_score": 50,
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent"
-      ]
+      "topics": ["llm", "ai-agent"]
     },
     {
       "id": "reddit-singularity",
@@ -1552,9 +1245,7 @@
       "min_score": 50,
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm"
-      ]
+      "topics": ["llm"]
     },
     {
       "id": "reddit-openai",
@@ -1566,10 +1257,7 @@
       "min_score": 50,
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent"
-      ]
+      "topics": ["llm", "ai-agent"]
     },
     {
       "id": "reddit-bitcoin",
@@ -1581,9 +1269,7 @@
       "min_score": 50,
       "enabled": true,
       "priority": true,
-      "topics": [
-        "crypto"
-      ]
+      "topics": ["crypto"]
     },
     {
       "id": "reddit-programming",
@@ -1595,11 +1281,7 @@
       "min_score": 50,
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm",
-        "ai-agent",
-        "crypto"
-      ]
+      "topics": ["llm", "ai-agent", "crypto"]
     },
     {
       "id": "reddit-anthropic",
@@ -1611,10 +1293,7 @@
       "min_score": 30,
       "enabled": true,
       "priority": true,
-      "topics": [
-        "llm",
-        "ai-agent"
-      ]
+      "topics": ["llm", "ai-agent"]
     },
     {
       "id": "reddit-defi",
@@ -1626,9 +1305,7 @@
       "min_score": 30,
       "enabled": true,
       "priority": false,
-      "topics": [
-        "crypto"
-      ]
+      "topics": ["crypto"]
     },
     {
       "id": "reddit-experienceddevs",
@@ -1640,10 +1317,7 @@
       "min_score": 50,
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm",
-        "ai-agent"
-      ]
+      "topics": ["llm", "ai-agent"]
     },
     {
       "id": "openclaw-twitter",
@@ -1652,9 +1326,7 @@
       "handle": "OpenClawAI",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "ai-agent"
-      ],
+      "topics": ["ai-agent"],
       "note": "Official OpenClaw account"
     },
     {
@@ -1664,10 +1336,7 @@
       "handle": "steipete",
       "enabled": true,
       "priority": true,
-      "topics": [
-        "ai-agent",
-        "frontier-tech"
-      ],
+      "topics": ["ai-agent", "frontier-tech"],
       "note": "OpenClaw creator, now at OpenAI"
     },
     {
@@ -1677,9 +1346,7 @@
       "name": "Mem0",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "ai-agent"
-      ],
+      "topics": ["ai-agent"],
       "note": "Memory layer for AI agents"
     },
     {
@@ -1689,9 +1356,7 @@
       "name": "OpenViking",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "llm"
-      ],
+      "topics": ["llm"],
       "note": "Volcengine/ByteDance open-source LLM"
     },
     {
@@ -1701,9 +1366,7 @@
       "repo": "cloudflare/moltworker",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Cloudflare MoltWorker project"
     },
     {
@@ -1713,9 +1376,7 @@
       "repo": "sipeed/picoclaw",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "note": "Sipeed PicoClaw embedded AI project"
     },
     {
@@ -1725,9 +1386,7 @@
       "repo": "HKUDS/nanobot",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "ai-agent"
-      ],
+      "topics": ["ai-agent"],
       "note": "HKUDS NanoBot AI agent project"
     },
     {
@@ -1737,9 +1396,7 @@
       "repo": "zeroclaw-labs/zeroclaw",
       "enabled": true,
       "priority": false,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "note": "ZeroClaw Labs project"
     },
     {
@@ -1747,9 +1404,7 @@
       "type": "rss",
       "name": "Overreacted (Dan Abramov)",
       "url": "https://overreacted.io/rss.xml",
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "priority": false,
       "enabled": true
     },
@@ -1758,9 +1413,7 @@
       "type": "rss",
       "name": "Eli Bendersky",
       "url": "https://eli.thegreenplace.net/feeds/all.atom.xml",
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "priority": false,
       "enabled": true
     },
@@ -1769,9 +1422,7 @@
       "type": "rss",
       "name": "matklad (Alex Kladov)",
       "url": "https://matklad.github.io/feed.xml",
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "priority": false,
       "enabled": true
     },
@@ -1780,9 +1431,7 @@
       "type": "rss",
       "name": "Armin Ronacher",
       "url": "https://lucumr.pocoo.org/feed.atom",
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "priority": false,
       "enabled": true
     },
@@ -1791,9 +1440,7 @@
       "type": "rss",
       "name": "The Old New Thing (Raymond Chen)",
       "url": "https://devblogs.microsoft.com/oldnewthing/feed",
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "priority": false,
       "enabled": true
     },
@@ -1802,9 +1449,7 @@
       "type": "rss",
       "name": "Rachel by the Bay",
       "url": "https://rachelbythebay.com/w/atom.xml",
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "priority": false,
       "enabled": false
     },
@@ -1813,9 +1458,7 @@
       "type": "rss",
       "name": "Xe Iaso",
       "url": "https://xeiaso.net/blog.rss",
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "priority": false,
       "enabled": true
     },
@@ -1824,9 +1467,7 @@
       "type": "rss",
       "name": "Pluralistic (Cory Doctorow)",
       "url": "https://pluralistic.net/feed/",
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "priority": false,
       "enabled": true
     },
@@ -1835,9 +1476,7 @@
       "type": "rss",
       "name": "lcamtuf (Michal Zalewski)",
       "url": "https://lcamtuf.substack.com/feed",
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "priority": false,
       "enabled": true
     },
@@ -1846,9 +1485,7 @@
       "type": "rss",
       "name": "Hillel Wayne",
       "url": "https://buttondown.com/hillelwayne/rss",
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "priority": false,
       "enabled": true
     },
@@ -1857,9 +1494,7 @@
       "type": "rss",
       "name": "Dynomight",
       "url": "https://dynomight.net/feed.xml",
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "priority": false,
       "enabled": true
     },
@@ -1868,9 +1503,7 @@
       "type": "rss",
       "name": "Geoffrey Litt",
       "url": "https://www.geoffreylitt.com/feed.xml",
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "priority": false,
       "enabled": true
     },
@@ -1879,9 +1512,7 @@
       "type": "rss",
       "name": "Fabien Sanglard",
       "url": "https://fabiensanglard.net/rss.xml",
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "priority": false,
       "enabled": true
     },
@@ -1890,9 +1521,7 @@
       "type": "rss",
       "name": "YouTube: Andrej Karpathy",
       "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCXUPKJO5MZQN11PqgIvyuvQ",
-      "topics": [
-        "llm"
-      ],
+      "topics": ["llm"],
       "priority": true,
       "enabled": true
     },
@@ -1901,9 +1530,7 @@
       "type": "rss",
       "name": "YouTube: AI Explained",
       "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBjkbmzVplPgVF-GheNYWCg",
-      "topics": [
-        "llm"
-      ],
+      "topics": ["llm"],
       "priority": true,
       "enabled": true
     },
@@ -1912,10 +1539,7 @@
       "type": "rss",
       "name": "YouTube: Two Minute Papers",
       "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCbfYPyITQ-7l4upoX8nvctg",
-      "topics": [
-        "llm",
-        "frontier-tech"
-      ],
+      "topics": ["llm", "frontier-tech"],
       "priority": false,
       "enabled": true
     },
@@ -1924,9 +1548,7 @@
       "type": "rss",
       "name": "YouTube: Yannic Kilcher",
       "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCZHmQk67mSJgfCCTn7xBfew",
-      "topics": [
-        "llm"
-      ],
+      "topics": ["llm"],
       "priority": false,
       "enabled": true
     },
@@ -1935,9 +1557,7 @@
       "type": "rss",
       "name": "YouTube: 3Blue1Brown",
       "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCYO_jab_esuFRV4b17AJtAw",
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "priority": false,
       "enabled": true
     },
@@ -1946,9 +1566,7 @@
       "type": "rss",
       "name": "YouTube: Fireship",
       "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCsBjURrPoezykLs9EqgamOA",
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "priority": false,
       "enabled": true
     },
@@ -1957,9 +1575,7 @@
       "type": "rss",
       "name": "YouTube: Matt Wolfe",
       "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCl3U-xOlFVLlsheAug-QoWA",
-      "topics": [
-        "ai-agent"
-      ],
+      "topics": ["ai-agent"],
       "priority": false,
       "enabled": true
     },
@@ -1968,9 +1584,7 @@
       "type": "rss",
       "name": "YouTube: Dabo Rai",
       "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCx11muyXurAlpAzrjhERSCw",
-      "topics": [
-        "ai-agent"
-      ],
+      "topics": ["ai-agent"],
       "priority": false,
       "enabled": true
     },
@@ -1979,9 +1593,7 @@
       "type": "rss",
       "name": "YouTube: AI Jason",
       "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCrXSVX9a1mj8l0CMLwKgMVw",
-      "topics": [
-        "ai-agent"
-      ],
+      "topics": ["ai-agent"],
       "priority": false,
       "enabled": true
     },
@@ -1990,10 +1602,7 @@
       "type": "rss",
       "name": "YouTube: Prompt Engineering",
       "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCDq7SjbgRKty5TgGafW8Clg",
-      "topics": [
-        "ai-agent",
-        "llm"
-      ],
+      "topics": ["ai-agent", "llm"],
       "priority": false,
       "enabled": true
     },
@@ -2002,9 +1611,7 @@
       "type": "rss",
       "name": "YouTube: Bankless",
       "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCAl9Ld79qaZxp9JzEOwd3aA",
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "priority": true,
       "enabled": true
     },
@@ -2013,9 +1620,7 @@
       "type": "rss",
       "name": "YouTube: a16z crypto",
       "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCTHq3W46BiAYjKUYZq2qm-Q",
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "priority": false,
       "enabled": true
     },
@@ -2024,10 +1629,7 @@
       "type": "rss",
       "name": "YouTube: Lex Fridman",
       "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCSHZKyawb77ixDdsGog4iWA",
-      "topics": [
-        "llm",
-        "crypto"
-      ],
+      "topics": ["llm", "crypto"],
       "priority": false,
       "enabled": true
     },
@@ -2036,9 +1638,7 @@
       "type": "rss",
       "name": "YouTube: Computerphile",
       "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC9-y-6csu5WGm29I7JiwpnA",
-      "topics": [
-        "frontier-tech"
-      ],
+      "topics": ["frontier-tech"],
       "priority": false,
       "enabled": true
     },
@@ -2047,9 +1647,7 @@
       "type": "rss",
       "name": "YouTube: AI Epiphany",
       "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UChepm4zf3QIYZgL5w7jl3MA",
-      "topics": [
-        "llm"
-      ],
+      "topics": ["llm"],
       "priority": false,
       "enabled": true
     },
@@ -2058,10 +1656,7 @@
       "type": "rss",
       "name": "YouTube: Hugging Face",
       "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCHlNU7kIZhRgSbhHvFoy72w",
-      "topics": [
-        "llm",
-        "ai-agent"
-      ],
+      "topics": ["llm", "ai-agent"],
       "priority": false,
       "enabled": true
     }

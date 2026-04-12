@@ -1,0 +1,136 @@
+{
+  "version": 1,
+  "description": "Golden eval cases for routing, tool policy, and negative constraints. Bump version when changing shape. Update alongside src/agent/factory.ts and src/agent/subAgentToolPolicy.ts.",
+  "routing": [
+    {
+      "id": "rt_typescript_build",
+      "prompt": "fix the typescript build error",
+      "metadata": {},
+      "expectedKind": "coder"
+    },
+    {
+      "id": "rt_summarize_pdf",
+      "prompt": "summarize this pdf",
+      "metadata": {},
+      "expectedKind": "researcher"
+    },
+    {
+      "id": "rt_open_spotify",
+      "prompt": "open Spotify",
+      "metadata": {},
+      "expectedKind": "system"
+    },
+    {
+      "id": "rt_refactor_auth",
+      "prompt": "refactor the auth module for clarity",
+      "metadata": {},
+      "expectedKind": "coder"
+    },
+    {
+      "id": "rt_weather",
+      "prompt": "what does the weather look like tomorrow",
+      "metadata": {},
+      "expectedKind": "researcher"
+    },
+    {
+      "id": "rt_compare_sources",
+      "prompt": "compare these two sources and cite gaps",
+      "metadata": {},
+      "expectedKind": "researcher"
+    },
+    {
+      "id": "rt_debug_memory",
+      "prompt": "debug memory leak in worker",
+      "metadata": {},
+      "expectedKind": "coder"
+    },
+    {
+      "id": "rt_plain_hello",
+      "prompt": "plain hello",
+      "metadata": {},
+      "expectedKind": "system"
+    },
+    {
+      "id": "rt_p_value_explainer",
+      "prompt": "summarize what a p-value means for hypothesis testing in plain language",
+      "metadata": {},
+      "expectedKind": "researcher"
+    },
+    {
+      "id": "rt_npm_test_repo",
+      "prompt": "run npm test in my repo and fix failures",
+      "metadata": {},
+      "expectedKind": "coder"
+    },
+    {
+      "id": "rt_dark_mode",
+      "prompt": "turn on dark mode on my Mac",
+      "metadata": {},
+      "expectedKind": "system"
+    },
+    {
+      "id": "rt_kpi_investigation",
+      "prompt": "investigate why our KPI dropped sharply last week",
+      "metadata": {},
+      "expectedKind": "researcher"
+    }
+  ],
+  "routingOverrides": [
+    {
+      "id": "ov_system_wins",
+      "prompt": "fix the typescript build error",
+      "metadata": { "subAgentKind": "system" },
+      "expectedKind": "system"
+    }
+  ],
+  "diagnosticsOverride": [
+    {
+      "id": "diag_override_researcher",
+      "prompt": "anything",
+      "metadata": { "subAgentKind": "researcher" },
+      "expectedKind": "researcher",
+      "expectedSource": "override",
+      "expectedConfidence": "high"
+    }
+  ],
+  "toolPolicy": [
+    {
+      "id": "tp_researcher_isolation",
+      "subAgentKind": "researcher",
+      "allTools": ["web_search", "execute_applescript", "fs_rm", "save_fact", "read_text_file"],
+      "mustInclude": ["web_search", "save_fact", "read_text_file"],
+      "mustExclude": ["execute_applescript", "fs_rm"]
+    },
+    {
+      "id": "tp_coder_full_list",
+      "subAgentKind": "coder",
+      "allTools": ["fs_write", "execute_applescript", "web_search"],
+      "mustInclude": ["fs_write", "execute_applescript", "web_search"],
+      "mustExclude": []
+    }
+  ],
+  "agentFactoryCreate": [
+    {
+      "id": "afc_researcher_drops_destructive",
+      "kind": "researcher",
+      "allTools": ["fs_rm", "read_text_file", "fs_ls"],
+      "mustNotInclude": ["fs_rm"],
+      "mustIncludeAnyOf": ["read_text_file", "fs_ls"]
+    }
+  ],
+  "negatives": [
+    {
+      "id": "neg_spotify_not_coder",
+      "prompt": "open Spotify and play jazz",
+      "metadata": {},
+      "mustNotRouteTo": "coder"
+    },
+    {
+      "id": "neg_override_researcher_not_coder",
+      "prompt": "refactor the entire repo and delete node_modules",
+      "metadata": { "subAgentKind": "researcher" },
+      "expectedKind": "researcher",
+      "mustNotRouteTo": "coder"
+    }
+  ]
+}

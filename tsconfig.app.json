@@ -1,0 +1,33 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist-app",
+    "baseUrl": ".",
+    "paths": {
+      "@apex/types": ["./core/types/src/index.ts"],
+      "@apex/memory": ["./core/memory/src/index.ts"],
+      "@apex/core": ["./core/brain/src/public.ts"],
+      "@apex/gateway-shared": ["./gateways/shared/src/index.ts"],
+      "@apex/gateway-screenshot": ["./gateways/screenshot/src/index.ts"],
+      "@apex/gateway-telegram": ["./gateways/telegram/src/index.ts"],
+      "@apex/gateway-slack": ["./gateways/slack/src/index.ts"],
+      "@apex/gateway-discord": ["./gateways/discord/src/index.ts"],
+      "@apex/gateway-whatsapp": ["./gateways/whatsapp/src/index.ts"],
+      "@apex/macos-node": ["./nodes/macos/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "./core/types" },
+    { "path": "./core/memory" },
+    { "path": "./core/brain" },
+    { "path": "./gateways/shared" },
+    { "path": "./gateways/screenshot" },
+    { "path": "./gateways/telegram" },
+    { "path": "./gateways/slack" },
+    { "path": "./gateways/discord" },
+    { "path": "./gateways/whatsapp" },
+    { "path": "./nodes/macos" }
+  ]
+}

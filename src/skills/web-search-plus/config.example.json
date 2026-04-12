@@ -8,15 +8,7 @@
   "auto_routing": {
     "enabled": true,
     "fallback_provider": "serper",
-    "provider_priority": [
-      "tavily",
-      "querit",
-      "exa",
-      "perplexity",
-      "serper",
-      "you",
-      "searxng"
-    ],
+    "provider_priority": ["tavily", "querit", "exa", "perplexity", "serper", "you", "searxng"],
     "disabled_providers": [],
     "confidence_threshold": 0.3,
     "keyword_mappings": {

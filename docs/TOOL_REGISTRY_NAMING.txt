@@ -1,0 +1,76 @@
+================================================================================
+TOOL NAMES IN CONFIG, ALLOWLISTS, AND POLICY
+================================================================================
+When you set channel allowlists, session tool filters, or read logs, the string
+must match the name stored in the tool registry. There are three common shapes.
+
+1) Native tools (src/tools, bundled skill tools)
+   • Form: bare id, no prefix.
+   • Examples: fs_mv, web_search, get_today_schedule, spawn_helper_agent,
+     data_analysis_consult, web_search_plus
+   • Use: apex.json security.channelToolAllowlists.*, env APEX_*_ALLOWED_TOOLS,
+     session allowedTools / blockedTools (see src/security/policy.ts).
+
+2) SDK / worker plugins (src/plugins/<PluginId>/, manifest tools)
+   • Form: pluginId.toolName (plugin id from manifest, dot, tool id).
+   • Examples: ScreenControl.get_ui_tree, ScreenControl.ui_click_element
+   • Implementation: src/core/pluginLoader.ts registers tools as `${pluginId}.${baseName}`.
+
+3) MCP-bridged tools (configuration-dependent)
+   • Form: mcp_<serverId>__<toolName> with non-alphanumeric chars in serverId or
+     toolName turned into underscores (see safeToolName in src/plugins/mcpBridge.ts).
+   • Example pattern: mcp_files__read_file (exact string depends on your MCP server
+     id and tool name after sanitization).
+   • Code: mcpToolToRegistryName(serverId, toolName) in mcpBridge.ts.
+
+How to list names in this checkout
+  npm run docs:list-tools
+  See docs/AGENTS_SKILLS_TOOLS.txt for the human-maintained inventory.
+
+---------------------------------------------------------------------------
+apex.json — security.channelToolAllowlists (per gateway)
+---------------------------------------------------------------------------
+Each value is a JSON array of strings. Entries must match registry names exactly,
+including dots for plugin tools.
+
+Example — minimal (read-biased remote surface; adjust to your risk tolerance):
+  "channelToolAllowlists": {
+    "telegram": ["web_search", "recall_facts", "get_current_weather"],
+    "slack": ["web_search", "calendar_list_events", "get_today_schedule"],
+    "whatsapp": ["get_current_time", "send_system_notification"],
+    "discord": []
+  }
+
+Example — wider surface (still illustrative; review before production):
+  "channelToolAllowlists": {
+    "telegram": [
+      "web_search",
+      "recall_facts",
+      "data_analysis_consult",
+      "ScreenControl.get_ui_tree",
+      "generate_tech_news_digest"
+    ],
+    "slack": [],
+    "whatsapp": [],
+    "discord": []
+  }
+
+If an allowlist is missing or empty for a gateway, channel tools may be blocked
+(see isChannelToolAllowed in src/security/policy.ts and your config loader).
+
+---------------------------------------------------------------------------
+.env — APEX_TELEGRAM_ALLOWED_TOOLS, APEX_SLACK_ALLOWED_TOOLS, etc.
+---------------------------------------------------------------------------
+Comma-separated list of the same registry strings as above. No spaces required
+between commas (spaces after commas are trimmed by typical parsers—verify your
+env loader).
+
+---------------------------------------------------------------------------
+Session settings (runtime API / session store)
+---------------------------------------------------------------------------
+blockedTools and allowedTools use the same registry strings. If allowedTools is
+non-empty, only those names are permitted (see isSessionToolAllowed).
+
+================================================================================
+END
+================================================================================

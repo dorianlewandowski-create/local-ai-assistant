@@ -1,10 +1,32 @@
+# Secrets — never commit real keys (use `.env.example` as a template only)
 .env
+.env.local
+.env.*.local
 data/lancedb/
 node_modules/
+# Build artifacts
 dist/
+dist-app/
+releases/
+/tmp/
+*.tsbuildinfo
+reachability-report.json
+.pnpm-store/
+**/.build/
+**/.swiftpm/
+
+# Workspace package build outputs
+core/*/dist/
+gateways/*/dist/
+nodes/*/dist/
+
+# Swift build artifacts
+claw-native-bridge/.build/
+claw-native-bridge/.swiftpm/
+
+# OS and Log files
 .DS_Store
 *.log
-/tmp/
 .wwebjs_auth/
 .wwebjs_cache/
 *.db

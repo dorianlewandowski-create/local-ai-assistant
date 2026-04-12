@@ -1,0 +1,33 @@
+{
+  "name": "ScreenControl",
+  "version": "0.1.0",
+  "permissions": ["accessibility", "nativeBridge"],
+  "tools": [
+    {
+      "name": "get_ui_tree",
+      "description": "Inspect the frontmost app UI via native Accessibility tree (stable ids) and return simplified JSON nodes + a compact label→id index.",
+      "parametersJsonSchema": {
+        "type": "object",
+        "properties": {
+          "maxDepth": { "type": "integer", "minimum": 1, "maximum": 50, "default": 10 },
+          "maxNodes": { "type": "integer", "minimum": 1, "maximum": 20000, "default": 1200 }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "ui_click_element",
+      "description": "Click a UI element identified by label from the native accessibility tree (prefers enabled + visible matches).",
+      "parametersJsonSchema": {
+        "type": "object",
+        "properties": {
+          "label": { "type": "string", "minLength": 1 },
+          "screenWidth": { "type": "integer", "minimum": 1, "maximum": 16384 },
+          "screenHeight": { "type": "integer", "minimum": 1, "maximum": 16384 }
+        },
+        "required": ["label"],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

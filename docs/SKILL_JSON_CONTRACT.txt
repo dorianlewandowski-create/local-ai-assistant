@@ -1,0 +1,36 @@
+================================================================================
+APEX — CONTRACT FOR BUNDLED SKILL JSON (src/skills/**/*.json)
+================================================================================
+
+What this is
+  JSON files shipped under src/skills/ are configuration and metadata consumed
+  by the same parsers used everywhere else in the stack: strict JSON (RFC 8259).
+
+What the runtime uses
+  • Node (Apex core, tools): JSON.parse on file contents — no trailing commas,
+    no comments, no unquoted keys.
+  • Python (many bundled skill scripts, e.g. tech-news): json.load — same rules.
+  • Dynamic skill discovery (src/tools/registry.ts): skill.json via JSON.parse.
+
+What they are not
+  They are not JSONC / “relaxed” JSON at runtime. Editors may tolerate trailing
+  commas; Node and Python standard libraries do not.
+
+Why Biome sometimes differed
+  Biome’s JSON formatter/parser matches strict JSON. Files that contained
+  trailing commas were skipped during format with informational diagnostics.
+  Bundled files are normalized to strict JSON so tooling and loaders agree.
+
+Contributor workflow
+  • Edit skill JSON as strict JSON (validate locally):
+      pnpm run validate:skill-json   (or npm run — same script after pnpm install)
+  • If you paste or import JSON with trailing commas, normalize once:
+      pnpm run normalize:skill-json
+    (Uses the json5 devDependency only for this maintenance step; runtime still
+    uses JSON.parse / json.load.)
+
+CI
+  pnpm run ci:quick runs validate:skill-json so invalid JSON fails the quick gate.
+
+See also
+  docs/EXTENDING_APEX.txt (bundled skills), src/skills/tech-news/scripts/config_loader.py

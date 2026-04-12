@@ -1,44 +1,44 @@
-import { Message, ToolCall } from '../types';
+import type { Message, ToolCall } from '@apex/types'
 
 export interface ChatToolDefinition {
-  type?: string;
+  type?: string
   function?: {
-    name?: string;
-    description?: string;
-    parameters?: unknown;
-  };
+    name?: string
+    description?: string
+    parameters?: unknown
+  }
 }
 
 export interface ChatMessageInput {
-  role: string;
-  content: string;
-  images?: string[];
-  tool_calls?: ToolCall[];
-  tool_call_id?: string;
+  role: string
+  content: string
+  images?: string[]
+  tool_calls?: ToolCall[]
+  tool_call_id?: string
 }
 
 export interface ChatCompletionRequest {
-  model: string;
-  messages: ChatMessageInput[];
-  tools?: ChatToolDefinition[];
+  model: string
+  messages: ChatMessageInput[]
+  tools?: ChatToolDefinition[]
 }
 
 export interface ChatCompletionResponse {
-  message: Message;
+  message: Message
 }
 
 export interface ChatModelProvider {
-  chat(request: ChatCompletionRequest): Promise<ChatCompletionResponse>;
+  chat(request: ChatCompletionRequest): Promise<ChatCompletionResponse>
 }
 
 export interface EmbeddingModelProvider {
-  embed(model: string, input: string): Promise<number[]>;
+  embed(model: string, input: string): Promise<number[]>
 }
 
 export interface VisionModelProvider {
-  analyzeImage(model: string, imagePath: string, prompt: string): Promise<string>;
+  analyzeImage(model: string, imagePath: string, prompt: string): Promise<string>
 }
 
 export interface AudioTranscriptionProvider {
-  transcribe(model: string, audioPath: string, prompt: string): Promise<string>;
+  transcribe(model: string, audioPath: string, prompt: string): Promise<string>
 }

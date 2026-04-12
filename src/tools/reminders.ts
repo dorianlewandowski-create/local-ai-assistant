@@ -1,10 +1,10 @@
-import { z } from 'zod';
-import { Tool } from '../types';
-import { toolRegistry } from './registry';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { z } from 'zod'
+import type { Tool } from '@apex/types'
+import { toolRegistry } from './registry'
+import { exec } from 'child_process'
+import { promisify } from 'util'
 
-const execAsync = promisify(exec);
+const execAsync = promisify(exec)
 
 // --- CREATE REMINDER TOOL ---
 const CreateReminderParams = z.object({
@@ -12,7 +12,7 @@ const CreateReminderParams = z.object({
   list: z.string().optional().describe('The name of the list to add the reminder to'),
   notes: z.string().optional().describe('Notes for the reminder'),
   dueDate: z.string().optional().describe('Optional due date string (e.g., "tomorrow at 5pm")'),
-});
+})
 
 export const remindersCreateItem: Tool<typeof CreateReminderParams> = {
   name: 'reminders_create_item',
@@ -40,20 +40,20 @@ export const remindersCreateItem: Tool<typeof CreateReminderParams> = {
             make new reminder at targetList with properties {name:reminderTitle, body:notesText}
           end if
         end tell
-      `;
-      const { stdout } = await execAsync(`osascript -e ${JSON.stringify(script)}`);
-      return { success: true, result: stdout.trim() };
+      `
+      const { stdout } = await execAsync(`osascript -e ${JSON.stringify(script)}`)
+      return { success: true, result: stdout.trim() }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
 // --- LIST REMINDERS TOOL ---
 const ListRemindersParams = z.object({
   list: z.string().optional().describe('The name of the list to filter by'),
   includeCompleted: z.boolean().default(false).describe('Whether to include completed reminders'),
-});
+})
 
 export const remindersListItems: Tool<typeof ListRemindersParams> = {
   name: 'reminders_list_items',
@@ -91,20 +91,20 @@ export const remindersListItems: Tool<typeof ListRemindersParams> = {
         
         set AppleScript's text item delimiters to linefeed
         return outputLines as text
-      `;
-      const { stdout } = await execAsync(`osascript -e ${JSON.stringify(script)}`);
-      return { success: true, result: stdout.trim() || "No reminders found." };
+      `
+      const { stdout } = await execAsync(`osascript -e ${JSON.stringify(script)}`)
+      return { success: true, result: stdout.trim() || 'No reminders found.' }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
 // --- COMPLETE REMINDER TOOL ---
 const CompleteReminderParams = z.object({
   title: z.string().describe('The title of the reminder to mark as completed'),
   list: z.string().optional().describe('The name of the list to search in'),
-});
+})
 
 export const remindersCompleteItem: Tool<typeof CompleteReminderParams> = {
   name: 'reminders_complete_item',
@@ -145,17 +145,17 @@ export const remindersCompleteItem: Tool<typeof CompleteReminderParams> = {
         end tell
 
         return "No open reminder found with title: " & reminderTitle
-      `;
-      const { stdout } = await execAsync(`osascript -e ${JSON.stringify(script)}`);
-      return { success: true, result: stdout.trim() };
+      `
+      const { stdout } = await execAsync(`osascript -e ${JSON.stringify(script)}`)
+      return { success: true, result: stdout.trim() }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
 // --- LIST REMINDER NAMES TOOL ---
-const ListReminderNamesParams = z.object({});
+const ListReminderNamesParams = z.object({})
 
 export const remindersListNames: Tool<typeof ListReminderNamesParams> = {
   name: 'reminders_list_names',
@@ -176,20 +176,20 @@ export const remindersListNames: Tool<typeof ListReminderNamesParams> = {
         set outputText to listNames as text
         set AppleScript's text item delimiters to ""
         return outputText
-      `;
-      const { stdout } = await execAsync(`osascript -e ${JSON.stringify(script)}`);
-      return { success: true, result: stdout.trim() };
+      `
+      const { stdout } = await execAsync(`osascript -e ${JSON.stringify(script)}`)
+      return { success: true, result: stdout.trim() }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
 // --- DELETE REMINDER TOOL ---
 const DeleteReminderParams = z.object({
   title: z.string().describe('The title of the reminder to delete'),
   list: z.string().optional().describe('The name of the list to search in'),
-});
+})
 
 export const remindersDeleteItem: Tool<typeof DeleteReminderParams> = {
   name: 'reminders_delete_item',
@@ -230,18 +230,18 @@ export const remindersDeleteItem: Tool<typeof DeleteReminderParams> = {
         end tell
 
         return "No reminder found with title: " & reminderTitle
-      `;
-      const { stdout } = await execAsync(`osascript -e ${JSON.stringify(script)}`);
-      return { success: true, result: stdout.trim() };
+      `
+      const { stdout } = await execAsync(`osascript -e ${JSON.stringify(script)}`)
+      return { success: true, result: stdout.trim() }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
 // Register tools
-toolRegistry.register(remindersCreateItem);
-toolRegistry.register(remindersListItems);
-toolRegistry.register(remindersCompleteItem);
-toolRegistry.register(remindersListNames);
-toolRegistry.register(remindersDeleteItem);
+toolRegistry.register(remindersCreateItem)
+toolRegistry.register(remindersListItems)
+toolRegistry.register(remindersCompleteItem)
+toolRegistry.register(remindersListNames)
+toolRegistry.register(remindersDeleteItem)

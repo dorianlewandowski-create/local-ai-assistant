@@ -1,6 +1,7 @@
 #!/bin/bash
+# Apex CLI: resolves repo root through symlinks, then runs the bundled entry (dist/cli.bundle.js).
+# Keep in sync with release tarball bin/apex and launchd ProgramArguments (bin/run.sh daemon).
 
-# Znajdź prawdziwą ścieżkę do folderu projektu, nawet przez symlinki
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do
   DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
@@ -9,8 +10,6 @@ while [ -h "$SOURCE" ]; do
 done
 PROJECT_ROOT="$( cd -P "$( dirname "$SOURCE" )/.." >/dev/null 2>&1 && pwd )"
 
-# Przejdź do głównego folderu projektu
 cd "$PROJECT_ROOT"
 
-# Uruchom za pomocą ts-node z lokalnego node_modules
-exec npx ts-node src/cli.ts "$@"
+exec node "$PROJECT_ROOT/dist/cli.bundle.js" "$@"

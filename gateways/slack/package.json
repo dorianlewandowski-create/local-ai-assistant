@@ -1,0 +1,20 @@
+{
+  "name": "@apex/gateway-slack",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@apex/core": "workspace:*",
+    "@apex/types": "workspace:*",
+    "@apex/gateway-shared": "workspace:*",
+    "@apex/gateway-screenshot": "workspace:*",
+    "@slack/bolt": "^4.4.0"
+  }
+}

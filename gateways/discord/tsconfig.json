@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@apex/types": ["../../core/types/src/index.ts"],
+      "@apex/core": ["../../core/brain/src/public.ts"],
+      "@apex/gateway-shared": ["../shared/src/index.ts"]
+    },
+    "rootDir": "./src",
+    "outDir": "./dist"
+  },
+  "include": ["src/**/*"],
+  "references": [{ "path": "../../core/types" }, { "path": "../../core/brain" }, { "path": "../shared" }]
+}

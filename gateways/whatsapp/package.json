@@ -1,0 +1,21 @@
+{
+  "name": "@apex/gateway-whatsapp",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@apex/core": "workspace:*",
+    "@apex/types": "workspace:*",
+    "@apex/gateway-shared": "workspace:*",
+    "@apex/gateway-screenshot": "workspace:*",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.34.6"
+  }
+}

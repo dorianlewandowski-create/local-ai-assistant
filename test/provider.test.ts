@@ -1,21 +1,26 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import { ollamaAudioTranscriptionProvider, ollamaChatProvider, ollamaEmbeddingProvider, ollamaVisionProvider } from '../src/models/ollama';
-import { chatWithFallback, embedWithFallback } from '../src/models/runtime';
-import { getTranscriptionSetupHint } from '../src/media/transcription';
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { getTranscriptionSetupHint } from '@apex/core'
+import {
+  ollamaAudioTranscriptionProvider,
+  ollamaChatProvider,
+  ollamaEmbeddingProvider,
+  ollamaVisionProvider,
+} from '../src/models/ollama'
+import { chatWithFallback, embedWithFallback } from '../src/models/runtime'
 
 test('ollama provider modules expose expected methods', () => {
-  assert.equal(typeof ollamaChatProvider.chat, 'function');
-  assert.equal(typeof ollamaEmbeddingProvider.embed, 'function');
-  assert.equal(typeof ollamaVisionProvider.analyzeImage, 'function');
-  assert.equal(typeof ollamaAudioTranscriptionProvider.transcribe, 'function');
-});
+  assert.equal(typeof ollamaChatProvider.chat, 'function')
+  assert.equal(typeof ollamaEmbeddingProvider.embed, 'function')
+  assert.equal(typeof ollamaVisionProvider.analyzeImage, 'function')
+  assert.equal(typeof ollamaAudioTranscriptionProvider.transcribe, 'function')
+})
 
 test('chat fallback uses secondary model when primary fails', async () => {
   const provider = {
     async chat(request: { model: string }) {
       if (request.model === 'primary') {
-        throw new Error('primary failed');
+        throw new Error('primary failed')
       }
 
       return {
@@ -23,34 +28,38 @@ test('chat fallback uses secondary model when primary fails', async () => {
           role: 'assistant' as const,
           content: `used:${request.model}`,
         },
-      };
+      }
     },
-  };
+  }
 
-  const result = await chatWithFallback(provider, {
-    model: 'primary',
-    messages: [{ role: 'user', content: 'hi' }],
-  }, 'fallback');
+  const result = await chatWithFallback(
+    provider,
+    {
+      model: 'primary',
+      messages: [{ role: 'user', content: 'hi' }],
+    },
+    'fallback',
+  )
 
-  assert.equal(result.message.content, 'used:fallback');
-});
+  assert.equal(result.message.content, 'used:fallback')
+})
 
 test('embedding fallback uses secondary model when primary fails', async () => {
   const provider = {
     async embed(model: string) {
       if (model === 'primary-embed') {
-        throw new Error('embed failed');
+        throw new Error('embed failed')
       }
 
-      return [1, 2, 3];
+      return [1, 2, 3]
     },
-  };
+  }
 
-  const result = await embedWithFallback(provider, 'primary-embed', 'hello', 'fallback-embed');
-  assert.deepEqual(result, [1, 2, 3]);
-});
+  const result = await embedWithFallback(provider, 'primary-embed', 'hello', 'fallback-embed')
+  assert.deepEqual(result, [1, 2, 3])
+})
 
 test('transcription setup hint explains configuration path', () => {
-  assert.match(getTranscriptionSetupHint(), /OLLAMA_TRANSCRIPTION_MODEL/);
-  assert.match(getTranscriptionSetupHint(), /models\.transcription/);
-});
+  assert.match(getTranscriptionSetupHint(), /OLLAMA_TRANSCRIPTION_MODEL/)
+  assert.match(getTranscriptionSetupHint(), /models\.transcription/)
+})

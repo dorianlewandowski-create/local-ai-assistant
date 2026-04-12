@@ -1,4 +1,4 @@
-# OpenMac Implementation Checklist
+# Apex Implementation Checklist
 
 Use this file to track progress against the roadmap.
 
@@ -12,10 +12,10 @@ Use this file to track progress against the roadmap.
 
 ## Phase 2: Separate Config From Runtime
 
-- [x] Add `openmac.json` support
+- [x] Add `apex.json` support
 - [x] Merge config from file and env
 - [x] Replace direct `process.env` reads with config access
-- [x] Add `openmac doctor` command
+- [x] Add `apex doctor` command
 
 ## Phase 3: Fix Queueing And Session Boundaries
 

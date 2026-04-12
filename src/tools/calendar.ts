@@ -1,32 +1,32 @@
-import { z } from 'zod';
-import { Tool } from '../types';
-import { toolRegistry } from './registry';
-import { exec, execFile } from 'child_process';
-import { promisify } from 'util';
-import { logger } from '../utils/logger';
+import { z } from 'zod'
+import type { Tool } from '@apex/types'
+import { toolRegistry } from './registry'
+import { exec, execFile } from 'child_process'
+import { promisify } from 'util'
+import { logger } from '../utils/logger'
 
-const execAsync = promisify(exec);
-const execFileAsync = promisify(execFile);
+const execAsync = promisify(exec)
+const execFileAsync = promisify(execFile)
 
 async function runAppleScript(script: string) {
-  const { stdout, stderr } = await execFileAsync('osascript', ['-e', script]);
+  const { stdout, stderr } = await execFileAsync('osascript', ['-e', script])
   if (stderr && !stdout.trim()) {
-    throw new Error(stderr.trim());
+    throw new Error(stderr.trim())
   }
 
-  return stdout.trim();
+  return stdout.trim()
 }
 
 // --- TODAY SCHEDULE TOOL ---
-const TodayScheduleParams = z.object({});
+const TodayScheduleParams = z.object({})
 
 export const getTodaySchedule: Tool<typeof TodayScheduleParams> = {
   name: 'get_today_schedule',
-  description: 'Read today\'s appointments from the local macOS Calendar app. This is read-only.',
+  description: "Read today's appointments from the local macOS Calendar app. This is read-only.",
   parameters: TodayScheduleParams,
   execute: async () => {
     try {
-      logger.system('📅 Reading macOS Calendar to verify schedule...');
+      logger.system('📅 Reading macOS Calendar to verify schedule...')
       const script = `
         set nowDate to current date
         set startOfDay to nowDate
@@ -55,29 +55,29 @@ export const getTodaySchedule: Tool<typeof TodayScheduleParams> = {
         set outputText to outputLines as text
         set AppleScript's text item delimiters to ""
         return outputText
-      `;
+      `
 
-      const output = await runAppleScript(script);
+      const output = await runAppleScript(script)
       const result = output
         .split('\n')
         .map((line) => line.trim())
         .filter(Boolean)
-        .join('\n');
+        .join('\n')
 
-      return { success: true, result: result || 'No appointments found for today.' };
+      return { success: true, result: result || 'No appointments found for today.' }
     } catch (error: any) {
       return {
         success: false,
         error: 'Error: Could not access macOS Calendar. Please ensure the app has necessary permissions.',
-      };
+      }
     }
   },
-};
+}
 
-toolRegistry.register(getTodaySchedule);
+toolRegistry.register(getTodaySchedule)
 
 // --- LIST NAMES TOOL ---
-const ListNamesParams = z.object({});
+const ListNamesParams = z.object({})
 
 export const calendarListNames: Tool<typeof ListNamesParams> = {
   name: 'calendar_list_names',
@@ -98,26 +98,30 @@ export const calendarListNames: Tool<typeof ListNamesParams> = {
         set outputText to calendarNames as text
         set AppleScript's text item delimiters to ""
         return outputText
-      `;
-      const result = await runAppleScript(script);
-      return { success: true, result };
+      `
+      const result = await runAppleScript(script)
+      return { success: true, result }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
 // Register tool
-toolRegistry.register(calendarListNames);
+toolRegistry.register(calendarListNames)
 
 // --- CREATE EVENT TOOL ---
 const CreateEventParams = z.object({
   title: z.string().describe('The title of the event'),
-  startText: z.string().describe('The start date and time of the event (e.g., "October 27, 2023 at 10:00:00 AM")'),
-  endText: z.string().describe('The end date and time of the event (e.g., "October 27, 2023 at 11:00:00 AM")'),
+  startText: z
+    .string()
+    .describe('The start date and time of the event (e.g., "October 27, 2023 at 10:00:00 AM")'),
+  endText: z
+    .string()
+    .describe('The end date and time of the event (e.g., "October 27, 2023 at 11:00:00 AM")'),
   notes: z.string().optional().describe('Additional notes or description for the event'),
   calendar: z.string().optional().describe('The name of the calendar to add the event to'),
-});
+})
 
 export const calendarCreateEvent: Tool<typeof CreateEventParams> = {
   name: 'calendar_create_event',
@@ -147,24 +151,24 @@ export const calendarCreateEvent: Tool<typeof CreateEventParams> = {
           end tell
           return "Created event in '" & (name of targetCalendar) & "': " & (summary of newEvent)
         end tell
-      `;
-      const result = await runAppleScript(script);
-      return { success: true, result };
+      `
+      const result = await runAppleScript(script)
+      return { success: true, result }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
 // Register tool
-toolRegistry.register(calendarCreateEvent);
+toolRegistry.register(calendarCreateEvent)
 
 // --- DELETE EVENT TOOL ---
 const DeleteEventParams = z.object({
   query: z.string().describe('Search query for the event title'),
   dayCount: z.number().default(7).describe('Number of days from today to search for the event'),
   calendar: z.string().optional().describe('The name of the calendar to search in'),
-});
+})
 
 export const calendarDeleteEvent: Tool<typeof DeleteEventParams> = {
   name: 'calendar_delete_event',
@@ -201,24 +205,26 @@ export const calendarDeleteEvent: Tool<typeof DeleteEventParams> = {
         end tell
 
         return "No matching event found."
-      `;
-      const result = await runAppleScript(script);
-      return { success: true, result };
+      `
+      const result = await runAppleScript(script)
+      return { success: true, result }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
 // Register tool
-toolRegistry.register(calendarDeleteEvent);
+toolRegistry.register(calendarDeleteEvent)
 
 // --- LIST EVENTS TOOL ---
 const ListEventsParams = z.object({
-  startText: z.string().describe('The start date and time to list events from (e.g., "October 27, 2023 at 12:00:00 AM")'),
+  startText: z
+    .string()
+    .describe('The start date and time to list events from (e.g., "October 27, 2023 at 12:00:00 AM")'),
   dayCount: z.number().default(7).describe('Number of days to list events for'),
   calendar: z.string().optional().describe('The name of the calendar to list events from'),
-});
+})
 
 export const calendarListEvents: Tool<typeof ListEventsParams> = {
   name: 'calendar_list_events',
@@ -259,24 +265,24 @@ export const calendarListEvents: Tool<typeof ListEventsParams> = {
         set outputText to outputLines as text
         set AppleScript's text item delimiters to ""
         return outputText
-      `;
-      const result = await runAppleScript(script);
-      return { success: true, result };
+      `
+      const result = await runAppleScript(script)
+      return { success: true, result }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
 // Register tool
-toolRegistry.register(calendarListEvents);
+toolRegistry.register(calendarListEvents)
 
 // --- SEARCH EVENTS TOOL ---
 const SearchEventsParams = z.object({
   query: z.string().describe('Search query for the event title'),
   dayCount: z.number().default(7).describe('Number of days from today to search for events'),
   calendar: z.string().optional().describe('The name of the calendar to search in'),
-});
+})
 
 export const calendarSearchEvents: Tool<typeof SearchEventsParams> = {
   name: 'calendar_search_events',
@@ -321,17 +327,17 @@ export const calendarSearchEvents: Tool<typeof SearchEventsParams> = {
         set outputText to outputLines as text
         set AppleScript's text item delimiters to ""
         return outputText
-      `;
-      const result = await runAppleScript(script);
-      return { success: true, result };
+      `
+      const result = await runAppleScript(script)
+      return { success: true, result }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
 // Register tool
-toolRegistry.register(calendarSearchEvents);
+toolRegistry.register(calendarSearchEvents)
 
 // --- UPDATE EVENT TOOL ---
 const UpdateEventParams = z.object({
@@ -342,13 +348,21 @@ const UpdateEventParams = z.object({
   newNotes: z.string().optional().describe('New notes or description for the event'),
   dayCount: z.number().default(7).describe('Number of days from today to search for the event'),
   calendar: z.string().optional().describe('The name of the calendar to search in'),
-});
+})
 
 export const calendarUpdateEvent: Tool<typeof UpdateEventParams> = {
   name: 'calendar_update_event',
   description: 'Update an existing event in macOS Calendar.',
   parameters: UpdateEventParams,
-  execute: async ({ query, newStart = '', newEnd = '', newTitle = '', newNotes = '', dayCount = 7, calendar = '' }) => {
+  execute: async ({
+    query,
+    newStart = '',
+    newEnd = '',
+    newTitle = '',
+    newNotes = '',
+    dayCount = 7,
+    calendar = '',
+  }) => {
     try {
       const script = `
         set queryText to ${JSON.stringify(query)}
@@ -386,14 +400,14 @@ export const calendarUpdateEvent: Tool<typeof UpdateEventParams> = {
         end tell
 
         return "No matching event found."
-      `;
-      const result = await runAppleScript(script);
-      return { success: true, result };
+      `
+      const result = await runAppleScript(script)
+      return { success: true, result }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
 // Register tool
-toolRegistry.register(calendarUpdateEvent);
+toolRegistry.register(calendarUpdateEvent)

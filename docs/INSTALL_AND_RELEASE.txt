@@ -1,0 +1,75 @@
+================================================================================
+APEX — INSTALL MODES & RELEASE (dev, launchd, tarball)
+================================================================================
+Current release line: see package.json and CHANGELOG.md (v1 uses 1.0.0-rc.x tags for developers/operators).
+
+Supported ways to run the CLI and daemon:
+
+1) Local development (git clone)
+  • Install deps: pnpm install at the repo root (pnpm workspace; workspace:* deps). The lockfile
+    of record is pnpm-lock.yaml. After install, pnpm run and npm run are equivalent for scripts.
+  • Build: pnpm run build  →  tsc -b (workspace packages) + node build.mjs (root dist/ + dist/cli.bundle.js).
+  • Entry: npm link or PATH to bin/run.sh, which execs dist/cli.bundle.js from the repo root.
+
+2) launchd (background daemon)
+  • From repo root: pnpm run launchd:install  writes ~/Library/LaunchAgents/ai.apex.agent.plist
+  • ProgramArguments: /bin/bash <repo>/bin/run.sh daemon
+  • WorkingDirectory + APEX_INSTALL_ROOT: the project root at install time.
+  • After git pull or moving the tree, run launchd:install again and kickstart the job so paths stay correct.
+
+3) Release tarball (pnpm run release:pack)
+  • Staging includes dist/ (cli.bundle.js), vendored nodes/macos (@apex/macos-node is an esbuild
+    external), bin/apex, flattened package.json, then npm install --omit=dev → rm node_modules →
+    npm ci --omit=dev so the staging package-lock.json matches the flattened manifest (no workspace:
+    specifiers). Tarball consumers install with npm ci --omit=dev from the extracted tree.
+  • bin/apex runs node dist/cli.bundle.js — same entry family as dev bin/run.sh (not unbundled cli.js).
+  • Install: extract tarball, cd apex-<version>, npm ci --omit=dev as needed, ./bin/apex …
+
+Root package-lock.json in git (vs pnpm-lock.yaml)
+  • pnpm-lock.yaml is the lockfile of record for monorepo development and CI (pnpm install).
+  • The root package-lock.json is not used by release:pack for staging (it previously could not
+    match a flattened manifest that still contained workspace:*). Staging generates its own
+    package-lock.json. The root file may remain for tooling or historical reference; do not assume
+    it matches the release tarball graph.
+  • It is not the install graph for day-to-day pnpm work at the repo root. Do not treat
+    “npm ci” or “npm install” at the monorepo root as an alternative to pnpm install for
+    contributors — workspace:* and the workspace layout are resolved via pnpm.
+  • End users who only extract a release tarball use npm ci against that tree’s package.json +
+    package-lock.json (no workspace). That flow is separate from cloning the full repo.
+
+macOS trust (tarball and native tools)
+  • Release archives are not Apple-signed or notarized. After download, Gatekeeper or quarantine may block
+    helpers until allowed in System Settings → Privacy & Security, or until quarantine is cleared on a path
+    you trust (e.g. xattr -dr com.apple.quarantine <path> — use only for artifacts you obtained intentionally).
+  • This is expected for unsigned local developer/operator distributions. See README “macOS downloads and
+    Gatekeeper” and CHANGELOG.md.
+
+Tarball install (operator quick path)
+  1) Extract: tar -xzf apex-<version>.tar.gz
+  2) cd apex-<version>
+  3) npm ci --omit=dev
+  4) ./bin/apex …   (or follow apex update guidance)
+
+Maintainer pre-tag checklist (beyond CI)
+  • CI on macOS already runs release:pack and release:verify. Optionally, before tagging: extract the tarball
+    to a clean directory, run npm ci --omit=dev only there, smoke-test ./bin/apex — catches environment drift
+    not visible inside the repo workspace.
+
+Upgrade footguns (see also: apex update, docs/OPERATOR_TRUST.txt):
+  • Old launchd job pointing at a previous path → reinstall plist; check APEX_INSTALL_ROOT.
+  • Stale runtime.token vs new daemon → restart daemon; apex runtime-info.
+  • CLI vs daemon install root: apex runtime-info → “Install drift” (daemon-reported root from /api/status;
+    launchd plist WorkingDirectory when parseable). Mismatch → follow on-screen remediation.
+
+CI (GitHub Actions: .github/workflows/ci.yml)
+  • postinstall builds the Swift native bridge; that requires macOS + Swift, so full
+    pnpm install --frozen-lockfile → build → test → separate release:pack then release:verify runs on macos-latest.
+  • release:verify asserts vendored nodes/macos paths, staging lockfile references file: macos, and
+    require('@apex/macos-node') from the staging directory (end-to-end install, not only manifest shape).
+  • A separate ubuntu job runs pnpm run ci:quick (format:check, validate:skill-json, lint,
+    typecheck) with pnpm install --frozen-lockfile --ignore-scripts (no native postinstall) for fast static signal
+    on every PR.
+  • Local parity with that Ubuntu job: pnpm run ci:quick
+================================================================================
+END
+================================================================================

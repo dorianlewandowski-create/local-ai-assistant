@@ -1,23 +1,23 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { exec } from 'child_process'
+import { promisify } from 'util'
 
-const execAsync = promisify(exec);
+const execAsync = promisify(exec)
 
 export interface NotificationInput {
-  message: string;
-  title?: string;
-  subtitle?: string;
+  message: string
+  title?: string
+  subtitle?: string
 }
 
 function escapeAppleScriptString(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
 }
 
 export async function sendNotification({
   message,
-  title = 'OpenMac',
+  title = 'Apex',
   subtitle = 'Action taken',
 }: NotificationInput): Promise<void> {
-  const script = `display notification "${escapeAppleScriptString(message)}" with title "${escapeAppleScriptString(title)}" subtitle "${escapeAppleScriptString(subtitle)}"`;
-  await execAsync(`osascript -e ${JSON.stringify(script)}`);
+  const script = `display notification "${escapeAppleScriptString(message)}" with title "${escapeAppleScriptString(title)}" subtitle "${escapeAppleScriptString(subtitle)}"`
+  await execAsync(`osascript -e ${JSON.stringify(script)}`)
 }

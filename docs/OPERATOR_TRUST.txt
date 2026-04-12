@@ -1,0 +1,111 @@
+================================================================================
+APEX — OPERATOR TRUST (runtime auth, install root, launchd, pairing, security)
+================================================================================
+This note is for people running Apex on macOS. It describes what the system
+actually does so you can reason about risk and troubleshoot confidently.
+
+--------------------------------------------------------------------------------
+1. What “security” means here (honest scope)
+--------------------------------------------------------------------------------
+  • Apex is a powerful local control plane: it can drive apps, files, and
+    browser automation according to policy and your approvals. Treat the host
+    and your config as the trust boundary.
+  • There is no single “the whole process is in the macOS App Sandbox” claim.
+    Protection combines: localhost-only runtime HTTP by default, a shared-secret
+    token for that API, tool allowlists / remote-safe modes, optional stricter
+    execution modes where implemented, Keychain-backed secrets where used, and
+    channel pairing for remote gateways.
+  • Kernel Seatbelt / per-tool sandbox profiles may apply to specific execution
+    paths; do not assume every subprocess is equally confined without checking
+    docs and code for that tool.
+
+--------------------------------------------------------------------------------
+2. Runtime HTTP API and token authentication
+--------------------------------------------------------------------------------
+  • The daemon listens on 127.0.0.1 (port from apex.json runtimeService.port).
+  • GET /health is unauthenticated and returns the plaintext body `ok` only.
+  • All other /api/* routes require:
+      Authorization: Bearer <token>   OR   X-Apex-Token: <token>
+  • Token resolution (client and server):
+      1) APEX_RUNTIME_TOKEN (non-empty) wins.
+      2) Else APEX_RUNTIME_TOKEN_FILE points to a file.
+      3) Else ~/.apex/runtime.token (or $APEX_STATE_DIR/runtime.token).
+  • The daemon creates or reuses ~/.apex/runtime.token (mode 0600) on startup
+    (see src/runtime/runtimeServiceToken.ts). If the file is missing, the
+    first successful daemon start writes it.
+
+--------------------------------------------------------------------------------
+2b. Token as capability (same user, same machine)
+--------------------------------------------------------------------------------
+  • Treat the runtime token as **capability**: any process running as you that
+    can read it can call the local /api/* surface. File mode 0600 limits this to
+    your user id; it does **not** provide multi-user isolation on a shared login
+    or compromised account.
+  • This design targets **single-user, local operator workflows** on a Mac you
+    control. It is not a substitute for hardened multi-tenant separation or
+    system-wide mandatory access controls.
+  • **APEX_RUNTIME_TOKEN** in the environment is equivalent to handing that
+    secret to every child process—use deliberately (CI, automation) and prefer
+    the token file for interactive use when possible.
+
+--------------------------------------------------------------------------------
+3. First run: daemon and token behavior
+--------------------------------------------------------------------------------
+  • Until the daemon has started successfully at least once, there may be no
+    runtime.token file yet. CLI and scripts that call /api/* need the same
+    token the daemon uses—after first start, read ~/.apex/runtime.token or set
+    APEX_RUNTIME_TOKEN / APEX_RUNTIME_TOKEN_FILE explicitly.
+  • If you see HTTP 401 on /api/*: the caller’s token does not match the
+    running daemon (stale file, wrong APEX_STATE_DIR, or token overridden in
+    the daemon’s environment). Fix alignment, then retry.
+  • Health can be OK while API calls fail: /health does not prove auth is
+    configured for your client.
+
+--------------------------------------------------------------------------------
+4. Install root resolution (APEX_INSTALL_ROOT)
+--------------------------------------------------------------------------------
+  • Native assets and paths may depend on the repo/install root. The canonical
+    resolver lives in nodes/macos/src/installRoot.ts (re-exported from the
+    runtime as needed).
+  • Set APEX_INSTALL_ROOT when the process working directory or entrypoint does
+    not clearly identify the install tree (CI, custom wrappers, multiple copies).
+  • launchd: pnpm run launchd:install writes a plist that sets APEX_INSTALL_ROOT
+    to the project root used at install time (see src/launchd.ts). Re-run
+    launchd:install after moving the tree, or edit the plist.
+  • Dev vs launchd vs release tarball: docs/INSTALL_AND_RELEASE.txt
+
+--------------------------------------------------------------------------------
+5. launchd environment behavior
+--------------------------------------------------------------------------------
+  • Jobs started by launchd do not automatically inherit your interactive shell
+    environment. Only variables listed under EnvironmentVariables in the plist
+    (plus system defaults) are set unless you extend the plist.
+  • The generated plist sets APEX_INSTALL_ROOT; it does not inject your full
+    .env. For other variables, use apex.json / documented APEX_* mechanisms, or
+    add EnvironmentVariables entries deliberately (knowing they are static in
+    the plist until you reinstall or edit).
+
+--------------------------------------------------------------------------------
+6. Pairing (Slack / WhatsApp / Discord / Telegram)
+--------------------------------------------------------------------------------
+  • Pairing binds external identities to this installation. It reduces casual
+    abuse but is not a substitute for channel allowlists, bot token secrecy,
+    or host compromise defenses.
+  • Full threat model, rate limits, and limitations: docs/PAIRING_SECURITY.txt
+
+--------------------------------------------------------------------------------
+7. Legacy environment names (OPENMAC_*)
+--------------------------------------------------------------------------------
+  • Non-empty OPENMAC_* keys in the environment cause startup to exit with a
+    clear error. Rename to APEX_* (see .env.example and core/brain env aliasing).
+
+--------------------------------------------------------------------------------
+8. Config sample filename (apex.json)
+--------------------------------------------------------------------------------
+  • The canonical JSON template at the repo root is **apex.json.example**.
+    Older material may refer to openmac.json.example; that duplicate was removed
+    to avoid confusion—copy or merge from apex.json.example only.
+
+================================================================================
+END
+================================================================================

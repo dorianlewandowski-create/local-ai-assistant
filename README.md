@@ -1,75 +1,138 @@
-#  OpenMac | Autonomous OS Agent for Power Users (v0.7.4)
+# Apex
 
-OpenMac is a local-first, distributed autonomous macOS agent designed for operators who want a persistent, high-signal command layer over their workstation. It combines local reasoning, a dense mission-control TUI, a self-improving cognitive architecture, and deep macOS integration into a single platform built for elite personal workflows.
+![Version](https://img.shields.io/badge/version-1.0.0--rc.1-blue)
+![Platform](https://img.shields.io/badge/platform-macOS-black)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-![OpenMac TUI Dashboard](assets/tui-preview.png)
+**A Mac-first local AI control plane for developers and operators.**
 
-## 🚀 The v0.7.4 Evolution: Cognitive Sovereignty
+Apex lets you run and control AI workflows locally with a clear, explicit trust model, deep system integration, and a CLI-first interface.
 
-Version 0.7.4 transforms OpenMac from a local utility into a sophisticated, self-evolving autonomous platform.
-
-- **Distributed Control Plane**: Decoupled Daemon/Client architecture. The runtime runs as a background service (`openmac daemon`), while the TUI and CLI connect as remote clients.
-- **Self-Improving Tiered Memory**: A cognitive system using **HOT** (Always Loaded), **WARM** (Contextual), and **COLD** (Archived) memory tiers. The agent learns from corrections and reflects on every complex task.
-- **Autonomous Self-Evolution**: Equipped with tools to research unfamiliar apps (`research_app_automation`) and write its own skills (`create_new_skill`) at runtime.
-- **Multimodal Vision & Deep Web**: Integrated screen analysis (Vision) and full headless browser control (Puppeteer) for interacting with any interface, scriptable or not.
-- **Transactional Safety**: Built-in checkpoint and rollback systems for reliable, high-risk file operations.
-
-## 🏗️ Core Pillars
-
-- 🧠 **Local Model Orchestration**: Privacy-first routing between optimized local models (Llama 3, DeepSeek, Qwen) for different task tiers (Reasoning, Fast, Vision, Coding).
-- 📟 **Resident Daemon Mode**: Background execution via `launchd` with seamless TUI/CLI connectivity.
-- 📱 **Multi-Gateway Command Center**: Remote control via Telegram, Slack, and WhatsApp with secure pairing and remote-safe policies.
-- 💾 **Tiered Cognitive Store**: SQLite facts, LanceDB vector memory, and Markdown-based self-improving memory logs.
-- 🔐 **Hardened Security**: Local Keychain-based credential management, audit logs, and transactional rollbacks.
-
-## 🛠️ Integrated Skill Stack
-
-OpenMac comes pre-equipped with elite-level plugins:
-- **Productivity OS**: Structured energy and task management based on life-operating system frameworks.
-- **Garmin Connect**: Health-aware assistance using real-time fitness and recovery metrics.
-- **Tech News Pipeline**: 150-source automated information synthesis and deduplication.
-- **Web Search Plus**: Intelligent auto-routing between Google (Serper), Tavily (Research), and Exa (Neural).
-- **Shortcuts Bridge**: Direct access to native macOS Apple Shortcuts.
-
-## 🏁 Getting Started
-
-### 1. Installation
-```bash
-git clone <your-repo-url>
-cd mac-ai-assistant
-npm install
-npm run onboard
-npm link
-```
-
-### 2. Run as a Service (Recommended)
-```bash
-# Install and load the launchd agent
-npm run launchd:install
-
-# Or start the daemon manually
-openmac daemon
-```
-
-### 3. Launch the Mission Control
-```bash
-# Connect the TUI to the running daemon
-openmac
-```
-
-## 🧠 Operational Philosophy
-
-OpenMac is built in the style of a **distributed operator console**. It doesn't just "chat"—it observes, reasons, learns, and acts as your local human proxy.
-
-- **Learn from Corrections**: When you correct the agent, it logs the pattern to its WARM memory.
-- **Compound Knowledge**: Every interaction makes the agent smarter through its Self-Reflection loop.
-- **Privacy First**: Everything runs locally by default. Cloud APIs are an optional choice, not a requirement.
-
-## 🔒 Security & Safety
-
-- **Keychain Integration**: Store sensitive tokens (like Garmin) in the native macOS Keychain.
-- **Checkpoints**: Use `checkpoint_start` before high-risk operations to ensure you can always `rollback`.
-- **Remote Safe Mode**: Limit remote commands to a specific allowlist of tools and permissions.
+> ⚠️ **v1.0.0-rc.1** — release candidate for technical users (not a consumer app yet)
 
 ---
-*OpenMac v0.7.4 — The definitive autonomous control plane for macOS.*
+
+## What Apex is
+
+Apex is not “just another CLI” or “just another agent.”
+
+It is a **local control plane** that sits between:
+
+* your **LLMs**
+* your **tools / automations**
+* your **system (macOS)**
+
+and gives you:
+
+* a persistent **daemon + runtime API**
+* a **terminal mission control**
+* structured **memory + tools + skills**
+* a clear, inspectable **trust model**
+
+---
+
+## Why Apex exists
+
+Most AI tooling today is:
+
+* opaque (hidden state, hidden decisions)
+* remote-first (unclear data boundaries)
+* hard to debug
+
+Apex takes the opposite approach:
+
+* **local-first**
+* **explicit over implicit**
+* **observable over magical**
+
+---
+
+## Core capabilities
+
+* **Local runtime with token-based auth**
+* **`apex runtime-info` for real debugging**
+* **macOS integration (launchd, native bridge, system tools)**
+* **Tool + skill system (extensible)**
+* **Gateway integrations (Telegram, etc.)**
+* **Deterministic release + install flow**
+
+---
+
+## Install (quick start)
+
+### From source (recommended)
+
+```bash
+pnpm install
+pnpm run build
+./bin/run.sh
+```
+
+### From release tarball
+
+```bash
+tar -xzf apex-<version>.tar.gz
+cd apex-<version>
+npm ci --omit=dev
+./bin/apex
+```
+
+---
+
+## Who this is for
+
+Apex is built for:
+
+* developers building AI workflows
+* operators running local automation
+* users comfortable with:
+
+  * terminal workflows
+  * pnpm / npm
+  * macOS system behavior
+
+Not for:
+
+* non-technical users
+* “click to install” expectations (yet)
+
+---
+
+## Status
+
+* Version: **v1.0.0-rc.1**
+* Stable: runtime, CLI, release flow
+* In progress: distribution UX, macOS trust ergonomics
+
+See [`CHANGELOG.md`](./CHANGELOG.md) for details.
+
+---
+
+## Documentation
+
+* `docs/OPERATOR_TRUST.txt` — security model
+* `docs/INSTALL_AND_RELEASE.txt` — install + release flow
+* `docs/PAIRING_SECURITY.txt` — gateway pairing model
+
+---
+
+## Philosophy
+
+Apex is built on a simple idea:
+
+> **You should be able to understand, inspect, and control your AI system.**
+
+No hidden state. No fake guarantees. No magic.
+
+---
+
+## Feedback
+
+This is a release candidate — feedback matters.
+
+Open issues or share:
+
+* install friction
+* runtime confusion
+* macOS integration issues
+* gateway/pairing edge cases

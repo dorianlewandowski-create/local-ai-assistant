@@ -1,1 +1,1 @@
-export { assessToolRisk } from '../security/policy';
+export { assessToolRisk } from '../security/policy'

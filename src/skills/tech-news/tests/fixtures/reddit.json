@@ -16,9 +16,7 @@
       "subreddit": "CryptoCurrency",
       "sort": "hot",
       "priority": true,
-      "topics": [
-        "crypto"
-      ],
+      "topics": ["crypto"],
       "status": "ok",
       "attempts": 1,
       "count": 8,
@@ -33,9 +31,7 @@
           "num_comments": 130,
           "flair": "GENERAL-NEWS",
           "is_self": false,
-          "topics": [
-            "crypto"
-          ],
+          "topics": ["crypto"],
           "metrics": {
             "score": 2043,
             "num_comments": 130,
@@ -52,9 +48,7 @@
           "num_comments": 39,
           "flair": "ANALYSIS",
           "is_self": true,
-          "topics": [
-            "crypto"
-          ],
+          "topics": ["crypto"],
           "metrics": {
             "score": 98,
             "num_comments": 39,
@@ -70,10 +64,7 @@
       "subreddit": "artificial",
       "sort": "hot",
       "priority": false,
-      "topics": [
-        "llm",
-        "ai-agent"
-      ],
+      "topics": ["llm", "ai-agent"],
       "status": "ok",
       "attempts": 1,
       "count": 3,
@@ -88,10 +79,7 @@
           "num_comments": 37,
           "flair": "News",
           "is_self": false,
-          "topics": [
-            "llm",
-            "ai-agent"
-          ],
+          "topics": ["llm", "ai-agent"],
           "metrics": {
             "score": 455,
             "num_comments": 37,
@@ -108,10 +96,7 @@
           "num_comments": 20,
           "flair": "Discussion",
           "is_self": false,
-          "topics": [
-            "llm",
-            "ai-agent"
-          ],
+          "topics": ["llm", "ai-agent"],
           "metrics": {
             "score": 105,
             "num_comments": 20,
@@ -127,9 +112,7 @@
       "subreddit": "LocalLLaMA",
       "sort": "hot",
       "priority": false,
-      "topics": [
-        "llm"
-      ],
+      "topics": ["llm"],
       "status": "ok",
       "attempts": 1,
       "count": 11,
@@ -144,9 +127,7 @@
           "num_comments": 36,
           "flair": "Discussion",
           "is_self": true,
-          "topics": [
-            "llm"
-          ],
+          "topics": ["llm"],
           "metrics": {
             "score": 86,
             "num_comments": 36,
@@ -163,9 +144,7 @@
           "num_comments": 210,
           "flair": "Discussion",
           "is_self": true,
-          "topics": [
-            "llm"
-          ],
+          "topics": ["llm"],
           "metrics": {
             "score": 305,
             "num_comments": 210,

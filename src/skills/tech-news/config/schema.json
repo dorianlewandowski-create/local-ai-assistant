@@ -25,7 +25,7 @@
           "description": "Whether this source is active"
         },
         "priority": {
-          "type": "boolean", 
+          "type": "boolean",
           "description": "High-priority sources are fetched first and scored higher"
         },
         "topics": {
@@ -57,7 +57,11 @@
       "allOf": [
         {
           "if": {
-            "properties": { "type": { "const": "rss" } }
+            "properties": {
+              "type": {
+                "const": "rss"
+              }
+            }
           },
           "then": {
             "required": ["url"]
@@ -65,7 +69,11 @@
         },
         {
           "if": {
-            "properties": { "type": { "const": "twitter" } }
+            "properties": {
+              "type": {
+                "const": "twitter"
+              }
+            }
           },
           "then": {
             "required": ["handle"]
@@ -73,7 +81,11 @@
         },
         {
           "if": {
-            "properties": { "type": { "const": "github" } }
+            "properties": {
+              "type": {
+                "const": "github"
+              }
+            }
           },
           "then": {
             "required": ["repo"]

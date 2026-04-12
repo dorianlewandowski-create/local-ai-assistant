@@ -1,0 +1,12 @@
+{
+  "approved": {
+    "slack": [
+      "U123"
+    ],
+    "whatsapp": []
+  },
+  "pending": {
+    "slack": [],
+    "whatsapp": []
+  }
+}

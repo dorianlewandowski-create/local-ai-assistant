@@ -1,0 +1,212 @@
+================================================================================
+APEX — AGENTS, SKILLS, AND TOOLS (inventory)
+================================================================================
+Companion plan (phased work): docs/IMPLEMENTATION_PLAN_AGENTS_TOOLS.txt
+
+This document lists sub-agents, bundled skills, core native tools, and SDK-style
+plugins as wired in the repository. Runtime availability may still depend on
+config, security policy, session tool allowlists, and environment.
+
+Sources of truth in code:
+  - Agents:        src/agent/factory.ts, core/types (SubAgentKind)
+  - Skills:        src/skills/*/tool.ts, src/plugins/builtinTools.ts
+  - Core tools:    src/tools/*.ts (toolRegistry.register / name: '…')
+  - SDK plugin:    src/plugins/ScreenControl/manifest.json, src/core/pluginLoader.ts
+  - MCP bridge:    src/plugins/mcpBridge.ts (names depend on MCP server config)
+  - Naming in config: docs/TOOL_REGISTRY_NAMING.txt (allowlists, apex.json)
+  - How to add features: docs/EXTENDING_APEX.txt
+
+How to refresh (machine-readable lists)
+  Run from the repository root:
+    npm run docs:list-tools
+  This prints sorted tool ids from src/tools, src/skills/*/tool.ts, and SDK
+  plugin names (e.g. ScreenControl.get_ui_tree) from the ScreenControl manifest.
+  Use it to diff against older output or to update the alphabetical sections in
+  this file. Narrative sections (sub-agents, MCP notes, CLI) stay hand-edited.
+
+  CI / drift check: committed snapshot is docs/tools-list.golden.txt. After tool
+  changes, regenerate it with:
+    node scripts/list-tools.mjs > docs/tools-list.golden.txt
+  Verify with: npm run docs:check-tools (also covered by npm test).
+
+================================================================================
+1. SUB-AGENTS (SubAgentKind)
+================================================================================
+Kinds (union type): researcher | coder | system
+
+  researcher — "Researcher Agent"
+    Focus: gather context, read/search, consult memory, synthesize evidence.
+
+  coder — "Coder Agent"
+    Focus: inspect, edit, debug, execute technical tasks.
+
+  system — "System Agent" (default)
+    Focus: macOS power-user: OS actions, AppleScript/UI control, notifications,
+    schedule-aware behavior, monitoring, device operations. System prompt also
+    mandates get_today_schedule before availability/meeting suggestions and
+    Spotify usage rules (see factory).
+
+Routing (heuristic, AgentFactory.choose / chooseWithDiagnostics):
+  • metadata.subAgentKind (session/TUI override) wins when set to researcher | coder | system.
+  • Otherwise scored hints (phrases + word-boundary tokens) produce coder vs researcher scores;
+    higher score wins; ties with both sides scoring prefer coder (legacy ordering); equal
+    ambiguous scores → system. See src/agent/factory.ts (CODER_*/RESEARCHER_* lists).
+  • Diagnostics: chooseWithDiagnostics → source, scores, confidence. Logged at debug in
+    core/brain when the orchestrator wires chooseWithDiagnostics.
+  • Eval golden: test/evals/golden.cases.json + test/evals/goldenEval.test.ts
+    (routing, tool policy, negatives). Run: npm run test:eval or npm test.
+
+Researcher tool policy (capability tier):
+  • **coder** / **system**: full session tool allowlist (no shrinking by kind).
+  • **researcher**: read-oriented isolation — tools with permission class **read**; **write** only
+    for allowlisted memory/soul/consult names (see RESEARCHER_WRITE_ALLOWLIST in
+    src/agent/subAgentToolPolicy.ts) or manifest category **memory**; **automation** and
+    **destructive** are never included. Implementation: filterToolsForSubAgentKind.
+
+Helper invocation (not a SubAgentKind enum value):
+  • Tool: spawn_helper_agent — runs a separate orchestrator task for a sub-task
+    (see src/tools/multiAgent.ts).
+
+================================================================================
+2. BUNDLED SKILLS (src/skills/)
+================================================================================
+Registered via imports in src/plugins/builtinTools.ts. Each skill exposes tools
+listed below.
+
+  Bundled skill JSON (manifests, defaults, fixtures): strict JSON — see
+  docs/SKILL_JSON_CONTRACT.txt (pnpm run validate:skill-json).
+
+garmin/
+  • get_garmin_stats
+  • get_garmin_morning_summary
+  Manifest: src/skills/garmin/skill.json
+
+tech-news/
+  • generate_tech_news_digest
+  • read_latest_tech_news
+
+data-analysis/
+  • data_analysis_consult — optional depth: minimal | standard (default) | full;
+    query-scored ## excerpts + per-depth budgets (see src/skills/data-analysis/excerpt.ts).
+
+productivity/
+  • productivity_capture
+  • productivity_get_dashboard
+  • productivity_update_task
+
+web-search-plus/
+  • web_search_plus
+
+User-defined skills (runtime):
+  • Tool create_new_skill writes repo-root skills/<name>/ and hot-registers a
+    tool; names are not fixed in the tree.
+
+================================================================================
+3. CORE NATIVE TOOLS (src/tools/)
+================================================================================
+Alphabetical list of tool names (name: '…') defined under src/tools/:
+
+analyze_image_content
+browser_chrome_active_tab
+browser_safari_active_tab
+calendar_create_event
+calendar_delete_event
+calendar_list_events
+calendar_list_names
+calendar_search_events
+calendar_update_event
+checkpoint_commit
+checkpoint_rollback
+checkpoint_start
+create_new_skill
+empty_trash
+execute_applescript
+execute_secure_code
+fetch_url
+fetch_url_via_curl
+fetch_url_via_jina
+file_find
+file_organize_preview
+fs_cat
+fs_cp
+fs_ls
+fs_mkdir
+fs_mv
+fs_organize
+fs_patch
+fs_rm
+fs_write
+get_current_time
+get_current_weather
+get_today_schedule
+hide_all_apps
+list_shortcuts
+log_correction
+log_reflection
+open_app
+play_spotify_search
+play_spotify_track
+read_pdf_content
+read_text_file
+recall_facts
+reminders_complete_item
+reminders_create_item
+reminders_delete_item
+reminders_list_items
+reminders_list_names
+research_app_automation
+run_applescript
+run_shortcut
+save_fact
+search_arxiv
+search_vector_memory
+search_wikipedia
+search_wolframalpha
+send_system_notification
+set_active_model
+set_system_volume
+spawn_helper_agent
+take_screenshot
+toggle_dark_mode
+update_soul
+vision_click_at
+vision_get_screen_snapshot
+web_browse
+web_click
+web_extract
+web_search
+web_search_aichat
+web_search_perplexity
+web_search_tavily
+web_type
+
+(Approximate count: 73 tools — verify with rg in src/tools if the codebase changes.)
+
+================================================================================
+4. SDK PLUGIN — ScreenControl
+================================================================================
+Plugin id: ScreenControl (see src/plugins/ScreenControl/manifest.json)
+
+Tools are registered with a plugin prefix in the tool registry, e.g.:
+  ScreenControl.get_ui_tree
+  ScreenControl.ui_click_element
+
+(Exact string is pluginId + '.' + tool name; see src/core/pluginLoader.ts.)
+
+================================================================================
+5. MCP TOOLS (configuration-dependent)
+================================================================================
+MCP servers expose tools bridged into the registry with sanitized names such as:
+  mcp_<serverId>__<toolName>
+See src/plugins/mcpBridge.ts. There is no static list in-repo; it depends on
+your MCP / apex.json (or equivalent) configuration.
+
+================================================================================
+6. CLI (NOT model tools)
+================================================================================
+Shell commands like `apex files preview` / `apex files apply` / `apex help` are
+implemented in the CLI early-exit path and are not registered in toolRegistry.
+
+================================================================================
+END
+================================================================================

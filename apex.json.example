@@ -1,0 +1,98 @@
+{
+  "current_provider": "local",
+  "routerMode": "smart",
+  "privacyMode": false,
+  "models": {
+    "chat": "gemma4:e4b",
+    "chatFallback": "llama3.1:8b",
+    "embedding": "nomic-embed-text",
+    "embeddingFallback": "mxbai-embed-large",
+    "vision": "llama3.2-vision",
+    "transcription": ""
+  },
+  "watcher": {
+    "directories": [
+      "~/Desktop",
+      "~/Downloads"
+    ],
+    "extensions": [
+      ".pdf",
+      ".txt",
+      ".md",
+      ".jpg",
+      ".jpeg",
+      ".png"
+    ]
+  },
+  "scheduler": {
+    "proactiveReviewIntervalMs": 14400000,
+    "morningReviewHour": 8,
+    "dailyDigestEnabled": false,
+    "dailyDigestHour": 8,
+    "dailyDigestTelegram": false
+  },
+  "storage": {
+    "vectorStorePath": "./data/lancedb",
+    "sessionStorePath": "./data/sessions.json"
+  },
+  "sessions": {
+    "maxPersistedSessions": 100
+  },
+  "media": {
+    "maxTelegramFileBytes": 10485760,
+    "maxVoiceNoteBytes": 10485760
+  },
+  "plugins": {
+    "enabled": true,
+    "directory": "./plugins"
+  },
+  "runtimeService": {
+    "enabled": true,
+    "port": 18787
+  },
+  "gateways": {
+    "telegram": {
+      "enabled": false,
+      "botToken": "",
+      "chatId": ""
+    },
+    "slack": {
+      "enabled": false,
+      "appToken": "",
+      "botToken": "",
+      "allowFrom": []
+    },
+    "whatsapp": {
+      "enabled": false,
+      "executablePath": "",
+      "allowFrom": [],
+      "groupPolicy": "disabled",
+      "groupAllowFrom": []
+    },
+    "discord": {
+      "enabled": false,
+      "botToken": "",
+      "allowFrom": []
+    }
+  },
+  "security": {
+    "remoteSafeMode": true,
+    "remoteAllowedPermissions": [
+      "read",
+      "write",
+      "automation"
+    ],
+    "authorizationTimeoutMs": 300000,
+    "pairingCodeTtlMs": 600000,
+    "channelToolAllowlists": {
+      "telegram": ["web_search", "recall_facts", "get_current_weather"],
+      "slack": ["web_search", "calendar_list_events", "get_today_schedule"],
+      "whatsapp": ["get_current_time", "send_system_notification"],
+      "discord": []
+    },
+    "remoteSandboxMode": true,
+    "remoteSandboxAllowedPermissions": [
+      "read"
+    ]
+  }
+}

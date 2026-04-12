@@ -1,62 +1,88 @@
-import { config } from '../config';
+import { config } from '@apex/core'
+import { getModelProfiles, resolveExecutionTier as mergePromptAndAgentTier } from '../core/router'
 
-export type ModelTier = 'fast' | 'reasoning' | 'vision' | 'coding' | 'default';
+export type ModelTier = 'fast' | 'reasoning' | 'vision' | 'coding' | 'default'
 
 export interface ModelRoute {
-  provider: 'ollama' | 'openai' | 'gemini' | 'anthropic';
-  model: string;
-  baseUrl?: string;
-  apiKey?: string;
+  provider: 'gemini' | 'local'
+  model: string
+  baseUrl?: string
+  apiKey?: string
 }
 
 class ModelRouter {
+  resolveExecutionTier(prompt: string, agentTier: ModelTier): ModelTier {
+    return mergePromptAndAgentTier(prompt, agentTier, {
+      modelMode: config.modelMode,
+      lockedModel: config.lockedModel,
+    })
+  }
+
   getRoute(tier: ModelTier): ModelRoute {
-    // TEMPORARY: Force Gemini for testing speed and reasoning
-    if (config.apiKeys.gemini) {
+    if (config.modelMode === 'manual') {
+      const raw = (config.lockedModel || '').trim()
+      const lm = raw.toLowerCase()
+      const isGemini = lm === 'gemini' || lm.includes('gemini')
+      if (isGemini) {
+        return {
+          provider: 'gemini',
+          model: getModelProfiles().ULTRA,
+          apiKey: config.apiKeys.gemini,
+        }
+      }
       return {
-        provider: 'gemini',
-        model: 'gemini-1.5-pro',
-        apiKey: config.apiKeys.gemini,
-      };
+        provider: 'local',
+        model: raw || config.models.chat,
+        baseUrl: config.ollama.host,
+      }
     }
 
-    const tiers = config.models.tiers;
-    let modelName: string;
+    const tiers = config.models.tiers
+    let modelName: string
 
     switch (tier) {
       case 'fast':
-        modelName = tiers.fast;
-        break;
+        modelName = tiers.fast
+        break
       case 'reasoning':
-        modelName = tiers.reasoning;
-        break;
+        modelName = tiers.reasoning
+        break
       case 'vision':
-        modelName = tiers.vision;
-        break;
+        modelName = tiers.vision
+        break
       case 'coding':
-        modelName = tiers.coding;
-        break;
+        modelName = tiers.coding
+        break
       case 'default':
       default:
-        modelName = config.models.chat;
-        break;
+        modelName = config.models.chat
+        break
     }
 
-    // Default to Ollama for now (Privacy First)
+    if (tier === 'reasoning' || tier === 'coding') {
+      const key = config.apiKeys.gemini?.trim()
+      if (key) {
+        return {
+          provider: 'gemini',
+          model: tiers.reasoning || getModelProfiles().ULTRA,
+          apiKey: key,
+        }
+      }
+      return {
+        provider: 'local',
+        // Anti-oversize guardrail: never auto-fallback to heavy local tiers when Gemini is unavailable.
+        // Use the lightest safe local tier for emergency/background use.
+        model: tiers.fast || config.models.chat,
+        baseUrl: config.ollama.host,
+      }
+    }
+
     return {
-      provider: 'ollama',
+      provider: 'local',
       model: modelName,
       baseUrl: config.ollama.host,
-    };
-  }
-
-  /**
-   * Future-proof helper to check if a cloud API is configured
-   */
-  private hasCloudAccess(provider: string): boolean {
-    // Placeholder for actual API key checks
-    return false;
+    }
   }
 }
 
-export const modelRouter = new ModelRouter();
+export const modelRouter = new ModelRouter()

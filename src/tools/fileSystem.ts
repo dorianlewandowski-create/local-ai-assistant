@@ -1,13 +1,13 @@
-import { z } from 'zod';
-import { Tool } from '../types';
-import { toolRegistry } from './registry';
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import { z } from 'zod'
+import type { Tool } from '@apex/types'
+import { toolRegistry } from './registry'
+import * as fs from 'fs/promises'
+import * as path from 'path'
 
 // --- LS TOOL ---
 const LsParams = z.object({
   path: z.string().describe('The path of the directory to list'),
-});
+})
 
 export const fsLs: Tool<typeof LsParams> = {
   name: 'fs_ls',
@@ -15,18 +15,18 @@ export const fsLs: Tool<typeof LsParams> = {
   parameters: LsParams,
   execute: async ({ path: targetPath }) => {
     try {
-      const files = await fs.readdir(targetPath);
-      return { success: true, files };
+      const files = await fs.readdir(targetPath)
+      return { success: true, files }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
 // --- CAT TOOL ---
 const CatParams = z.object({
   path: z.string().describe('The path of the file to read'),
-});
+})
 
 export const fsCat: Tool<typeof CatParams> = {
   name: 'fs_cat',
@@ -34,19 +34,19 @@ export const fsCat: Tool<typeof CatParams> = {
   parameters: CatParams,
   execute: async ({ path: targetPath }) => {
     try {
-      const contents = await fs.readFile(targetPath, 'utf-8');
-      return { success: true, contents };
+      const contents = await fs.readFile(targetPath, 'utf-8')
+      return { success: true, contents }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
 // --- WRITE TOOL ---
 const WriteParams = z.object({
   path: z.string().describe('The path of the file to write to'),
   contents: z.string().describe('The full contents to write to the file'),
-});
+})
 
 export const fsWrite: Tool<typeof WriteParams> = {
   name: 'fs_write',
@@ -54,17 +54,17 @@ export const fsWrite: Tool<typeof WriteParams> = {
   parameters: WriteParams,
   execute: async ({ path: targetPath, contents }) => {
     try {
-      const dir = path.dirname(targetPath);
-      await fs.mkdir(dir, { recursive: true });
-      await fs.writeFile(targetPath, contents, 'utf-8');
-      return { success: true, message: `Successfully wrote to ${targetPath}` };
+      const dir = path.dirname(targetPath)
+      await fs.mkdir(dir, { recursive: true })
+      await fs.writeFile(targetPath, contents, 'utf-8')
+      return { success: true, message: `Successfully wrote to ${targetPath}` }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
   },
-};
+}
 
 // Register tools
-toolRegistry.register(fsLs);
-toolRegistry.register(fsCat);
-toolRegistry.register(fsWrite);
+toolRegistry.register(fsLs)
+toolRegistry.register(fsCat)
+toolRegistry.register(fsWrite)

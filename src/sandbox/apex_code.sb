@@ -1,0 +1,49 @@
+(version 1)
+(deny default) ; Block everything by default
+
+; EXPLICIT DENIALS (for safety) — placed early to ensure they take effect.
+(deny network*)
+(deny file-read* (subpath "/Users"))
+(deny file-read-data file-read-metadata (path "/etc/hosts"))
+(deny file-read-data file-read-metadata (path "/private/etc/hosts"))
+
+; Allow the process to start and clean up after itself
+(allow process-exec)
+(allow process-fork)
+(allow sysctl-read)
+
+; Pragmatic runtime support: allow read + map for system paths, then carve out explicit denies above.
+(allow file-read* (subpath "/"))
+(allow file-map-executable (subpath "/"))
+
+; Allow reading essential system libraries for Node.js/Python
+(allow file-read*
+  (subpath "/usr")
+  (subpath "/bin")
+  (subpath "/sbin")
+  (subpath "/usr/lib")
+  (subpath "/usr/share")
+  (subpath "/private/etc")
+  (subpath "/private/var")
+  (subpath "/private/preboot")
+  (subpath "/System/Library")
+  (subpath "/System/Volumes")
+  (subpath "/Library"))
+
+; Allow tmp sandbox working directory created by the runner
+(allow file-read* file-write* file-create* file-rename file-delete
+  (subpath "/tmp"))
+
+; Allow DNS and time services (needed by some runtimes even when network* is denied)
+(allow mach-lookup
+  (global-name "com.apple.notifyd")
+  (global-name "com.apple.logd")
+  (global-name "com.apple.system.logger")
+  (global-name "com.apple.cfprefsd.xpc.daemon")
+  (global-name "com.apple.coreservices.launchservicesd"))
+
+; Deny Keychain-related services explicitly (defense in depth)
+(deny mach-lookup
+  (global-name "com.apple.securityd")
+  (global-name "com.apple.trustd"))
+
